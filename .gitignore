@@ -1,0 +1,6 @@
+LEAP/LocalConfig.h
+build/
+*.bin
+*.elf
+*.map
+__pycache__/
