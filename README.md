@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.0-beta.1`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.0-beta.2`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -86,8 +86,10 @@ Hardwarebestätigung eingebaut: I²C GPIO17/18, WHO_AM_I-Prüfung an 0x68/0x69,
 ±2 g und ±250 °/s. Achsentausch/Vorzeichen sind zentral in `Hardware.h` einstellbar.
 
 Das Display ist nativ **142 × 428**, im Betrieb wie die Homeserver-Vorschau
-**428 × 142** (Rotation 1). `ColumnOffset=12` ist eine explizite Annahme für das
-142-Pixel-Panel im 168-Spalten-NV3007-RAM. Am realen Panel Randmarkierungen prüfen.
+**428 × 142** (Rotation 1). Die funktionierende Test-Firmware für das **2,79″-Panel**
+liefert die Initialisierung: `nv3007_279_init_operations`, `ips=false`,
+Spaltenoffsets **12/14**, Zeilenoffsets **0/0**. Arduino_GFX 1.6.3 enthält diese
+Sequenz bereits. Am realen Panel Randmarkierungen prüfen.
 Bei anderer Panelvariante ausschließlich `Hardware.h`/Display-Konstruktor anpassen.
 SPI zunächst konservativ 20 MHz.
 

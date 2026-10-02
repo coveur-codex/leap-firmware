@@ -7,8 +7,9 @@ und eine Möglichkeit, die Versorgung kontrolliert zu unterbrechen.
 1. **Erststart:** Flash 16 MiB / PSRAM 8 MiB im Log; kein Warten auf USB. Frisches
    FS nur mit beiden Mitteltasten formatieren. Netzlosen Start und Bedienung prüfen.
 2. **Display:** alle vier Ränder sichtbar, keine 12-Pixel-Verschiebung, Rotation,
-   RGB-Farben, Backlight-PWM und Flimmern prüfen. Die angenommene NV3007-Variante
-   hat Spaltenoffset 12; tatsächliches Panel entscheidet. Schriftgröße am Gerät
+   RGB-Farben, Backlight-PWM und Flimmern prüfen. Die Initialisierung entspricht
+   dem funktionierenden 2,79″-Test: spezielle NV3007-Sequenz, `ips=false`,
+   Spaltenoffsets 12/14 und Zeilenoffsets 0/0. Schriftgröße am Gerät
    bewerten, insbesondere lange Quizantworten.
 3. **Eingaben:** alle zehn Richtungen/Mitten einzeln, Prellen, Halten/Wiederholen,
    Menü, Sperren, Dimmung. Keine Nutzung von GPIO19/20 außer USB.

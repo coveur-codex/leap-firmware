@@ -2,6 +2,30 @@
 
 Stand: 2026-10-02. Referenz-Homeserver `8175c9f`, unverändert.
 
+## Display-Korrektur: 1.0.0-beta.2
+
+Abgleich mit dem vom Nutzer als funktionierend bestätigten Hardwaretest:
+`nv3007_279_init_operations` statt Standardsequenz, `ips=false` statt `true`,
+Spaltenoffsets 12/14 statt 12/12, Zeilenoffsets 0/0. Konstruktor und Sequenz sind
+im Quellstand von Arduino_GFX **v1.6.3** vorhanden. SPI bleibt bei 20 MHz,
+Panelgröße bei 142×428 und die Firmware-UI bei Rotation 1 (428×142).
+Die GPIO-Belegung bleibt wie vom Nutzer bestätigt bestehen.
+
+Der Anhang enthält keine `Pins.h` oder `TestConfig.h`; deren Werte (Rotation,
+Backlight-Invertierung, Akku-Spannungsteilerfaktor) lassen sich daraus nicht
+zusätzlich ablesen. Die Test-ADC-Abfrage wird daher nicht als kalibrierte
+Akkuanzeige übernommen. Tasterentprellung (25 ms), MPU6050-Register für
+Messbereiche/Filter und I²S-Stereoformat stimmen überein. Die Firmware verwendet
+für den MPU6050 weiterhin 400 kHz/5 ms Timeout gegenüber 100 kHz/20 ms im Test;
+dies ist kein aus dem Test belegter Fehler.
+
+Die frühere lokale Arduino-Toolchain ist in dieser Sitzung nicht vorhanden.
+Der Cross-Build für diese Änderung erfolgt über den bestehenden GitHub-Actions-
+Workflow. Ein visueller Test der vollständigen Firmware am Gerät bleibt offen.
+Die nachfolgenden Build-Messwerte gehören zum vorherigen Stand **1.0.0-beta.1**.
+
+## Bisherige Prüfungen: 1.0.0-beta.1
+
 - Echter Arduino-ESP32-Cross-Build für ESP32-S3 N16R8, Core **3.3.0**, OPI-PSRAM,
   16 MiB Flash, USB CDC und eigene Partitionstabelle; kein Mock-Build.
 - Bibliotheken: ArduinoJson 7.4.2, Arduino_GFX 1.6.3, PNGdec 1.1.6, JPEGDEC 1.8.2.

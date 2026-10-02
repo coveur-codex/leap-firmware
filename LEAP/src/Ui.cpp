@@ -43,8 +43,10 @@ bool Ui::begin() {
   ledcAttach(hw::Backlight, hw::BacklightHz, 8);
   ledcWrite(hw::Backlight, 0);
   bus = new Arduino_ESP32SPI(hw::Dc, hw::Cs, hw::Sck, hw::Mosi, GFX_NOT_DEFINED);
-  panel = new Arduino_NV3007(bus, hw::Reset, hw::Rotation, true, hw::NativeWidth, hw::NativeHeight,
-                             hw::ColumnOffset, 0, hw::ColumnOffset, 0);
+  // Match the working 2.79" hardware test, including inversion and panel-specific init.
+  panel = new Arduino_NV3007(bus, hw::Reset, hw::Rotation, false, hw::NativeWidth, hw::NativeHeight,
+                             hw::ColumnOffset1, 0, hw::ColumnOffset2, 0,
+                             nv3007_279_init_operations, sizeof(nv3007_279_init_operations));
   canvas = new Arduino_Canvas(hw::Width, hw::Height, panel);
   healthy = canvas && canvas->begin(hw::SpiHz);
   if (!healthy) {
