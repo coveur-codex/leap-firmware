@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.0-beta.8`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.0-beta.9`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -294,6 +294,33 @@ Ein bestandenes Paket wird als „verified and staged“ protokolliert; es ist d
 noch nicht aktiv. Die Firmware aktiviert weiterhin erst das vollständig geprüfte
 Inventar. So kann ein Fehler in einem anderen Paket auch den Avatar zurückhalten.
 Diese Version verbessert die Diagnose, ohne unbekannte Paketfehler zu übergehen.
+
+### Watchdog, Eingaben und PNG-Transparenz ab beta.9
+
+PNG/JPEG-Bilder werden während des Betriebs in einem eigenen `leap-media`-Task
+dekodiert. Die UI wartet damit auch während der Asset-Prüfung im Netzwerk-Task
+nicht mehr auf den gemeinsamen Decoder. Avataranimationen behalten währenddessen
+den letzten fertigen Frame; Artikelbilder zeigen keine Bilder des vorherigen
+Artikels. Das einmalige Startlogo wird weiterhin vor dem Netzwerkstart synchron
+geladen und anschließend zwei Sekunden angezeigt.
+
+Asset-Manifeste liegen für das Rendering im RAM, statt bei jedem Frame erneut
+aus LittleFS geladen zu werden. JSON wird in Blöcken gelesen und geschrieben,
+statt Dateisystemzugriffe für einzelne Zeichen auszulösen. Bei einer laufenden
+Snapshot-Speicherung behält die UI ihren Zustand und versucht das Nachladen im
+nächsten Durchlauf erneut. Der Watchdog bleibt aktiv, mit 30 Sekunden Timeout.
+
+Ein eigener Tasten-Task liest alle zehn GPIOs alle 5 ms und puffert Ereignisse,
+auch während eines Displaytransfers. Entprellung (25 ms), Wiederholung und
+Long-Press bleiben erhalten. Eingaben fordern einen früheren Frame an; die
+zusätzliche Wartezeit des bisherigen festen 100-ms-Renderintervalls entfällt.
+
+PNG-Alpha wird gegen die jeweilige Hintergrundfarbe verrechnet: beim Avatar
+gegen die Sidebar, bei Inhaltsbildern gegen die Seitenfarbe und beim Startlogo
+gegen Schwarz. Halbtransparente RGBA-Kanten bleiben erhalten; deckendes Schwarz
+bleibt Schwarz. Die Farbkonvertierung berücksichtigt PNGdec 1.1.6s
+Hintergrundformat `0x00BBGGRR`. Bereits in der Bilddatei deckend gespeicherte
+schwarze Flächen können dadurch nicht transparent werden.
 
 ### PNG-Decodierung ab beta.7
 

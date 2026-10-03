@@ -2,22 +2,29 @@
 #include "Storage.h"
 #include <Arduino_GFX_Library.h>
 namespace leap {
+struct MediaJob;
 class Media {
   String cached;
   int cw = 0, ch = 0;
   int pw = 0, ph = 0;
   bool cachedFit = false;
+  uint16_t cachedBackground = 0;
   uint16_t *pixels = nullptr;
+  MediaJob *pending = nullptr;
 
 public:
-  ~Media() {
-    free(pixels);
-  }
+  Media() = default;
+  Media(const Media &) = delete;
+  Media &operator=(const Media &) = delete;
+  ~Media();
+  static bool beginWorker();
   bool draw(Arduino_GFX &gfx, const String &blob, const String &original, int x, int y, int width,
-            int height, bool fit = false);
+            int height, bool fit = false, uint16_t background = 0x10e5, bool asynchronous = true,
+            bool retainFrame = false);
   static bool avatarPng(const String &blob, uint32_t *width = nullptr, uint32_t *height = nullptr);
   static bool validate(const String &blob, const String &name);
   static uint16_t *decode(const String &blob, const String &name, int width, int height,
-                          int *fittedWidth = nullptr, int *fittedHeight = nullptr);
+                          int *fittedWidth = nullptr, int *fittedHeight = nullptr,
+                          uint16_t background = 0x10e5);
 };
 } // namespace leap

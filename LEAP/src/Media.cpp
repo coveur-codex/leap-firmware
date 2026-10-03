@@ -1,7 +1,11 @@
 #include "Media.h"
+#include "MediaColor.h"
 #include <JPEGDEC.h>
 #include <PNGdec.h>
 #include <esp_heap_caps.h>
+#include <freertos/queue.h>
+#include <freertos/task.h>
+#include <new>
 // PNGdec keeps two scanlines, alignment padding and an optional fast palette.
 // build_opt.h applies this size to both the sketch and the library implementation.
 static_assert(PNG_MAX_BUFFERED_PIXELS >= 2 * (1024 * 4 + 32) + 512,
@@ -14,6 +18,61 @@ static JPEGDEC jpeg;
 static File input;
 static uint16_t *output;
 static int ow, oh, iw, ih;
+static uint32_t backgroundColor, lastYield;
+struct MediaJob {
+  std::atomic<unsigned> references{2}; // UI owner and decoder worker.
+  std::atomic<bool> done{false};
+  String path, name;
+  int width, height, fittedWidth = 0, fittedHeight = 0;
+  bool fit;
+  uint16_t background;
+  uint16_t *pixels = nullptr;
+  ~MediaJob() { free(pixels); }
+};
+static QueueHandle_t decodeRequests = nullptr;
+static void releaseJob(MediaJob *job) {
+  if (job && job->references.fetch_sub(1) == 1)
+    delete job;
+}
+static void decodeWorker(void *) {
+  for (;;) {
+    MediaJob *job;
+    if (xQueueReceive(decodeRequests, &job, portMAX_DELAY) != pdTRUE)
+      continue;
+    job->pixels = Media::decode(job->path, job->name, job->width, job->height,
+                               job->fit ? &job->fittedWidth : nullptr,
+                               job->fit ? &job->fittedHeight : nullptr, job->background);
+    if (!job->fit) {
+      job->fittedWidth = job->width;
+      job->fittedHeight = job->height;
+    }
+    job->done.store(true, std::memory_order_release);
+    releaseJob(job);
+  }
+}
+bool Media::beginWorker() {
+  if (decodeRequests)
+    return true;
+  decodeRequests = xQueueCreate(4, sizeof(MediaJob *));
+  if (!decodeRequests)
+    return false;
+  if (xTaskCreatePinnedToCore(decodeWorker, "leap-media", 8192, nullptr, 1, nullptr, 0) != pdPASS) {
+    vQueueDelete(decodeRequests);
+    decodeRequests = nullptr;
+    return false;
+  }
+  return true;
+}
+Media::~Media() {
+  releaseJob(pending);
+  free(pixels);
+}
+static void codecYield() {
+  if (uint32_t(millis() - lastYield) >= 8) {
+    vTaskDelay(1);
+    lastYield = millis();
+  }
+}
 static void *openFile(const char *name, int32_t *size) {
   input = LittleFS.open(name, "r");
   *size = input ? input.size() : 0;
@@ -37,32 +96,45 @@ static int32_t jpgSeek(JPEGFILE *, int32_t pos) {
 static int drawPng(PNGDRAW *row) {
   if (row->iWidth > 1024)
     return 0;
-  uint16_t line[1024];
-  png.getLineAsRGB565(row, line, PNG_RGB565_LITTLE_ENDIAN, 0x101c2c);
   int from = (row->y * oh + ih - 1) / ih, to = ((row->y + 1) * oh + ih - 1) / ih;
+  if (from == to) {
+    codecYield();
+    return 1;
+  }
+  uint16_t line[1024];
+  png.getLineAsRGB565(row, line, PNG_RGB565_LITTLE_ENDIAN, backgroundColor);
   for (int y = from; y < to && y < oh; y++)
     for (int x = 0; x < ow; x++)
       output[y * ow + x] = line[x * iw / ow];
+  codecYield();
   return 1;
 }
 static int drawJpg(JPEGDRAW *block) {
-  for (int y = 0; y < oh; y++) {
+  // Visit only destination pixels covered by this MCU block.
+  int top = (block->y * oh + ih - 1) / ih;
+  int bottom = std::min(oh, ((block->y + block->iHeight) * oh + ih - 1) / ih);
+  int left = (block->x * ow + iw - 1) / iw;
+  int right = std::min(ow, ((block->x + block->iWidthUsed) * ow + iw - 1) / iw);
+  for (int y = top; y < bottom; y++) {
     int sy = y * ih / oh - block->y;
     if (sy < 0 || sy >= block->iHeight)
       continue;
-    for (int x = 0; x < ow; x++) {
+    for (int x = left; x < right; x++) {
       int sx = x * iw / ow - block->x;
       if (sx >= 0 && sx < block->iWidthUsed)
         output[y * ow + x] = block->pPixels[sy * block->iWidth + sx];
     }
   }
+  codecYield();
   return 1;
 }
 uint16_t *Media::decode(const String &path, const String &name, int width, int height,
-                        int *fittedWidth, int *fittedHeight) {
+                        int *fittedWidth, int *fittedHeight, uint16_t background) {
   if (width < 1 || height < 1 || width > 428 || height > 142 || !codecMutex)
     return nullptr;
   xSemaphoreTake(codecMutex, portMAX_DELAY);
+  backgroundColor = pngBackground(background);
+  lastYield = millis();
   ow = width;
   oh = height;
   output =
@@ -140,20 +212,58 @@ bool Media::validate(const String &path, const String &name) {
   return ok;
 }
 bool Media::draw(Arduino_GFX &gfx, const String &path, const String &original, int x, int y, int w,
-                 int h, bool fit) {
+                 int h, bool fit, uint16_t background, bool asynchronous, bool retainFrame) {
   if (!path.length())
     return false;
-  if (cached != path || cw != w || ch != h || cachedFit != fit) {
-    free(pixels);
-    pw = w;
-    ph = h;
-    pixels = decode(path, original, w, h, fit ? &pw : nullptr, fit ? &ph : nullptr);
-    cached = path;
-    cw = w;
-    ch = h;
-    cachedFit = fit;
+  if (pending && pending->done.load(std::memory_order_acquire)) {
+    if (pending->width == w && pending->height == h && pending->fit == fit &&
+        pending->background == background && (pending->path == path || retainFrame)) {
+      free(pixels);
+      pixels = pending->pixels;
+      pending->pixels = nullptr;
+      pw = pending->fittedWidth;
+      ph = pending->fittedHeight;
+      cached = pending->path;
+      cw = w;
+      ch = h;
+      cachedFit = fit;
+      cachedBackground = background;
+    }
+    releaseJob(pending);
+    pending = nullptr;
   }
-  if (!pixels)
+  bool compatible = cw == w && ch == h && cachedFit == fit && cachedBackground == background;
+  if (cached != path || !compatible) {
+    if (asynchronous) {
+      if (!pending && decodeRequests) {
+        auto *job = new (std::nothrow) MediaJob;
+        if (job) {
+          job->path = path;
+          job->name = original;
+          job->width = w;
+          job->height = h;
+          job->fit = fit;
+          job->background = background;
+          if (xQueueSend(decodeRequests, &job, 0) == pdTRUE)
+            pending = job;
+          else
+            delete job; // No worker owns a request that was never enqueued.
+        }
+      }
+    } else {
+      free(pixels);
+      pw = w;
+      ph = h;
+      pixels = decode(path, original, w, h, fit ? &pw : nullptr, fit ? &ph : nullptr, background);
+      cached = path;
+      cw = w;
+      ch = h;
+      cachedFit = fit;
+      cachedBackground = background;
+      compatible = true;
+    }
+  }
+  if (!pixels || !compatible || (!retainFrame && cached != path))
     return false;
   gfx.draw16bitRGBBitmap(x + (w - pw) / 2, y + (h - ph) / 2, pixels, pw, ph);
   return true;

@@ -1,6 +1,43 @@
 # Durchgeführte Prüfungen
 
-Stand: 2026-10-02. Referenz-Homeserver `8175c9f`, unverändert.
+Stand: 2026-10-03. Referenz-Homeserver `8175c9f`, unverändert.
+
+## UI-Reaktionszeit und Transparenz: 1.0.0-beta.9
+
+- Bilddekodierung aus dem UI-Task ausgelagert; gemeinsame PNG/JPEG-Decoder bleiben
+  über einen Mutex geschützt. Aufträge und PSRAM-Bildpuffer besitzen getrennte
+  UI-/Worker-Referenzen, sodass ein zerstörter Media-Owner keinen laufenden
+  Auftrag ungültig macht. Fertige Ergebnisse werden atomar veröffentlicht.
+- Renderpfad verwendet gecachte Manifestdaten. LittleFS-JSON-Zugriffe erfolgen
+  gebündelt; Snapshot-Lock wird von der UI ohne Wartezeit angefragt.
+- Tastenabfrage in eigenem Task (5 ms, alle zehn GPIOs, Queue mit 32 Ereignissen).
+  Volle Queue verwirft neue Ereignisse; bei fehlendem Task bleibt Loop-Polling
+  als Fallback. Eingaben fordern einen Frame frühestens 25 ms nach dem letzten
+  abgeschlossenen Transfer an; Animationen weiterhin nach 100 ms.
+- JPEG-Skalierung besucht nur die vom jeweiligen Decoderblock abgedeckten
+  Zielpixel. PNG-Skalierung konvertiert nur benötigte Zeilen. Decoder geben
+  regelmäßig CPU-Zeit an andere Tasks ab.
+- Native Core-/Protokoll-, Karten-, Speicher-Recovery- und Partitionstests
+  bestanden. Echte PNGdec-1.1.6-Regression: neun Fixtures bestanden, inklusive
+  RGBA-Alpha 0/127/255 auf der Sidebar-Farbe und deckendem Schwarz.
+- Deterministischer GPIO-/Task-Test des echten `Input.h`: zwei gleichzeitige
+  50-ms-Tastendrücke bleiben trotz 100 ms ohne UI-Polling erhalten. Queue-Grenze,
+  Long-Press und Fallback bei fehlgeschlagenem Taskstart ebenfalls geprüft.
+  Der Test simuliert den Task; elektrische Entprellung und reale Scheduling-
+  Latenz bleiben Teil der Geräteabnahme.
+- Vollständiger ESP32-S3-N16R8-Cross-Build mit Core 3.3.0 und den gepinnten
+  Bibliotheken erfolgreich. Compiler-Größenbericht: 1.405.563 Byte Programm,
+  118.988 Byte statischer RAM. Build ohne persönliche `LocalConfig.h`.
+  Discovery-Werkzeuge für USB fehlen in der Cloud; zum Kompilieren werden sie
+  nicht benötigt. Warnungen aus Bibliotheken/Core und die bereits vorhandene
+  RSSI-Formatwarnung in `Network.cpp` bleiben bestehen.
+- Das Log belegt einen Watchdog-Abbruch des `loopTask`; ohne den anschließenden
+  Backtrace lässt sich der konkrete blockierende Aufruf nicht beweisen.
+  Decoder-Wartezeiten und zeichenweise Dateisystemzugriffe sind im Code sichtbar
+  und wurden behoben. Watchdog-Timeout auf 30 Sekunden eingestellt.
+- Am Gerät offen: Dauerlauf während kompletter Asset-Synchronisation,
+  kurze gleichzeitige Tastendrücke während Displaytransfers und Avatar-Kanten.
+  Die Anzeige kann nur Alpha berücksichtigen, das in der PNG-Datei vorhanden ist.
 
 ## Startlogo: 1.0.0-beta.8
 

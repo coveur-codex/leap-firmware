@@ -17,6 +17,19 @@ for width,height in [(80,80),(428,142),(1024,8)]:
   data=b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',width,height,8,mode,0,0,0))+chunk(b'IDAT',zlib.compress(b''.join(rows)))+chunk(b'IEND',b'')
   (root / f'{width}-{channels}.png').write_bytes(data)
 
+# Transparent RGB is deliberately non-black; alpha must determine the background.
+width, height = 80, 80
+rows = []
+for y in range(height):
+ row = bytearray([0])
+ for x in range(width):
+  rgb = (0, 0, 0) if (x, y) == (2, 0) else ((x*13+y*7)%256, (x*3+y*17)%256, (x*11+y*5)%256)
+  row.extend((*rgb, (0, 127, 255)[x % 3]))
+ rows.append(row)
+(root / '80-alpha.png').write_bytes(
+ b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 6, 0, 0, 0))
+ + chunk(b'IDAT', zlib.compress(b''.join(rows))) + chunk(b'IEND', b''))
+
 # Decoder must still reject invalid headers and unsupported interlacing.
 valid = (root / "80-4.png").read_bytes()
 corrupt = bytearray(valid)

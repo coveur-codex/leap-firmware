@@ -75,9 +75,19 @@ bool Storage::readJson(const String &path, JsonDocument &out) {
     f.close();
     return false;
   }
-  auto error = deserializeJson(out, f);
+  // Stream parsing otherwise performs a LittleFS read for each individual byte.
+  size_t size = f.size();
+  char *buffer = static_cast<char *>(jsonRam.allocate(size + 1));
+  if (!buffer) {
+    f.close();
+    return false;
+  }
+  size_t read = f.read(reinterpret_cast<uint8_t *>(buffer), size);
   f.close();
-  return !error && !out.overflowed();
+  // Const input makes ArduinoJson own its strings after the buffer is freed.
+  auto error = deserializeJson(out, static_cast<const char *>(buffer), read);
+  jsonRam.deallocate(buffer);
+  return read == size && !error && !out.overflowed();
 }
 bool Storage::writeJson(const String &path, JsonDocument &doc) {
   if (!ready || doc.overflowed() || measureJson(doc) > JsonLimit || !parents(path))
@@ -86,10 +96,19 @@ bool Storage::writeJson(const String &path, JsonDocument &doc) {
   File f = LittleFS.open(tmp, "w");
   if (!f)
     return false;
-  size_t n = serializeJson(doc, f);
+  size_t size = measureJson(doc);
+  char *buffer = static_cast<char *>(jsonRam.allocate(size + 1));
+  if (!buffer) {
+    f.close();
+    LittleFS.remove(tmp);
+    return false;
+  }
+  size_t encoded = serializeJson(doc, buffer, size + 1);
+  size_t n = encoded == size ? f.write(reinterpret_cast<const uint8_t *>(buffer), size) : 0;
+  jsonRam.deallocate(buffer);
   f.flush();
   f.close();
-  if (n != measureJson(doc)) {
+  if (n != size) {
     LittleFS.remove(tmp);
     return false;
   }
@@ -118,10 +137,14 @@ bool Storage::validState(JsonDocument &d) {
   }
   return true;
 }
-bool Storage::load(JsonDocument &out) {
+bool Storage::load(JsonDocument &out, TickType_t wait, bool *busy) {
+  if (busy) *busy = false;
   if (!ready)
     return false;
-  xSemaphoreTake(mutex, portMAX_DELAY);
+  if (xSemaphoreTake(mutex, wait) != pdTRUE) {
+    if (busy) *busy = true;
+    return false;
+  }
   int active = prefs.getUChar("active", 0);
   bool ok = readJson(active ? "/state1.json" : "/state0.json", out) && validState(out);
   if (!ok) {

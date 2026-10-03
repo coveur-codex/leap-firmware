@@ -55,6 +55,11 @@ bool Ui::begin() {
     return false;
   }
   canvas->setTextWrap(false);
+  if (!Media::beginWorker()) {
+    healthy = false;
+    log("DISPLAY", "Media worker initialization failed");
+    return false;
+  }
   reload();
   lastInput = millis();
   // Resolve only the active, locally installed common asset; no network at boot.
@@ -66,7 +71,7 @@ bool Ui::begin() {
     Media bootImage;
     canvas->fillScreen(0x0000);
     bootLogoVisible = bootImage.draw(*canvas, assets.resolve("system", systemVersion, logo),
-                                     logo, 0, 0, hw::Width, hw::Height, true);
+                                     logo, 0, 0, hw::Width, hw::Height, true, 0x0000, false);
   }
   if (bootLogoVisible)
     canvas->flush();
@@ -80,7 +85,13 @@ bool Ui::begin() {
   log("DISPLAY", "428x142 landscape ready");
   return true;
 }
-void Ui::reload() {
+bool Ui::reload() {
+  uint32_t loadedGeneration = storage.generation.load();
+  JsonDocument next(&jsonRam);
+  bool busy = false;
+  storage.load(next, 0, &busy);
+  if (busy)
+    return false; // Keep current UI and retry next loop instead of waiting on flash writes.
   int oldPage = page, oldSelection = selection, oldItem = item, oldScroll = scroll,
       oldKnowledge = knowledgeMode;
   bool oldAnswered = answered, oldGame = gameOpen;
@@ -91,12 +102,18 @@ void Ui::reload() {
   previous["config"] = state["config"];
   previous["assets"] = state["assets"];
   previous["quiz"] = state["content"]["quiz"];
-  storage.load(state);
+  state = std::move(next);
   bool same =
       previous["config"].as<JsonVariantConst>() == state["config"].as<JsonVariantConst>() &&
       previous["assets"].as<JsonVariantConst>() == state["assets"].as<JsonVariantConst>() &&
       previous["quiz"].as<JsonVariantConst>() == state["content"]["quiz"].as<JsonVariantConst>();
-  generation = storage.generation.load();
+  generation = loadedGeneration;
+  manifests.clear();
+  for (JsonPair p : state["assets"].as<JsonObject>()) {
+    JsonDocument manifest(&jsonRam);
+    if (storage.readJson(storage.package(p.key().c_str(), p.value()), manifest))
+      manifests[p.key().c_str()] = manifest;
+  }
   radio.configure(state);
   pages.clear();
   JsonArray configuredPages = state["config"]["pages"].as<JsonArray>();
@@ -126,8 +143,10 @@ void Ui::reload() {
   auto questions = quiz["questions"].to<JsonArray>();
   // Prefer assigned versioned catalogs; retain the legacy endpoint as fallback.
   for (JsonPair p : state["assets"].as<JsonObject>()) {
-    JsonDocument def(&jsonRam), catalog(&jsonRam);
-    if (!assets.definition(p.key().c_str(), p.value(), def) || def["type"] != "quiz")
+    JsonObjectConst manifest = manifests[p.key().c_str()].as<JsonObjectConst>();
+    JsonObjectConst def = manifest["definition"];
+    JsonDocument catalog(&jsonRam);
+    if (def["type"] != "quiz")
       continue;
     if (storage.readJson(
             assets.resolve(p.key().c_str(), p.value(), def["questionsFile"] | "questions.json"),
@@ -153,6 +172,8 @@ void Ui::reload() {
       answerOrder[i] = oldOrder[i];
     gameOpen = oldGame;
   }
+  frameRequested = true;
+  return true;
 }
 void Ui::text(const String &s, int x, int y, int size, uint16_t color) {
   canvas->setCursor(x, y);
@@ -207,9 +228,8 @@ void Ui::list(const std::vector<String> &labels, int x, int y, int width) {
   }
 }
 String Ui::assetOfType(const char *type) {
-  for (JsonPair p : state["assets"].as<JsonObject>()) {
-    JsonDocument def(&jsonRam);
-    if (assets.definition(p.key().c_str(), p.value(), def) && def["type"] == type)
+  for (JsonPair p : manifests.as<JsonObject>()) {
+    if (p.value()["definition"]["type"] == type)
       return p.key().c_str();
   }
   return "";
@@ -221,23 +241,27 @@ bool Ui::drawAsset(const String &id, Media &media, int x, int y, int width, int 
   int version = state["assets"][id] | 0;
   if (!version)
     return false;
-  JsonDocument def(&jsonRam);
-  if (!assets.definition(id, version, def))
+  JsonVariantConst manifest = manifests[id];
+  JsonObjectConst def = manifest["definition"];
+  if (def.isNull())
     return false;
+  auto resolve = [&](const String &path) {
+    for (JsonObjectConst file : manifest["files"].as<JsonArrayConst>())
+      if (file["path"] == path)
+        return storage.blob(file["sha256"].as<String>());
+    return String();
+  };
   if (def["type"] == "avatar") {
-    JsonDocument manifest(&jsonRam);
-    if (!storage.readJson(storage.package(id, version), manifest))
-      return false;
-    String frame = avatarFrame(manifest.as<JsonVariantConst>(), animate ? millis() : 0).c_str();
-    return media.draw(*canvas, assets.resolve(id, version, frame), frame, x, y, width, height);
+    String frame = avatarFrame(manifest, animate ? millis() : 0).c_str();
+    return media.draw(*canvas, resolve(frame), frame, x, y, width, height, false, Panel, true, animate);
   }
   String path = def["preview"] | "";
-  JsonArray frames = def["animations"]["idle"]["frames"].as<JsonArray>();
+  JsonArrayConst frames = def["animations"]["idle"]["frames"].as<JsonArrayConst>();
   if (animate && frames.size()) {
     int ms = std::max(80, def["animations"]["idle"]["frameDurationMs"] | 120);
     path = frames[(millis() / ms) % frames.size()].as<String>();
   }
-  return media.draw(*canvas, assets.resolve(id, version, path), path, x, y, width, height);
+  return media.draw(*canvas, resolve(path), path, x, y, width, height);
 }
 // Seven-pixel page glyphs keep all ten supported pages visible in their configured order.
 static const uint8_t pageIcons[][7] = {
@@ -591,6 +615,7 @@ void Ui::input(const InputEvent &e) {
   if (bootLogoVisible)
     return; // A boot-time key press must not shorten the logo or unlock the UI.
   lastInput = millis();
+  frameRequested = true;
   notice = "";
   if (e.longPress) {
     if (!e.right && e.key == Key::Center) {
@@ -827,9 +852,10 @@ void Ui::tick() {
     dirtySettings = false;
     lastSave = millis();
   }
-  if (elapsed(millis(), lastFrame, 100)) {
-    lastFrame = millis();
+  if ((frameRequested && elapsed(millis(), lastFrame, 25)) || elapsed(millis(), lastFrame, 100)) {
+    frameRequested = false;
     render();
+    lastFrame = millis(); // Avoid immediately rendering again after a slow transfer.
   }
 }
 } // namespace leap

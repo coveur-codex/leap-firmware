@@ -22,7 +22,7 @@ public:
   std::atomic<uint32_t> generation{0};
   bool ready = false;
   bool begin(bool formatRequested = false);
-  bool load(JsonDocument &out);
+  bool load(JsonDocument &out, TickType_t wait = portMAX_DELAY, bool *busy = nullptr);
   bool commit(JsonDocument &doc);
   bool readJson(const String &path, JsonDocument &out);
   bool writeJson(const String &path, JsonDocument &doc);

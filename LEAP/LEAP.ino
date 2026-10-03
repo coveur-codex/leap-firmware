@@ -46,13 +46,16 @@ void setup() {
   bool soundReady = audio.begin();
   motion.begin();
   bool displayReady = ui.begin();
+  bool inputReady = input.start();
+  if (!inputReady)
+    log("INPUT", "Sampler initialization failed; using loop polling");
   bool workerReady = network.begin();
   bootHealthy = mounted && displayReady && workerReady &&
                 ESP.getFlashChipSize() == 16 * 1024 * 1024 &&
                 esp_psram_get_size() == 8 * 1024 * 1024;
   // Network task validates cached assets while this task starts rendering/input.
   Serial.printf("[BOOT] selftest=%d radio=%d audio=%d\n", bootHealthy, radioReady, soundReady);
-  esp_task_wdt_config_t watchdog{.timeout_ms = 10000, .idle_core_mask = 0, .trigger_panic = true};
+  esp_task_wdt_config_t watchdog{.timeout_ms = 30000, .idle_core_mask = 0, .trigger_panic = true};
   if (esp_task_wdt_reconfigure(&watchdog) == ESP_ERR_INVALID_STATE)
     esp_task_wdt_init(&watchdog);
   esp_task_wdt_add(nullptr);
