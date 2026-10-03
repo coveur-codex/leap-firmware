@@ -1,5 +1,6 @@
 #pragma once
 #include "Core.h"
+#include "PetAssets.h"
 #include <ArduinoJson.h>
 #include <set>
 namespace leap {
@@ -43,12 +44,17 @@ inline std::string avatarFrame(JsonVariantConst manifest, uint32_t now = 0) {
   for (const char *path : {"data/pet/idle/frame_01.png", "files/data/pet/idle/frame_01.png"})
     if (present(path))
       return path;
-  return ""; // Do not select an arbitrary expression/frame without metadata.
+  JsonDocument pet;
+  petPresentation(manifest, pet);
+  auto frames = pet["animations"]["idle"]["frames"].as<JsonArrayConst>();
+  if (frames.size())
+    return frames[(now / 400) % frames.size()].as<std::string>();
+  return ""; // Only canonical idle folders are discovered; other expressions are not avatars.
 }
-// Only explicitly referenced pet backgrounds may exceed the sidebar's 80x80 size.
+// Explicit references and canonical pet background names use the scene dimensions.
 inline bool avatarImageSize(JsonVariantConst definition, const std::string &path, uint32_t w,
                             uint32_t h) {
-  bool background = false;
+  bool background = *petBackgroundPeriod(path);
   for (const char *key : {"day", "night"})
     if (definition["tamagotchi"]["backgrounds"][key].is<const char *>() &&
         definition["tamagotchi"]["backgrounds"][key].as<std::string>() == path)

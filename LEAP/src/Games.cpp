@@ -1,6 +1,7 @@
 #include "Games.h"
 #include "Audio.h"
 #include "Motion.h"
+#include "PetAssets.h"
 #include "Protocol.h"
 #include <time.h>
 namespace leap {
@@ -19,11 +20,12 @@ void Games::savePet() {
   gamePrefs.putBytes("pet", &pet, sizeof(pet));
 }
 void Games::avatarPackage(const String &id, int version, JsonVariantConst manifest) {
-  if (avatarId == id && avatarVersion == version)
+  if (avatarId == id && avatarVersion == version && petManifest.as<JsonVariantConst>() == manifest)
     return;
   avatarId = id;
   avatarVersion = version;
   petManifest.set(manifest);
+  petPresentation(petManifest, petAssets);
 }
 String Games::petBlob(const String &path) const {
   for (JsonObjectConst file : petManifest["files"].as<JsonArrayConst>())
@@ -240,8 +242,7 @@ void Games::drawPet(Arduino_GFX &gfx) {
   localtime_r(&now, &local);
   bool night = petNight(now > 1700000000, local.tm_hour);
   gfx.fillRect(86, 0, 256, 142, night ? 0x1086 : 0xb6ff);
-  JsonVariantConst avatarDefinition = petManifest["definition"];
-  auto definition = avatarDefinition["tamagotchi"];
+  JsonVariantConst definition = petAssets;
   String background = definition["backgrounds"][night ? "night" : "day"] | "";
   if (background.length())
     petBackground.draw(gfx, petBlob(background), background, 86, 0, 256, 142);

@@ -2,6 +2,7 @@
 #include "Games.h"
 #include "Input.h"
 #include "Media.h"
+#include "QuizQuestions.h"
 #include "Storage.h"
 #include <vector>
 namespace leap {
@@ -16,6 +17,8 @@ class Ui {
   JsonDocument state{&jsonRam}, quiz{&jsonRam};
   JsonDocument manifests{&jsonRam};
   std::vector<Page> pages;
+  std::vector<uint16_t> questionOrder;
+  bool quizLoaded = false;
   Media avatar, picture;
   Games game;
   Preferences prefs;
@@ -36,6 +39,7 @@ class Ui {
   void text(const String &text, int x, int y, int size = 1, uint16_t color = 0xffff);
   void list(const std::vector<String> &labels, int x = 94, int y = 18, int width = 326);
   void nextQuestion(int delta);
+  void startQuiz();
   void drawPage(const String &id);
   void action(const InputEvent &event);
   String assetOfType(const char *type);

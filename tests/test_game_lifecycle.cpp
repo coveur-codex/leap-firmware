@@ -84,6 +84,27 @@ int main() {
   game.avatarPackage("avatar-legacy", 3, legacy);
   game.draw(gfx, 94, 10);
   assert(drawn.back() == "data/pet/idle/frame_01.png");
+  JsonDocument oldUpload;
+  auto oldFiles = oldUpload["files"].to<JsonArray>();
+  for (int i = 4; i > 0; --i) {
+    auto file = oldFiles.add<JsonObject>();
+    file["path"] = "Example/data/pet/idle/frame_0" + std::to_string(i) + ".png";
+    file["sha256"] = std::string(64, 'a');
+  }
+  for (const char *period : {"day", "night"}) {
+    auto file = oldFiles.add<JsonObject>();
+    file["path"] = "background_" + std::string(period) + ".png";
+    file["sha256"] = std::string(64, 'b');
+  }
+  game.avatarPackage("avatar-old-upload", 4, oldUpload);
+  drawn.clear();
+  game.draw(gfx, 94, 10);
+  assert(drawn.size() == 2);
+  assert(drawn[0] == "background_day.png" || drawn[0] == "background_night.png");
+  assert(drawn[1] == "Example/data/pet/idle/frame_01.png");
+  fakeNow += 400;
+  game.draw(gfx, 94, 10);
+  assert(drawn.back() == "Example/data/pet/idle/frame_02.png");
   game.close();
   assert(!game.active());
   Games reboot;

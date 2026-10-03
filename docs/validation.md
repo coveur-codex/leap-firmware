@@ -210,3 +210,21 @@ keinen dieser Hardwaretests.
 - Physische Display-/Tasten-/Sound-Abnahme, Neustart und Stromverlust am Gerät
   bleiben erforderlich. Das erwähnte Beispiel-ZIP war nicht angehängt;
   automatische Prüfungen verwenden synthetische Frames und Hintergründe.
+
+
+## Quiz-Mischung und ältere Haustierpakete: beta.11
+
+- Gemischter Pool aus drei Katalogen mit 750 Fragen: 200 eindeutige Fragen,
+  alle drei Quellen vertreten und über den Durchlauf verteilt. Zufälliger
+  Neustart, leere/einzelne Fragen und Reservoir-Auswahl geprüft.
+- Älteres Avatarpaket ohne `tamagotchi`-Definition: Tag-/Nacht-Hintergrund,
+  sortierte vier Zustandsframes, bestehende allgemeine Animationen und
+  unverändertes Manifest geprüft. Auch die echte Games-Klasse fordert den
+  Hintergrund und wechselnde Frames aus einem solchen Paket an.
+- Echter Renderpfad (`Media.cpp`, PNGdec 1.1.6): asynchroner Worker, 256×142-Szene,
+  transparente Pixel, deckendes Schwarz und Wechsel zu einem weiteren Frame
+  im simulierten Framebuffer bestanden. JPEG und physische Displayübertragung
+  sind damit nicht erneut abgenommen.
+- Homeserver: 57 Tests bestanden. Bestehende Uploads erhalten genau eine neue
+  Version mit ergänzten Metadaten; alte Version und Bild-Hashes bleiben erhalten.
+  Regulärer Sync und Übereinstimmung der neuen definition.json geprüft.

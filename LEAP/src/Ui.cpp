@@ -148,28 +148,32 @@ bool Ui::reload() {
   answered = false;
   gameOpen = false;
   knowledgeMode = 0;
-  quiz.clear();
-  auto questions = quiz["questions"].to<JsonArray>();
-  // Prefer assigned versioned catalogs; retain the legacy endpoint as fallback.
-  for (JsonPair p : state["assets"].as<JsonObject>()) {
-    JsonObjectConst manifest = manifests[p.key().c_str()].as<JsonObjectConst>();
-    JsonObjectConst def = manifest["definition"];
-    JsonDocument catalog(&jsonRam);
-    if (def["type"] != "quiz")
-      continue;
-    if (storage.readJson(
-            assets.resolve(p.key().c_str(), p.value(), def["questionsFile"] | "questions.json"),
-            catalog))
-      for (JsonObject q : catalog["questions"].as<JsonArray>())
-        if ((q["minAge"] | 0) <= (state["config"]["age"] | 0) && questions.size() < 200)
-          questions.add(q);
+  if (!same || !quizLoaded) {
+    quiz.clear();
+    uint32_t seen = 0;
+    auto questions = quiz["questions"].to<JsonArray>();
+    // Prefer assigned versioned catalogs; retain the legacy endpoint as fallback.
+    for (JsonPair p : state["assets"].as<JsonObject>()) {
+      JsonObjectConst manifest = manifests[p.key().c_str()].as<JsonObjectConst>();
+      JsonObjectConst def = manifest["definition"];
+      JsonDocument catalog(&jsonRam);
+      if (def["type"] != "quiz")
+        continue;
+      if (storage.readJson(
+              assets.resolve(p.key().c_str(), p.value(), def["questionsFile"] | "questions.json"),
+              catalog))
+        for (JsonObject q : catalog["questions"].as<JsonArray>())
+          if ((q["minAge"] | 0) <= (state["config"]["age"] | 0))
+            collectQuizQuestion(questions, q, seen, esp_random());
+    }
+    JsonArray legacyQuestions = state["content"]["quiz"]["questions"].as<JsonArray>();
+    if (!questions.size())
+      for (JsonObject q : legacyQuestions)
+        if ((q["minAge"] | 0) <= (state["config"]["age"] | 0))
+          collectQuizQuestion(questions, q, seen, esp_random());
+    quizLoaded = true;
+    startQuiz();
   }
-  JsonArray legacyQuestions = state["content"]["quiz"]["questions"].as<JsonArray>();
-  if (!questions.size())
-    for (JsonObject q : legacyQuestions)
-      if ((q["minAge"] | 0) <= (state["config"]["age"] | 0) && questions.size() < 200)
-        questions.add(q);
-  nextQuestion(0);
   if (same) {
     page = std::min(oldPage, int(pages.size()) - 1);
     selection = oldSelection;
@@ -358,8 +362,15 @@ void Ui::sidebar() {
   if (title.length() > 13) title = title.substring(0, 11) + "..";
   text(title, (86 - title.length() * 6) / 2, 133, 1, Muted);
 }
+void Ui::startQuiz() {
+  shuffleQuizQuestions(questionOrder, quiz["questions"].size(), [] { return esp_random(); });
+  item = 0;
+  nextQuestion(0);
+}
 void Ui::nextQuestion(int delta) {
   int count = quiz["questions"].size();
+  if (count && delta > 0 && item + delta >= count)
+    shuffleQuizQuestions(questionOrder, count, [] { return esp_random(); });
   item = count ? (item + delta + count) % count : 0;
   selection = scroll = 0;
   answered = false;
@@ -505,7 +516,7 @@ void Ui::drawPage(const String &id) {
       body("Noch keine passenden Quizfragen.");
       return;
     }
-    auto q = rows[item % rows.size()];
+    auto q = rows[questionOrder[item % questionOrder.size()]];
     if (quizDetail) {
       body(quizDetail == 1 ? String(q["q"] | "") : String(q["a"][answerOrder[selection]] | ""), 94,
            12, 326, 110);
@@ -667,6 +678,8 @@ void Ui::input(const InputEvent &e) {
       page = (page + pages.size() + (e.key == Key::Right ? 1 : -1)) % pages.size();
       selection = item = scroll = 0;
       answered = gameOpen = false;
+      if (pages[page].id == "quiz")
+        startQuiz();
       game.close();
       knowledgeMode = 0;
       menu = false;
@@ -683,6 +696,8 @@ void Ui::input(const InputEvent &e) {
     if (e.key == Key::Center) {
       page = selection;
       selection = item = scroll = 0;
+      if (pages[page].id == "quiz")
+        startQuiz();
       menu = false;
     }
     return;
