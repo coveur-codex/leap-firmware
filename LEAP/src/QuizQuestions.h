@@ -18,6 +18,17 @@ inline void collectQuizQuestion(JsonArray pool, JsonVariantConst question, uint3
       pool[slot].set(question);
   }
 }
+// A null catalog ID means rows already belong to one versioned package (or an
+// older server's single legacy pool). Never mix IDs when using the new API.
+template <class Random>
+void collectQuizCatalog(JsonArray pool, JsonArrayConst rows, int age,
+                        JsonVariantConst catalogId, Random random) {
+  uint32_t seen = 0;
+  for (JsonObjectConst q : rows)
+    if ((q["minAge"] | 0) <= age &&
+        (catalogId.isNull() || q["catalogId"] == catalogId))
+      collectQuizQuestion(pool, q, seen, random());
+}
 template <class Random>
 void shuffleQuizQuestions(std::vector<uint16_t> &order, size_t count, Random random) {
   order.resize(count);

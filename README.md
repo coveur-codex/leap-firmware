@@ -164,17 +164,25 @@ RECHTS Buchstaben wählen, OBEN anhängen, UNTEN löschen, MITTE suchen. Text, Q
 Original-URL und Lizenzhinweis sind scrollbar. Offline bleiben letzter Artikel
 und letzte Suchergebnisse erhalten; neue Suchanfragen erfordern den Server.
 
-**Quiz:** Alle altersgerechten Fragen aus den zugeordneten Katalogen werden
-ab beta.11 gemeinsam gemischt. Bei mehr als 200 Fragen wird eine Zufallsstichprobe
-über alle Kataloge gezogen, statt nur die ersten Kataloge zu übernehmen. Jeder
-Besuch der Quizseite beginnt mit einer neuen Reihenfolge; innerhalb eines
-Durchlaufs kommt jede ausgewählte Frage einmal. Nach dem Durchlauf wird erneut
-gemischt. Ein unveränderter Hintergrund-Sync erhält Frage und Reihenfolge.
-Zufällige Antwortpositionen,
-Richtig/Falsch-Rückmeldung und Erklärung. Die Serverantwort an Index 0 bleibt die
-richtige. Rechts LINKS öffnet die ganze Frage, Rechts RECHTS die ausgewählte Antwort
-zum Lesen mit UP/DOWN; MITTE kehrt zur Auswahl zurück. Nach dem Beantworten
-UP/DOWN für die Erklärung. Maximal 200 lokal zusammengestellte Fragen.
+**Quiz:** Die Seite beginnt mit einer Katalogauswahl (rechts OBEN/UNTEN,
+MITTE zum Starten). Danach erscheinen ausschließlich altersgerechte Fragen aus
+diesem Katalog. Bei mehr als 200 Fragen wird eine Zufallsstichprobe dieses Katalogs
+gezogen; die Fragen und die vier Antwortpositionen werden gemischt. Nach einem
+Durchlauf wird erneut gemischt. Ein unveränderter Hintergrund-Sync erhält die
+aktuelle Frage und Auswahl. Rechts LINKS öffnet die ganze Frage, RECHTS die
+gewählte Antwort zum Lesen mit OBEN/UNTEN; MITTE schließt die Detailansicht.
+Nach dem Beantworten: OBEN/UNTEN für die Erklärung, LINKS/RECHTS für die nächste
+Frage, MITTE zurück zur Katalogauswahl.
+
+**Mathe-Quiz:** Steht zusätzlich in der Katalogauswahl bereit und erzeugt jede
+Aufgabe lokal zufällig, auch offline. Im Homeserver unter Geräte → Quiz →
+Mathe-Quiz werden Rechenart und Grenze je Gerät eingestellt: Addition oder
+Subtraktion im Zahlenbereich 0 bis zur Grenze (3–1000), Multiplikation mit
+Faktoren 1 bis zur Grenze (3–20; 10 für das kleine Einmaleins).
+Vier verschiedene Antworten mit genau einem richtigen Ergebnis; nach der
+Antwort folgen ein Rechenweg und eine scrollbare Stellenwerttafel mit
+Tausendern, Hundertern, Zehnern und Einern. Ohne neue Serverkonfiguration gilt
+Addition bis 20. Das neue Quiz benötigt keine Aufgabendatei.
 
 **Neue Spiele (beta.10):** Im vorhandenen Spielebereich stehen „Mein Haustier“
 (`tamagotchi`) und `snake` zusätzlich zur Verfügung. Dafür auch den Homeserver

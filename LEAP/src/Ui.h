@@ -3,6 +3,7 @@
 #include "Input.h"
 #include "Media.h"
 #include "QuizQuestions.h"
+#include "MathQuiz.h"
 #include "Storage.h"
 #include <vector>
 namespace leap {
@@ -24,7 +25,8 @@ class Ui {
   Preferences prefs;
   int page = 0, selection = 0, item = 0, scroll = 0, answerOrder[4] = {0, 1, 2, 3},
       knowledgeMode = 0, character = 0;
-  int quizDetail = 0;
+  int quizDetail = 0, quizCatalog = -1;
+  void chooseQuizCatalog(int index);
   uint32_t generation = UINT32_MAX, lastFrame = 0, lastInput = 0, lastSave = 0;
   uint32_t bootLogoAt = 0;
   bool bootLogoVisible = false;
