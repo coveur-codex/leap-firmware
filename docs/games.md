@@ -1,6 +1,6 @@
 # Haustier und Snake: Asset-Vertrag und Abnahme
 
-Firmware `1.0.0-beta.10` und zugehöriger Homeserver. Beide neuen IDs werden in
+Firmware `1.0.0-beta.11` und zugehöriger Homeserver. Beide neuen IDs werden in
 `config.games` angeboten; bestehende Spiele bleiben erhalten. Kein neues Netzwerk-
 oder Speicherprotokoll. Pet-Zustand und Snake-Rekord sind lokal im NVS-Namespace
 `leap-games` (`pet`, versionierter 5-Byte-Wellbeing-Datensatz; `snake-best`, Integer).
@@ -36,8 +36,13 @@ Weitere Zustände: `happy`, `sad`, `hungry`, `tired`, `dirty`, `playing`, `sleep
 Üblich sind je vier 80×80-Frames; variable Frameanzahlen funktionieren ebenfalls.
 Waschen nutzt `happy`. Fehlende Zustandsanimationen fallen auf Pet-Idle, dann
 Sidebar-Idle/Preview bzw. eine Zeichnung zurück. Hintergrund-PNGs müssen exakt
-256×142 sein; alle anderen Avatar-PNGs weiterhin 80×80. Hintergründe werden nur
-über die expliziten Referenzen erkannt, keine pauschale Lockerung der Avatarprüfung.
+256×142 sein; alle anderen Avatar-PNGs weiterhin 80×80. Hintergründe werden über explizite Referenzen oder die eindeutigen Namen
+`background_day`/`background_night` erkannt. Andere Avatar-PNGs bleiben auf
+80×80 beschränkt. Bereits hochgeladene Pakete benötigen keine neue Definition:
+Die Firmware erkennt Zustandsordner und die bisherigen `animations`-Einträge
+aus dem unveränderten Manifest. Der Homeserver ergänzt fehlende Metadaten
+einmalig als neue Paketversion beim Start bzw. nächsten Sync. Dateien, vorhandene
+Paketversionen und explizite Konfiguration bleiben erhalten.
 Die Firmware nutzt gecachte Manifeste und den bestehenden asynchronen Media-Worker.
 Eine zusätzliche Maske lässt transparente Bereiche des Tieres frei.
 

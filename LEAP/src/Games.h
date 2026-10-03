@@ -7,7 +7,7 @@ namespace leap {
 class Games {
   String kind, avatarId;
   int avatarVersion = 0, petSelection = 0;
-  JsonDocument petManifest{&jsonRam};
+  JsonDocument petManifest{&jsonRam}, petAssets{&jsonRam};
   String petBlob(const String &path) const;
   Media petImage, petBackground;
   PetState pet;

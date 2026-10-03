@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.0-beta.10`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.0-beta.11`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -164,7 +164,13 @@ RECHTS Buchstaben wählen, OBEN anhängen, UNTEN löschen, MITTE suchen. Text, Q
 Original-URL und Lizenzhinweis sind scrollbar. Offline bleiben letzter Artikel
 und letzte Suchergebnisse erhalten; neue Suchanfragen erfordern den Server.
 
-**Quiz:** Altersfilter auch bei Paketkatalogen, zufällige Antwortpositionen,
+**Quiz:** Alle altersgerechten Fragen aus den zugeordneten Katalogen werden
+ab beta.11 gemeinsam gemischt. Bei mehr als 200 Fragen wird eine Zufallsstichprobe
+über alle Kataloge gezogen, statt nur die ersten Kataloge zu übernehmen. Jeder
+Besuch der Quizseite beginnt mit einer neuen Reihenfolge; innerhalb eines
+Durchlaufs kommt jede ausgewählte Frage einmal. Nach dem Durchlauf wird erneut
+gemischt. Ein unveränderter Hintergrund-Sync erhält Frage und Reihenfolge.
+Zufällige Antwortpositionen,
 Richtig/Falsch-Rückmeldung und Erklärung. Die Serverantwort an Index 0 bleibt die
 richtige. Rechts LINKS öffnet die ganze Frage, Rechts RECHTS die ausgewählte Antwort
 zum Lesen mit UP/DOWN; MITTE kehrt zur Auswahl zurück. Nach dem Beantworten
@@ -226,7 +232,8 @@ verwendet wird ausschließlich LittleFS.
 - Fehlende Providerdaten lassen den bisherigen Snapshot unverändert. Wetter und
   Flugradar werden regelmäßig erneuert, auch wenn deren Versionszähler gleich sind.
 - **Avatar-Tiere ausschließlich PNG mit 80 × 80 Pixeln**, ohne Skalierung in der
-  Sidebar. Nur explizit unter `tamagotchi.backgrounds.day/night` referenzierte
+  Sidebar. Explizit unter `tamagotchi.backgrounds.day/night` referenzierte oder eindeutig
+  als `background_day`/`background_night` benannte
   Hintergründe dürfen 256×142 groß sein. Tier-PNGs werden mit einer Alpha-Maske
   über den Hintergrund gezeichnet (Schwellwert 128). Animationen über `animations.idle`; anschließend `preview`, sofern
   PNG, oder der bestätigte Pfad `data/pet/idle/frame_01.png` (auch mit tatsächlichem
@@ -358,7 +365,7 @@ Puffer überschreiben, obwohl die Firmware sie als zulässig einstufte. Ein
 und optionaler Palette. Nur ein lokales `#define` in `Media.cpp` wäre falsch,
 weil Bibliothek und Aufrufer dann unterschiedliche Objektgrößen hätten.
 
-Der Test `PNGDEC_SRC=/path/to/PNGdec/src tools/test_png.sh` verwendet die echte
+Der Test `ARDUINOJSON_INCLUDE=/path/to/ArduinoJson/src PNGDEC_SRC=/path/to/PNGdec/src tools/test_png.sh` verwendet die echte
 Bibliothek und prüft alle Pixel von RGB/RGBA-Bildern mit 80, 428 und 1024 Pixeln
 Breite. Defekte PNG-Header und Interlacing werden weiterhin abgelehnt. Es wird
 kein Paket übersprungen und keine Integritätsprüfung abgeschaltet.

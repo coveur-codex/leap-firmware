@@ -11,6 +11,11 @@ public:
   using std::string::string;
   String(const std::string &s) : std::string(s) {}
   String(int n) : std::string(std::to_string(n)) {}
+  void toLowerCase() {
+    for (char &c : *this)
+      if (c >= 'A' && c <= 'Z')
+        c += 32;
+  }
   bool endsWith(const char *s) const {
     auto n = strlen(s);
     return size() >= n && compare(size() - n, n, s) == 0;
