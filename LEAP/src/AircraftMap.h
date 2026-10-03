@@ -3,6 +3,31 @@
 #include <cmath>
 
 namespace leap {
+constexpr double AircraftMaxPredictionSeconds = 120;
+// Great-circle forward projection; never alter the original observation.
+inline bool predictAircraft(double &lat, double &lon, double speedKnots,
+                            double headingDegrees, double ageSeconds) {
+  if (!std::isfinite(lat) || !std::isfinite(lon) || std::abs(lat) > 90 || std::abs(lon) > 180 ||
+      !std::isfinite(speedKnots) || speedKnots < 0 || !std::isfinite(headingDegrees) ||
+      !std::isfinite(ageSeconds) || ageSeconds < 0 || ageSeconds > AircraftMaxPredictionSeconds)
+    return false;
+  constexpr double rad = 3.141592653589793 / 180;
+  double distance = speedKnots * ageSeconds / 3600 / 3440.065;
+  double a = lat * rad, heading = headingDegrees * rad;
+  double b = std::asin(std::clamp(std::sin(a) * std::cos(distance) +
+      std::cos(a) * std::sin(distance) * std::cos(heading), -1.0, 1.0));
+  lon += std::atan2(std::sin(heading) * std::sin(distance) * std::cos(a),
+                    std::cos(distance) - std::sin(a) * std::sin(b)) / rad;
+  lon = std::fmod(lon + 540, 360) - 180;
+  lat = b / rad;
+  return true;
+}
+inline double aircraftDistanceKm(double lat, double lon, double planeLat, double planeLon) {
+  constexpr double rad = 3.141592653589793 / 180;
+  double h = std::pow(std::sin((planeLat - lat) * rad / 2), 2) +
+      std::cos(lat * rad) * std::cos(planeLat * rad) * std::pow(std::sin((planeLon - lon) * rad / 2), 2);
+  return 6371.0088 * 2 * std::asin(std::sqrt(std::clamp(h, 0.0, 1.0)));
+}
 // North-up azimuthal projection: true bearing and great-circle distance from home.
 inline bool aircraftOffset(double lat, double lon, double planeLat, double planeLon,
                            double radiusNm, int radiusPixels, int &x, int &y) {

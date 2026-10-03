@@ -28,7 +28,8 @@ class Ui {
   int quizDetail = 0, quizCatalog = -1;
   void chooseQuizCatalog(int index);
   uint32_t generation = UINT32_MAX, lastFrame = 0, lastInput = 0, lastSave = 0;
-  uint32_t bootLogoAt = 0;
+  uint32_t bootLogoAt = 0, lastAircraftFrame = 0;
+  JsonDocument aircraftFrame{&jsonRam};
   bool bootLogoVisible = false;
   bool frameRequested = true;
   bool locked = true, menu = false, answered = false, gameOpen = false, dirtySettings = false;

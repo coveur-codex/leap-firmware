@@ -94,3 +94,20 @@ Animation/Preview oder der bestätigte `data/pet/idle/frame_01.png`-Pfad muss au
 ein enthaltenes PNG zeigen. Ein Paket ohne passenden PNG-Einstieg wird nicht
 als installiert gemeldet. Dies unterstützt vorhandene gemischte Serverpakete,
 ohne ein SVG herunterzuladen oder eine zusätzliche Konvertierungs-API zu erfinden.
+
+## Fortlaufendes Flugradar
+
+Die neue Radarseite verwendet `typeName`, `originName`, `destinationName`,
+`ageSeconds` und `positionAgeSeconds` des Homeservers. Höhe, Geschwindigkeit und
+Radius erscheinen in m, km/h und km. Unbekannte Werte bleiben „?“; ein alter
+Server ohne `typeName` zeigt „Unbekannter Flugzeugtyp“.
+Bei sichtbarer, entsperrter Radarseite erfolgt alle 30 Sekunden ein einzelner
+`GET /aircraft` im bestehenden Netzwerktask. Antworten bleiben mutexgeschützt
+im RAM; nur der reguläre Inhalts-Sync schreibt weiterhin den Offline-Snapshot.
+Die UI berechnet alle zwei Sekunden aus der ursprünglichen Beobachtung eine
+Großkreisposition sowie die Entfernung zum Mittelpunkt. Als Alter zählen
+Server-Cache-Alter, ADS-B-Positionsalter und seit dem Empfang vergangene Zeit
+(`millis`, unabhängig von NTP). Fehlendes Tempo oder fehlende Richtung verhindert
+Fortschreibung. Nach 120 Sekunden friert die Schätzung ein und heißt „Alte
+Position“. Offline-Snapshots ohne Empfangszeit werden als alt angezeigt.
+Die Seite behält beim Abruf ihre Flugzeugauswahl; lange Texte sind scrollbar.
