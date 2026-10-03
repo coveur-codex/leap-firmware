@@ -29,6 +29,10 @@ static String displayText(String s) {
   return out;
 }
 static String gameTitle(const String &id) {
+  if (id == "tamagotchi")
+    return "Mein Haustier";
+  if (id == "snake")
+    return "Snake";
   if (id == "hot_potato")
     return "Heisse Kartoffel";
   if (id == "simon_motion")
@@ -39,6 +43,7 @@ static String gameTitle(const String &id) {
 }
 bool Ui::begin() {
   prefs.begin("leap-ui", false);
+  game.begin();
   brightness = constrain(prefs.getInt("brightness", 170), 20, 255);
   audio.volume = prefs.getUChar("volume", 35);
   ledcAttach(hw::Backlight, hw::BacklightHz, 8);
@@ -114,6 +119,10 @@ bool Ui::reload() {
     if (storage.readJson(storage.package(p.key().c_str(), p.value()), manifest))
       manifests[p.key().c_str()] = manifest;
   }
+  String avatarId = state["config"]["avatar"] | "dragon";
+  if (!avatarId.startsWith("avatar-"))
+    avatarId = "avatar-" + avatarId;
+  game.avatarPackage(avatarId, state["assets"][avatarId] | 0, manifests[avatarId]);
   radio.configure(state);
   pages.clear();
   JsonArray configuredPages = state["config"]["pages"].as<JsonArray>();
@@ -173,6 +182,8 @@ bool Ui::reload() {
     gameOpen = oldGame;
   }
   frameRequested = true;
+  if (!gameOpen)
+    game.close();
   return true;
 }
 void Ui::text(const String &s, int x, int y, int size, uint16_t color) {
@@ -605,6 +616,10 @@ void Ui::render() {
     // Current page title lives below the sidebar navigation.
     drawPage(pages[page].id);
   }
+  if (!locked && !menu && gameOpen && game.isPet()) {
+    canvas->flush();
+    return;
+  }
   canvas->fillRect(86, 132, 342, 10, Panel);
   text(notice.length() ? displayText(notice).substring(0, 52)
                        : "L: Seiten / Menue   R: Waehlen / OK",
@@ -620,6 +635,8 @@ void Ui::input(const InputEvent &e) {
   if (e.longPress) {
     if (!e.right && e.key == Key::Center) {
       locked = true;
+      game.close();
+      gameOpen = false;
       menu = false;
       audio.stop();
     }
@@ -637,6 +654,7 @@ void Ui::input(const InputEvent &e) {
     if (e.key == Key::Center) {
       if (gameOpen) {
         gameOpen = false;
+        game.close();
         audio.stop();
         return;
       }
@@ -649,6 +667,7 @@ void Ui::input(const InputEvent &e) {
       page = (page + pages.size() + (e.key == Key::Right ? 1 : -1)) % pages.size();
       selection = item = scroll = 0;
       answered = gameOpen = false;
+      game.close();
       knowledgeMode = 0;
       menu = false;
       audio.stop();
@@ -702,7 +721,12 @@ void Ui::action(const InputEvent &e) {
   } else if (id == "games") {
     if (gameOpen) {
       if (e.key == Key::Center && !game.active()) {
-        gameOpen = false;
+        if (game.isSnake())
+          game.start("snake");
+        else {
+          gameOpen = false;
+          game.close();
+        }
       } else
         game.input(e.key);
     } else {
@@ -844,6 +868,8 @@ void Ui::tick() {
   ledcWrite(hw::Backlight, dim ? 20 : brightness);
   if (elapsed(millis(), lastInput, 180000)) {
     locked = true;
+    game.close();
+    gameOpen = false;
     menu = false;
   }
   if (dirtySettings && elapsed(millis(), lastSave, 5000)) {

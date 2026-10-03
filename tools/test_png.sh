@@ -12,3 +12,6 @@ c++ -std=c++17 -D__LINUX__ @LEAP/build_opt.h -O1 -I "$PNGDEC_SRC" \
   tests/test_png_decoder.cpp "$PNGDEC_SRC/PNGdec.cpp" build/tests/png/objects/*.o \
   -o build/tests/png/decoder
 build/tests/png/decoder build/tests/png/*.png
+
+c++ -std=c++17 -D__LINUX__ -Wall -Wextra -Werror -I LEAP/src -I "$PNGDEC_SRC" tests/test_media_mask.cpp -o build/tests/png/mask
+build/tests/png/mask

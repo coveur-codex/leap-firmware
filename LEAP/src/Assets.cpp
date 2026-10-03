@@ -73,14 +73,35 @@ bool Assets::validDefinition(JsonDocument &m) {
   for (const char *key : {"preview", "questionsFile", "messagesFile"})
     if (!def[key].isNull() && (!def[key].is<const char *>() || !exists(def[key].as<String>())))
       return fail(m, "Missing or invalid definition reference: " + String(key));
-  JsonObject animations = def["animations"].as<JsonObject>();
-  for (JsonPair pair : animations) {
-    JsonArray frames = pair.value()["frames"].as<JsonArray>();
-    if (frames.isNull() || !frames.size() || int(pair.value()["frameDurationMs"] | 100) < 1)
-      return fail(m, "Invalid animation: " + String(pair.key().c_str()));
-    for (JsonVariant f : frames)
-      if (!f.is<const char *>() || !exists(f.as<String>()))
-        return fail(m, "Missing animation frame");
+  auto checkAnimations = [&](JsonVariant animations) {
+    if (!animations.isNull() && !animations.is<JsonObject>())
+      return false;
+    for (JsonPair pair : animations.as<JsonObject>()) {
+      JsonArray frames = pair.value()["frames"].as<JsonArray>();
+      if (frames.isNull() || !frames.size() || int(pair.value()["frameDurationMs"] | 100) < 1)
+        return false;
+      for (JsonVariant f : frames)
+        if (!f.is<const char *>() || !exists(f.as<String>()))
+          return false;
+    }
+    return true;
+  };
+  if (!checkAnimations(def["animations"]))
+    return fail(m, "Invalid or missing animation frames");
+  if (!def["tamagotchi"].isNull()) {
+    if (!def["tamagotchi"].is<JsonObject>() || !checkAnimations(def["tamagotchi"]["animations"]))
+      return fail(m, "Invalid tamagotchi definition");
+    for (JsonPair animation : def["tamagotchi"]["animations"].as<JsonObject>())
+      for (JsonVariant frame : animation.value()["frames"].as<JsonArray>())
+        if (!suffix(frame.as<std::string>(), ".png"))
+          return fail(m, "Pet frames must be PNG");
+    auto backgrounds = def["tamagotchi"]["backgrounds"];
+    if (!backgrounds.isNull() && !backgrounds.is<JsonObject>())
+      return fail(m, "Invalid pet backgrounds");
+    for (JsonPair p : backgrounds.as<JsonObject>())
+      if (!p.value().is<const char *>() || !suffix(p.value().as<std::string>(), ".png") ||
+          !exists(p.value().as<String>()))
+        return fail(m, "Missing pet background");
   }
   if (!def["minFirmware"].isNull() && !meetsVersion(FirmwareVersion, def["minFirmware"] | ""))
     return fail(m, "Minimum firmware requirement not met");
@@ -149,8 +170,14 @@ bool Assets::verify(JsonDocument &m, bool hashes) {
       ext.toLowerCase();
       if (ext.endsWith(".png") || ext.endsWith(".jpg") || ext.endsWith(".jpeg")) {
         uint32_t width = 0, height = 0;
-        if (m["type"] == "avatar" && !Media::avatarPng(storage.blob(hash), &width, &height))
-          return fail(m, "Avatar PNG must be 80x80; header=" + String(width) + "x" + String(height), path);
+        if (m["type"] == "avatar") {
+          Media::avatarPng(storage.blob(hash), &width, &height);
+          if (!avatarImageSize(m["definition"], path.c_str(), width, height))
+            return fail(m,
+                        "Avatar must be 80x80, pet background 256x142; header=" + String(width) +
+                            "x" + String(height),
+                        path);
+        }
         if (!Media::validate(storage.blob(hash), path))
           return fail(m, "Image decoder rejected file", path);
       } else if (ext.endsWith(".wav")) {

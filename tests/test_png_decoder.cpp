@@ -1,5 +1,6 @@
 #include <PNGdec.h>
 #include "../LEAP/src/MediaColor.h"
+#include "../LEAP/src/MediaMask.h"
 #include <cassert>
 #include <fstream>
 #include <vector>
@@ -14,6 +15,7 @@ static int draw(PNGDRAW *row) {
  uint16_t pixels[1024];
  decoder.getLineAsRGB565(row,pixels,PNG_RGB565_LITTLE_ENDIAN,leap::pngBackground(background));
  for(int x=0;x<row->iWidth;++x) {
+  if (leap::pngOpaque(*row, x, decoder.getTransparentColor()) != (!alphaFixture || x%3==2)) pixelsOk=false;
   int y=row->y;
   int r=(x*13+y*7)%256,g=(x*3+y*17)%256,b=(x*11+y*5)%256;
   if (alphaFixture) {
