@@ -22,6 +22,8 @@ class Ui {
       knowledgeMode = 0, character = 0;
   int quizDetail = 0;
   uint32_t generation = UINT32_MAX, lastFrame = 0, lastInput = 0, lastSave = 0;
+  uint32_t bootLogoAt = 0;
+  bool bootLogoVisible = false;
   bool locked = true, menu = false, answered = false, gameOpen = false, dirtySettings = false;
   int brightness = 170;
   String query, notice;

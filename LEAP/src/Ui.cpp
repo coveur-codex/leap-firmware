@@ -57,8 +57,26 @@ bool Ui::begin() {
   canvas->setTextWrap(false);
   reload();
   lastInput = millis();
-  render();
+  // Resolve only the active, locally installed common asset; no network at boot.
+  int systemVersion = state["assets"]["system"] | 0;
+  JsonDocument systemDefinition(&jsonRam);
+  if (systemVersion > 0 && assets.definition("system", systemVersion, systemDefinition) &&
+      systemDefinition["type"] == "common") {
+    const char *logo = "bootscreen/leap-boot.png";
+    Media bootImage;
+    canvas->fillScreen(0x0000);
+    bootLogoVisible = bootImage.draw(*canvas, assets.resolve("system", systemVersion, logo),
+                                     logo, 0, 0, hw::Width, hw::Height, true);
+  }
+  if (bootLogoVisible)
+    canvas->flush();
+  else
+    render();
   ledcWrite(hw::Backlight, brightness);
+  // Count two visible seconds, after decoding, transfer and backlight activation.
+  bootLogoAt = millis();
+  log("DISPLAY", bootLogoVisible ? "System boot logo visible for 2000 ms"
+                                  : "System boot logo unavailable; starting normal UI");
   log("DISPLAY", "428x142 landscape ready");
   return true;
 }
@@ -570,6 +588,8 @@ void Ui::render() {
   canvas->flush();
 }
 void Ui::input(const InputEvent &e) {
+  if (bootLogoVisible)
+    return; // A boot-time key press must not shorten the logo or unlock the UI.
   lastInput = millis();
   notice = "";
   if (e.longPress) {
@@ -784,6 +804,13 @@ void Ui::action(const InputEvent &e) {
 void Ui::tick() {
   if (!healthy)
     return;
+  if (bootLogoVisible) {
+    if (!elapsed(millis(), bootLogoAt, 2000))
+      return;
+    bootLogoVisible = false;
+    lastInput = millis();
+    // Continue into the normal render path; watchdog and network ran throughout.
+  }
   if (generation != storage.generation.load())
     reload();
   radio.poll();

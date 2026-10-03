@@ -2,6 +2,17 @@
 
 Stand: 2026-10-02. Referenz-Homeserver `8175c9f`, unverändert.
 
+## Startlogo: 1.0.0-beta.8
+
+- Logo ausschließlich aus dem aktiven `system`-Paket (`type=common`), Pfad
+  `bootscreen/leap-boot.png`, über vorhandenen Manifest-/Blob-Resolver.
+- Einmalige Vollbildanzeige, Timer ab eingeschalteter Beleuchtung, Übergang nach
+  2000 ms über den UI-Tick statt blockierendem Delay. Eingaben werden währenddessen
+  verworfen; Netzwerkstart, Sensorpolling und Watchdog laufen weiter.
+- Fehlendes/ungültiges Logo fällt direkt auf den normalen Sperrbildschirm zurück.
+- Native Tests und PNG-Regression lokal; ESP32-Build über CI. Sichtbare Dauer und
+  Darstellung des installierten Nutzerlogos müssen am Gerät bestätigt werden.
+
 ## PNG-Pufferkorrektur: 1.0.0-beta.7
 
 - PNGdec **1.1.6**, unveränderter Bibliotheksquelltext: 80×80 RGBA erfolgreich;

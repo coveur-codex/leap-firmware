@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.0-beta.7`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.0-beta.8`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -96,6 +96,19 @@ Spaltenoffsets **12/14**, Zeilenoffsets **0/0**. Arduino_GFX 1.6.3 enthält dies
 Sequenz bereits. Am realen Panel Randmarkierungen prüfen.
 Bei anderer Panelvariante ausschließlich `Hardware.h`/Display-Konstruktor anpassen.
 SPI zunächst konservativ 20 MHz.
+
+## Startlogo
+
+Ab beta.8 zeigt das Gerät beim Start **zwei Sekunden** lang
+`bootscreen/leap-boot.png` aus der aktiven, lokal installierten Version des
+Common-Pakets **`system`**. Vollbild ohne Sidebar, Seitenverhältnis bleibt erhalten.
+Die Zeit beginnt erst nach Bildübertragung und Einschalten der Beleuchtung.
+Netzwerk und Watchdog laufen währenddessen weiter; Tastendrücke verkürzen die
+Anzeige nicht. Anschließend erscheint der normale Sperrbildschirm.
+
+Fehlt das Paket/Bild oder kann es nicht dekodiert werden, startet direkt die
+normale Oberfläche. Nach der ersten erfolgreichen Paketinstallation erscheint
+das Logo beim nächsten Neustart. Es wird nicht bei jedem Sync erneut eingeblendet.
 
 ## Bedienung
 
