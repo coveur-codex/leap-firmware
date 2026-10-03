@@ -6,6 +6,20 @@
 #include <sys/time.h>
 namespace leap {
 Network network;
+void Network::publishAircraft(JsonDocument &value) {
+  if (!aircraftMutex) return;
+  xSemaphoreTake(aircraftMutex, portMAX_DELAY);
+  aircraftLive.set(value);
+  aircraftLive["receivedMillis"] = millis();
+  xSemaphoreGive(aircraftMutex);
+}
+bool Network::copyAircraft(JsonDocument &value) {
+  if (!aircraftMutex || xSemaphoreTake(aircraftMutex, 0) != pdTRUE) return false;
+  bool available = aircraftLive["aircraft"].is<JsonArray>();
+  if (available) value.set(aircraftLive);
+  xSemaphoreGive(aircraftMutex);
+  return available;
+}
 static bool enabled(JsonDocument &s, const char *id) {
   JsonArray pages = s["config"]["pages"].as<JsonArray>();
   for (JsonObject p : pages)
@@ -43,6 +57,8 @@ static void pruneRadar() {
   }
 }
 bool Network::begin() {
+  aircraftMutex = xSemaphoreCreateMutex();
+  if (!aircraftMutex) return false;
   base = "/api/v1/devices/" + Transport::encode(LEAP_DEVICE_ID);
   requests = xQueueCreate(3, sizeof(KnowledgeRequest));
   if (!requests)
@@ -111,6 +127,7 @@ void Network::content(JsonDocument &state) {
                    : String(key) == "aircraft" ? value["aircraft"].is<JsonArray>()
                                                : value["current"].is<JsonObject>();
       if (shape) {
+        if (String(key) == "aircraft") publishAircraft(value);
         state["content"][key] = value;
         state["versions"][versionKey] = versions[versionKey];
       }
@@ -283,6 +300,7 @@ void Network::run() {
   selfTestDone = true;
   bootState.clear();
   uint32_t lastConnect = millis() - 30000, lastSync = millis() - SyncInterval;
+  uint32_t lastAircraft = millis() - 30000;
   uint32_t interval = 10000;
   int lastWifiStatus = -1;
   const char *lastBlock = nullptr;
@@ -327,6 +345,12 @@ void Network::run() {
       lastSync = millis();
       interval = ok ? SyncInterval : std::min(interval * 2, SyncInterval);
       log("SYNC", ok ? "Complete" : "Deferred; previous usable data retained");
+    }
+    if (connected && storage.ready && ota.locallyConfirmed && aircraftVisible && elapsed(millis(), lastAircraft, 30000)) {
+      lastAircraft = millis();
+      JsonDocument value(&jsonRam);
+      if (net.json(base + "/aircraft", value) && value["aircraft"].is<JsonArray>())
+        publishAircraft(value); // RAM only: do not write flash every thirty seconds.
     }
     KnowledgeRequest request;
     if (xQueueReceive(requests, &request, 0) == pdTRUE && connected) {

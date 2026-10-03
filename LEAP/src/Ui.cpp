@@ -108,6 +108,7 @@ bool Ui::reload() {
   previous["assets"] = state["assets"];
   previous["quiz"] = state["content"]["quiz"];
   state = std::move(next);
+  aircraftFrame.clear();
   bool same =
       previous["config"].as<JsonVariantConst>() == state["config"].as<JsonVariantConst>() &&
       previous["assets"].as<JsonVariantConst>() == state["assets"].as<JsonVariantConst>() &&
@@ -491,7 +492,29 @@ void Ui::drawPage(const String &id) {
     }
     text("RainViewer", 308, 122, 1, Muted);
   } else if (id == "aircraft") {
-    auto snapshot = content["aircraft"];
+    if (aircraftFrame.isNull() || elapsed(millis(), lastAircraftFrame, 2000)) {
+      if (!network.copyAircraft(aircraftFrame)) aircraftFrame.set(content["aircraft"]);
+      lastAircraftFrame = millis();
+      double age = aircraftFrame["ageSeconds"] | 0.0;
+      if (aircraftFrame["receivedMillis"].is<uint32_t>())
+        age += uint32_t(millis() - aircraftFrame["receivedMillis"].as<uint32_t>()) / 1000.0;
+      else age = AircraftMaxPredictionSeconds + 1; // An offline snapshot has no monotonic time anchor.
+      for (JsonObject plane : aircraftFrame["aircraft"].as<JsonArray>()) {
+        double lat = plane["latitude"] | 999.0, lon = plane["longitude"] | 999.0;
+        double observedAge = age + (plane["positionAgeSeconds"] | 0.0);
+        bool predicted = predictAircraft(lat, lon, plane["groundSpeedKnots"] | -1.0,
+                                          plane["trackDegrees"] | NAN, observedAge);
+        plane["predicted"] = predicted;
+        plane["oldPosition"] = observedAge > AircraftMaxPredictionSeconds;
+        plane["latitude"] = lat;
+        plane["longitude"] = lon;
+        if (aircraftFrame["center"]["latitude"].is<double>() &&
+            aircraftFrame["center"]["longitude"].is<double>())
+          plane["distanceKm"] = aircraftDistanceKm(aircraftFrame["center"]["latitude"],
+              aircraftFrame["center"]["longitude"], lat, lon);
+      }
+    }
+    auto snapshot = aircraftFrame.as<JsonObject>();
     auto rows = snapshot["aircraft"].as<JsonArray>();
     bool centered = snapshot["center"]["latitude"].is<double>() &&
                     snapshot["center"]["longitude"].is<double>();
@@ -528,7 +551,7 @@ void Ui::drawPage(const String &id) {
           canvas->fillCircle(x, y, 2, color);
         if (selected) canvas->drawCircle(x, y, 6, color);
       }
-      text(String(radius, 0) + " NM | ADSB.lol", 308, 122, 1, Muted);
+      text(String(radius * 1.852, 0) + " km | ADSB.lol", 308, 122, 1, Muted);
     } else {
       text("Standort fehlt", 314, 52, 1, Muted);
       text("Server-Sync", 320, 66, 1, Muted);
@@ -539,12 +562,18 @@ void Ui::drawPage(const String &id) {
     }
     item = (item + rows.size()) % rows.size();
     auto a = rows[item];
-    body(String(a["callsign"] | a["registration"] | a["hex"] | "") +
-         "\nTyp: " + String(a["type"] | "?") +
-         "\nEntfernung: " + String(a["distanceNm"].as<float>(), 1) + " NM\nHoehe: " +
-         (a["altitudeFeet"].isNull() ? String("?") : String(a["altitudeFeet"].as<int>())) +
-         " ft\nStand: " + String(snapshot["updated"] | "") +
-         (snapshot["stale"] == true || !network.connected ? " (Cache)" : ""), 94, 12, 204, 110);
+    String route;
+    if (!a["originName"].isNull()) route += "\nStart: " + String(a["originName"].as<const char *>());
+    if (!a["destinationName"].isNull()) route += "\nZiel: " + String(a["destinationName"].as<const char *>());
+    String altitude = a["altitudeFeet"].isNull() ? String("?") : String(a["altitudeFeet"].as<double>() * 0.3048, 0);
+    String speed = a["groundSpeedKnots"].isNull() ? String("?") : String(a["groundSpeedKnots"].as<double>() * 1.852, 0);
+    body(String(a["callsign"] | a["registration"] | a["hex"] | "Flugzeug") +
+         "\n" + String(a["typeName"] | "Unbekannter Flugzeugtyp") +
+         "\nEntfernung: " + String(a["distanceKm"].isNull() ? a["distanceNm"].as<double>() * 1.852 : a["distanceKm"].as<double>(), 1) +
+         " km\nHoehe: " + altitude + " m\nTempo: " + speed + " km/h" + route,
+         94, 8, 204, 110);
+    text(a["oldPosition"] == true ? "Alte Position" : a["predicted"] == true ? "Position geschaetzt" : "Gemeldete Position",
+         94, 124, 1, Muted);
   } else if (id == "quiz") {
     if (quizCatalog < 0) {
       text("Katalog auswaehlen", 94, 12, 1, Accent);
@@ -932,6 +961,8 @@ void Ui::tick() {
   }
   if (generation != storage.generation.load())
     reload();
+  bool radarVisible = !locked && !menu && !pages.empty() && pages[page].id == "aircraft";
+  network.aircraftVisible = radarVisible;
   radio.poll();
   game.tick();
   bool dim = elapsed(millis(), lastInput, 60000);
