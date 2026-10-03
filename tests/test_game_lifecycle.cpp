@@ -78,6 +78,12 @@ int main() {
   game.tick();
   game.draw(gfx, 94, 10);
   assert(drawn.back() == "happy.png");
+  JsonDocument legacy;
+  legacy["definition"]["preview"] = "preview.svg";
+  legacy["files"].to<JsonArray>().add<JsonObject>()["path"] = "data/pet/idle/frame_01.png";
+  game.avatarPackage("avatar-legacy", 3, legacy);
+  game.draw(gfx, 94, 10);
+  assert(drawn.back() == "data/pet/idle/frame_01.png");
   game.close();
   assert(!game.active());
   Games reboot;

@@ -202,10 +202,11 @@ keinen dieser Hardwaretests.
   Firmware-Protokollvalidator und unveränderte Sync-Aktivierung bestehen.
 - PNGdec 1.1.6: elf Bildfixtures einschließlich 256×142, RGBA-Alpha und ungültiger
   PNGs; zusätzliche Maskenprüfungen für Palette, tRNS und deckendes Schwarz.
-- Homeserver: 54 Tests bestanden, darunter acht neue Tests für Spiel-IDs,
+- Homeserver: 55 Tests bestanden, darunter neun neue Tests für Spiel-IDs,
   ZIP-Import, Versionsschutz, Synchronisation, Referenzfehler und Geräte-Vorschau.
 - Arduino-Downloadserver sind in dieser Umgebung gesperrt. Der vollständige
-  ESP32-Build wird über den bestehenden GitHub-Workflow geprüft.
+  ESP32-S3-N16R8-Build wurde im bestehenden GitHub-Workflow erfolgreich geprüft,
+  einschließlich App-Image-Validierung und Export der Build-Artefakte.
 - Physische Display-/Tasten-/Sound-Abnahme, Neustart und Stromverlust am Gerät
   bleiben erforderlich. Das erwähnte Beispiel-ZIP war nicht angehängt;
   automatische Prüfungen verwenden synthetische Frames und Hintergründe.

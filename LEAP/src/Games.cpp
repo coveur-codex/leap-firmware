@@ -259,10 +259,8 @@ void Games::drawPet(Arduino_GFX &gfx) {
     uint32_t clock = petAction >= 0 ? millis() - actionAt : millis();
     path = frames[(clock / ms) % frames.size()].as<String>();
   }
-  if (!path.length()) {
-    frames = avatarDefinition["animations"]["idle"]["frames"].as<JsonArrayConst>();
-    path = frames.size() ? frames[0].as<String>() : String(avatarDefinition["preview"] | "");
-  }
+  if (!path.length())
+    path = avatarFrame(petManifest, millis()).c_str();
   bool shown = suffix(path.c_str(), ".png") && petImage.draw(gfx, petBlob(path), path, 174, 40, 80,
                                                              80, false, 0x10e5, true, true, true);
   if (!shown) {
