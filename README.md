@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.0-beta.12`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.0-beta.13`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -385,3 +385,13 @@ Der Test `ARDUINOJSON_INCLUDE=/path/to/ArduinoJson/src PNGDEC_SRC=/path/to/PNGde
 Bibliothek und prüft alle Pixel von RGB/RGBA-Bildern mit 80, 428 und 1024 Pixeln
 Breite. Defekte PNG-Header und Interlacing werden weiterhin abgelehnt. Es wird
 kein Paket übersprungen und keine Integritätsprüfung abgeschaltet.
+
+### Kinderfreundliches Flugradar ab beta.13
+
+Ausgeschriebene Flugzeugtypen und bekannte Start-/Zielflughäfen kommen vom
+Homeserver. Die Seite zeigt km, m und km/h. Radar und Entfernung werden alle
+zwei Sekunden aus Tempo und Flugrichtung geschätzt; bei sichtbarer Seite holt
+der Netzwerktask alle 30 Sekunden neue Daten in den RAM. Nach zwei Minuten
+endet die Fortschreibung. Alte und geschätzte Positionen sind gekennzeichnet.
+Für Namen und verlässliches Cache-Alter wird die passende Homeserver-Änderung
+benötigt. Weitere Details: [Serververtrag](docs/server-contract.md).

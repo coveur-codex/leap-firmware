@@ -502,8 +502,8 @@ void Ui::drawPage(const String &id) {
       for (JsonObject plane : aircraftFrame["aircraft"].as<JsonArray>()) {
         double lat = plane["latitude"] | 999.0, lon = plane["longitude"] | 999.0;
         double observedAge = age + (plane["positionAgeSeconds"] | 0.0);
-        bool predicted = predictAircraft(lat, lon, plane["groundSpeedKnots"] | -1.0,
-                                          plane["trackDegrees"] | NAN, observedAge);
+        bool predicted = aircraftFrame["receivedMillis"].is<uint32_t>() && predictAircraft(lat, lon, plane["groundSpeedKnots"] | -1.0,
+                                          plane["trackDegrees"] | NAN, std::min(observedAge, AircraftMaxPredictionSeconds));
         plane["predicted"] = predicted;
         plane["oldPosition"] = observedAge > AircraftMaxPredictionSeconds;
         plane["latitude"] = lat;
