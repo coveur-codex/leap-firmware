@@ -3,6 +3,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 : "${ARDUINOJSON_INCLUDE:?Set this to the ArduinoJson/src directory}"
 mkdir -p build/tests
+c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_math_quiz.cpp -o build/tests/math-quiz
+build/tests/math-quiz
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src -I "$ARDUINOJSON_INCLUDE" tests/test_quiz_questions.cpp -o build/tests/quiz-questions
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src -I "$ARDUINOJSON_INCLUDE" tests/test_pet_assets.cpp -o build/tests/pet-assets
 build/tests/pet-assets

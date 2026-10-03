@@ -23,7 +23,7 @@ legt MPU6050 (GPIO17/18) und 80×80-PNG-Avatare fest.
 | Content | GET `/sync` als Versionsübersicht, `/news`, `/weather`, `/aircraft`, `/quiz`; Offline-Snapshots |
 | Zeit | `POST /checkin` → UTC `serverTime`; Batterie wird ausgelassen |
 | Wissen | `/knowledge/search`, `/knowledge/random`, `/knowledge/article/{articleRef}`; Referenz nicht doppelt URL-kodieren |
-| Quiz | `questionsFile`, `q`, vier `a`, `minAge`, `explanation`; Antwort 0 korrekt, UI mischt |
+| Quiz | Katalogauswahl über `definition.name` bzw. `/quiz.catalogs` und `questions[].catalogId`; `config.mathQuiz` (`operation`, `limit`) für lokale Zufallsaufgaben; `questionsFile`, `q`, vier `a`, `minAge`, `explanation`; Antwort 0 korrekt, UI mischt |
 | Gruppenchat | `communicationEnabled`, Paket `communication-messages`, `messagesFile`; nur freigegebene Vorlagen |
 
 Konfiguration wird getrennt von einer Pakettransaktion gespeichert. So greift eine

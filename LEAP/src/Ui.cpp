@@ -144,33 +144,33 @@ bool Ui::reload() {
     pages.push_back({"home", "LEAP", 0});
   page = std::min(page, int(pages.size()) - 1);
   selection = item = scroll = 0;
-  quizDetail = 0;
+  if (!same) quizDetail = 0;
   answered = false;
   gameOpen = false;
   knowledgeMode = 0;
   if (!same || !quizLoaded) {
     quiz.clear();
-    uint32_t seen = 0;
-    auto questions = quiz["questions"].to<JsonArray>();
-    // Prefer assigned versioned catalogs; retain the legacy endpoint as fallback.
+    auto catalogs = quiz["catalogs"].to<JsonArray>();
+    // Keep metadata here; load at most 200 questions from the chosen catalog.
     for (JsonPair p : state["assets"].as<JsonObject>()) {
       JsonObjectConst manifest = manifests[p.key().c_str()].as<JsonObjectConst>();
-      JsonObjectConst def = manifest["definition"];
-      JsonDocument catalog(&jsonRam);
-      if (def["type"] != "quiz")
+      if (manifest["definition"]["type"] != "quiz")
         continue;
-      if (storage.readJson(
-              assets.resolve(p.key().c_str(), p.value(), def["questionsFile"] | "questions.json"),
-              catalog))
-        for (JsonObject q : catalog["questions"].as<JsonArray>())
-          if ((q["minAge"] | 0) <= (state["config"]["age"] | 0))
-            collectQuizQuestion(questions, q, seen, esp_random());
+      auto entry = catalogs.add<JsonObject>();
+      entry["package"] = String(p.key().c_str());
+      entry["name"] = String(manifest["definition"]["name"] | p.key().c_str());
     }
-    JsonArray legacyQuestions = state["content"]["quiz"]["questions"].as<JsonArray>();
-    if (!questions.size())
-      for (JsonObject q : legacyQuestions)
-        if ((q["minAge"] | 0) <= (state["config"]["age"] | 0))
-          collectQuizQuestion(questions, q, seen, esp_random());
+    if (!catalogs.size()) {
+      for (JsonObjectConst c : state["content"]["quiz"]["catalogs"].as<JsonArrayConst>()) {
+        auto entry = catalogs.add<JsonObject>();
+        entry["id"] = c["id"];
+        entry["name"] = c["name"];
+      }
+      // Older servers did not expose catalog IDs or names.
+      if (!catalogs.size() && state["content"]["quiz"]["questions"].size())
+        catalogs.add<JsonObject>()["name"] = "Quiz-Katalog";
+    }
+    catalogs.add<JsonObject>()["name"] = "Mathe-Quiz";
     quizLoaded = true;
     startQuiz();
   }
@@ -363,11 +363,46 @@ void Ui::sidebar() {
   text(title, (86 - title.length() * 6) / 2, 133, 1, Muted);
 }
 void Ui::startQuiz() {
-  shuffleQuizQuestions(questionOrder, quiz["questions"].size(), [] { return esp_random(); });
+  quizCatalog = -1;
+  selection = item = scroll = quizDetail = 0;
+  answered = false;
+}
+void Ui::chooseQuizCatalog(int index) {
+  quizCatalog = index;
+  auto questions = quiz["questions"].to<JsonArray>();
+  JsonObjectConst chosen = quiz["catalogs"][index];
+  if (index != int(quiz["catalogs"].size()) - 1) {
+    JsonDocument catalog(&jsonRam);
+    String package = chosen["package"] | "";
+    JsonArrayConst rows;
+    if (package.length()) {
+      JsonObjectConst def = manifests[package]["definition"];
+      storage.readJson(assets.resolve(package, state["assets"][package],
+                                     def["questionsFile"] | "questions.json"), catalog);
+      rows = catalog["questions"].as<JsonArrayConst>();
+    } else
+      rows = state["content"]["quiz"]["questions"].as<JsonArrayConst>();
+    collectQuizCatalog(questions, rows, state["config"]["age"] | 0,
+                       package.length() ? JsonVariantConst() : chosen["id"].as<JsonVariantConst>(),
+                       [] { return esp_random(); });
+  }
+  shuffleQuizQuestions(questionOrder, questions.size(), [] { return esp_random(); });
   item = 0;
   nextQuestion(0);
 }
 void Ui::nextQuestion(int delta) {
+  if (quizCatalog == int(quiz["catalogs"].size()) - 1) {
+    auto math = generateMathQuestion(state["config"]["mathQuiz"]["operation"] | "add",
+                                    state["config"]["mathQuiz"]["limit"] | 20,
+                                    [] { return esp_random(); });
+    auto rows = quiz["questions"].to<JsonArray>();
+    auto q = rows.add<JsonObject>();
+    q["q"] = math.question;
+    q["explanation"] = math.explanation;
+    auto answers = q["a"].to<JsonArray>();
+    for (int answer : math.answers) answers.add(std::to_string(answer));
+    questionOrder = {0};
+  }
   int count = quiz["questions"].size();
   if (count && delta > 0 && item + delta >= count)
     shuffleQuizQuestions(questionOrder, count, [] { return esp_random(); });
@@ -397,7 +432,7 @@ void Ui::drawPage(const String &id) {
       if (kind == "news_count")
         label = "News: " + String(content["news"]["articles"].size());
       if (kind == "question_of_day")
-        label = "Quiz: " + String(quiz["questions"].size()) + " Fragen";
+        label = "Quiz: Katalog waehlen";
       if (label.length())
         text(label, 94, 44 + (row++) * 14);
     }
@@ -511,9 +546,18 @@ void Ui::drawPage(const String &id) {
          " ft\nStand: " + String(snapshot["updated"] | "") +
          (snapshot["stale"] == true || !network.connected ? " (Cache)" : ""), 94, 12, 204, 110);
   } else if (id == "quiz") {
+    if (quizCatalog < 0) {
+      text("Katalog auswaehlen", 94, 12, 1, Accent);
+      std::vector<String> labels;
+      for (JsonObjectConst c : quiz["catalogs"].as<JsonArrayConst>())
+        labels.push_back(c["name"] | "Quiz");
+      list(labels, 94, 35, 326);
+      notice = "Oben/Unten: Auswahl | Mitte: starten";
+      return;
+    }
     auto rows = quiz["questions"].as<JsonArray>();
     if (!rows.size()) {
-      body("Noch keine passenden Quizfragen.");
+      body("Noch keine passenden Quizfragen.\nMitte: Katalogauswahl");
       return;
     }
     auto q = rows[questionOrder[item % questionOrder.size()]];
@@ -523,11 +567,12 @@ void Ui::drawPage(const String &id) {
       notice = "Oben/Unten: lesen | Mitte: zurueck";
       return;
     }
-    if (answered)
+    if (answered) {
+      notice = "Hoch/Runter: lesen | Rechts: weiter | OK: Kataloge";
       body(String(answerOrder[selection] == 0 ? "Richtig!\n" : "Gute Idee! Richtig ist:\n") +
            String(q["a"][0] | "") + "\n" + String(q["explanation"] | "") +
-           "\nRechts/Links: naechste Frage");
-    else {
+           "\nRechts: weiter | Mitte: Kataloge");
+    } else {
       body(q["q"] | "", 94, 12, 326, 30);
       std::vector<String> labels;
       for (int i : answerOrder)
@@ -709,6 +754,15 @@ void Ui::action(const InputEvent &e) {
   String id = pages[page].id;
   int direction = (e.key == Key::Down) - (e.key == Key::Up);
   if (id == "quiz") {
+    if (quizCatalog < 0) {
+      selection = constrain(selection + direction, 0, int(quiz["catalogs"].size()) - 1);
+      if (e.key == Key::Center) chooseQuizCatalog(selection);
+      return;
+    }
+    if (!quiz["questions"].size()) {
+      if (e.key == Key::Center) startQuiz();
+      return;
+    }
     if (quizDetail) {
       scroll = std::max(0, scroll + direction);
       if (e.key == Key::Center) {
@@ -719,7 +773,8 @@ void Ui::action(const InputEvent &e) {
     }
     if (answered) {
       scroll = std::max(0, scroll + direction);
-      if (e.key == Key::Left || e.key == Key::Right || e.key == Key::Center)
+      if (e.key == Key::Center) startQuiz();
+      else if (e.key == Key::Left || e.key == Key::Right)
         nextQuestion(e.key == Key::Left ? -1 : 1);
     } else {
       selection = constrain(selection + direction, 0, 3);
