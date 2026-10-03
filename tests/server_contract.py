@@ -15,12 +15,12 @@ os.environ["LEAP_DATABASE_URL"] = "sqlite://"
 sys.path.insert(0, str(root))
 os.chdir(root)  # Homeserver's built-in avatar paths are relative to its root.
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from app.core.database import Base, get_db
 from app.core.config import settings
-from app.models import Device,AssetPackage
+from app.models import Device,AssetPackage,SyncEvent
 from app.services import distribution
 from PIL import Image
 from app.services.devices import initialize_pages
@@ -76,6 +76,25 @@ with tempfile.TemporaryDirectory() as temp:
     new = client.post(base + "/sync", json=report).json()
     assert "communication-messages" not in new["desiredAssets"]
     assert client.get(new["configUrl"]).json()["communicationEnabled"] is False
+    # beta.6 diagnostics must reach the persisted server log without changing inventory.
+    target = new["assetUpdates"][0]
+    failure = {"event": "download_started", "firmwareVersion": report["firmwareVersion"],
+               "installedAssets": report["installedAssets"], "packageId": target["packageId"],
+               "version": target["version"]}
+    next_url = base + "/sync/" + new["syncId"] + "/events"
+    assert client.post(next_url, json=failure).status_code == 200
+    failure["event"] = "update_failed"
+    failure["message"] = "Example package / example.png: Image decoder rejected file"
+    before = dict(device.installed_assets)
+    failed = client.post(next_url, json=failure)
+    assert failed.status_code == 200 and failed.json()["cleanupAllowed"] is False
+    record = session.scalar(select(SyncEvent).where(SyncEvent.run_id == new["syncId"],
+                                                   SyncEvent.event == "update_failed"))
+    assert record.details["packageId"] == failure["packageId"]
+    assert record.details["version"] == failure["version"]
+    assert record.details["message"] == failure["message"]
+    session.refresh(device)
+    assert device.installed_assets == before
     Path(sys.argv[1]).write_text(json.dumps({"config": config, "manifests": manifests}), encoding="utf-8")
     session.close()
 print("PASS: real Homeserver sync, hashes, complete-inventory gate, closed plans, communication disable")

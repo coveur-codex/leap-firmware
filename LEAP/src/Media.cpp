@@ -107,14 +107,21 @@ uint16_t *Media::decode(const String &path, const String &name, int width, int h
   xSemaphoreGive(codecMutex);
   return result;
 }
-bool Media::avatarPng(const String &path) {
+bool Media::avatarPng(const String &path, uint32_t *width, uint32_t *height) {
+  if (width) *width = 0;
+  if (height) *height = 0;
   File f = LittleFS.open(path, "r");
   uint8_t h[24];
   if (!f || f.read(h, sizeof(h)) != sizeof(h))
     return false;
   const uint8_t signature[] = {137, 80, 78, 71, 13, 10, 26, 10};
-  return !memcmp(h, signature, 8) && !memcmp(h + 12, "IHDR", 4) && h[16] == 0 && h[17] == 0 &&
-         h[18] == 0 && h[19] == 80 && h[20] == 0 && h[21] == 0 && h[22] == 0 && h[23] == 80;
+  if (memcmp(h, signature, 8) || memcmp(h + 12, "IHDR", 4))
+    return false;
+  uint32_t w = uint32_t(h[16]) << 24 | uint32_t(h[17]) << 16 | uint32_t(h[18]) << 8 | h[19];
+  uint32_t heightValue = uint32_t(h[20]) << 24 | uint32_t(h[21]) << 16 | uint32_t(h[22]) << 8 | h[23];
+  if (width) *width = w;
+  if (height) *height = heightValue;
+  return w == 80 && heightValue == 80;
 }
 bool Media::validate(const String &path, const String &name) {
   auto *data = decode(path, name, 8, 8);

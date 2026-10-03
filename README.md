@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.0-beta.5`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.0-beta.6`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -268,3 +268,14 @@ ARDUINOJSON_INCLUDE=/path/to/ArduinoJson/src tools/test.sh /tmp/leap-fixtures.js
 
 Siehe [Architektur](docs/architecture.md), [Serververtrag](docs/server-contract.md),
 [Hardware-Abnahme](docs/acceptance.md) und [Prüfergebnis](docs/validation.md).
+
+### Diagnose eines blockierten Asset-Syncs (beta.6)
+
+`download_started` und `update_failed` enthalten jetzt `packageId` und `version`.
+Die Fehlermeldung nennt Paket, gegebenenfalls Datei und konkrete Prüfungsstufe:
+Manifest, Download (HTTP/Länge/Timeout/Schreibfehler/SHA-256), Bildmaße/Decoder,
+WAV/JSON/Katalogschema oder Speicherung. Seriell erscheinen `ASSETS` und `DOWNLOAD`.
+Ein bestandenes Paket wird als „verified and staged“ protokolliert; es ist damit
+noch nicht aktiv. Die Firmware aktiviert weiterhin erst das vollständig geprüfte
+Inventar. So kann ein Fehler in einem anderen Paket auch den Avatar zurückhalten.
+Diese Version verbessert die Diagnose, ohne unbekannte Paketfehler zu übergehen.

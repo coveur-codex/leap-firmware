@@ -213,9 +213,16 @@ bool Network::sync() {
     return false;
   }
   for (JsonObject update : plan["assetUpdates"].as<JsonArray>()) {
-    if (!event(syncId, "download_started", state, reply) || !assets.install(update, net)) {
-      event(syncId, "update_failed", state, reply, "", 0,
-            "Package download, hash, format or capacity validation failed");
+    String package = update["packageId"] | "";
+    int version = update["version"] | 0;
+    if (!event(syncId, "download_started", state, reply, package, version)) {
+      String reason = "Cannot report download_started; HTTP=" + String(net.status);
+      log("SYNC", reason.c_str());
+      event(syncId, "update_failed", state, reply, package, version, reason);
+      return false;
+    }
+    if (!assets.install(update, net)) {
+      event(syncId, "update_failed", state, reply, package, version, assets.error);
       return false;
     }
   }
@@ -226,12 +233,21 @@ bool Network::sync() {
   for (JsonPair p : next["assets"].as<JsonObject>()) {
     JsonDocument manifest(&jsonRam);
     if (!identifier(p.key().c_str()) ||
-        !storage.readJson(storage.package(p.key().c_str(), p.value()), manifest) ||
-        !assets.verify(manifest, true))
+        !storage.readJson(storage.package(p.key().c_str(), p.value()), manifest)) {
+      event(syncId, "update_failed", state, reply, p.key().c_str(), p.value(),
+            "Final inventory manifest missing or invalid");
       return false;
+    }
+    if (!assets.verify(manifest, true)) {
+      event(syncId, "update_failed", state, reply, p.key().c_str(), p.value(), assets.error);
+      return false;
+    }
   }
-  if (!storage.commit(next))
+  if (!storage.commit(next)) {
+    log("SYNC", "Cannot commit final asset inventory");
+    event(syncId, "update_failed", state, reply, "", 0, "Cannot commit final asset inventory");
     return false;
+  }
   for (JsonObject update : plan["assetUpdates"].as<JsonArray>())
     if (!event(syncId, "asset_installed", next, reply, update["packageId"].as<String>(),
                update["version"]))

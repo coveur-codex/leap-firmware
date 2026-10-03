@@ -38,24 +38,33 @@ bool Transport::open(HTTPClient &http, WiFiClient &plain, WiFiClientSecure &tls,
 }
 bool Transport::read(HTTPClient &http, size_t size,
                      const std::function<bool(const uint8_t *, size_t)> &sink) {
+  error = "";
   auto *stream = http.getStreamPtr();
   uint8_t buffer[2048];
   size_t done = 0;
   uint32_t last = millis(), start = millis();
   while (done < size) {
-    if (elapsed(millis(), last, HttpTimeout) || elapsed(millis(), start, 180000))
+    if (elapsed(millis(), last, HttpTimeout) || elapsed(millis(), start, 180000)) {
+      error = "Response timeout after " + String(done) + "/" + String(size) + " bytes";
       return false;
+    }
     size_t available = stream->available();
     if (available) {
       int n = stream->read(buffer, std::min(sizeof(buffer), std::min(available, size - done)));
-      if (n <= 0)
+      if (n <= 0) {
+        error = "Stream read failed after " + String(done) + " bytes";
         return false;
-      if (!sink(buffer, n))
+      }
+      if (!sink(buffer, n)) {
+        error = "Data sink/write rejected block at " + String(done) + " bytes";
         return false;
+      }
       done += n;
       last = millis();
-    } else if (!http.connected())
+    } else if (!http.connected()) {
+      error = "Connection closed after " + String(done) + "/" + String(size) + " bytes";
       return false;
+    }
     vTaskDelay(1);
   }
   return true;
@@ -99,15 +108,23 @@ bool Transport::json(const String &path, JsonDocument &response, JsonDocument *b
 }
 bool Transport::download(const String &path, size_t size, const String &hash,
                          const std::function<bool(const uint8_t *, size_t)> &sink) {
-  if (!size || !digestValid(hash.c_str()))
+  error = "";
+  if (!size || !digestValid(hash.c_str())) {
+    error = "Invalid expected size or SHA-256";
     return false;
+  }
   WiFiClient plain;
   WiFiClientSecure tls;
   HTTPClient http;
-  if (!open(http, plain, tls, path))
+  if (!open(http, plain, tls, path)) {
+    error = "HTTP setup failed (path, server URL or TLS CA)";
     return false;
+  }
   status = http.GET();
   bool ok = status == 200 && http.getSize() == int(size);
+  if (!ok)
+    error = "HTTP=" + String(status) + " Content-Length=" + String(http.getSize()) +
+            " expected=" + String(size);
   mbedtls_sha256_context ctx;
   mbedtls_sha256_init(&ctx);
   mbedtls_sha256_starts(&ctx, 0);
@@ -123,7 +140,13 @@ bool Transport::download(const String &path, size_t size, const String &hash,
   char encoded[65];
   for (int i = 0; i < 32; i++)
     snprintf(encoded + 2 * i, 3, "%02x", digest[i]);
-  return ok && hash == encoded;
+  if (ok && hash != encoded) {
+    error = "Downloaded SHA-256 mismatch";
+    ok = false;
+  }
+  if (!ok)
+    log("DOWNLOAD", error.c_str());
+  return ok;
 }
 String Transport::cacheImage(const String &path, bool radar) {
   WiFiClient plain;

@@ -8,6 +8,7 @@ namespace leap {
 class Transport {
 public:
   int status = 0;
+  String error;
   bool json(const String &path, JsonDocument &response, JsonDocument *body = nullptr);
   bool download(const String &path, size_t size, const String &hash,
                 const std::function<bool(const uint8_t *, size_t)> &sink);

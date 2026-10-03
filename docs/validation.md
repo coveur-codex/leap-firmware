@@ -2,6 +2,21 @@
 
 Stand: 2026-10-02. Referenz-Homeserver `8175c9f`, unverändert.
 
+## Asset-Fehlerdiagnose: 1.0.0-beta.6
+
+Der bereitgestellte Serverlog zeigt vier begonnene Paketinstallationen und einen
+Abbruch der vierten; Paket-IDs fehlen im alten Eventformat. Die Ursache der letzten
+Installation ist damit noch nicht belegbar. Der Inventarwechsel findet erst nach
+Prüfung aller Pakete statt, weshalb bereits geprüfte Pakete trotzdem inaktiv bleiben.
+
+- Paket-ID, Version und Fehlerdetails werden auf jedem Installationsabbruch gemeldet.
+- Transportfehler unterscheiden Status/Länge, Timeout, Stream-/Schreibfehler und Hash.
+- PNG-Dimensionsfehler melden die tatsächlichen Maße, Decoder-/Katalogfehler die Datei.
+- Der echte Serververtragstest prüft die Persistenz der neuen Eventfelder und dass
+  ein `update_failed` weder Cleanup freigibt noch das aktive Inventar überschreibt.
+- Native Tests bestanden; Cross-Build über GitHub Actions. Ein erneuter Geräte-Sync
+  mit beta.6 wird benötigt, um den konkreten Paketfehler festzustellen.
+
 ## Avatare, Flugzeugpositionen und Artikelbilder: 1.0.0-beta.5
 
 - Standard-PNGs aus den bestehenden SVG-Avataren rasterisiert (CairoSVG 2.7.1,
