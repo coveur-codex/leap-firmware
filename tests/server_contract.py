@@ -46,6 +46,9 @@ with tempfile.TemporaryDirectory() as temp:
     files=distribution.file_map(old)
     png=BytesIO();Image.new("RGBA",(80,80),(60,200,180,255)).save(png,format="PNG")
     files["data/pet/idle/frame_01.png"]=distribution.store_bytes(png.getvalue())
+    for period in ("day", "night"):
+        background=BytesIO();Image.new("RGB",(256,142),(120,180,220)).save(background,format="PNG")
+        files[f"background_{period}.png"]=distribution.store_bytes(background.getvalue())
     # Explicitly exercise a mixed legacy SVG preview + device PNG package.
     distribution.publish(session,package,files,{"preview":"preview.svg","animations":{}},package.current_version)
     session.commit()
@@ -53,6 +56,7 @@ with tempfile.TemporaryDirectory() as temp:
     assert response.status_code == 200, response.text
     plan = response.json()
     config = client.get(plan["configUrl"]).json()
+    assert {"tamagotchi", "snake"}.issubset({g["id"] for g in config["games"]})
     manifests = []
     for update in plan["assetUpdates"]:
         manifest = client.get(update["manifestUrl"]).json()

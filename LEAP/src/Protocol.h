@@ -45,6 +45,16 @@ inline std::string avatarFrame(JsonVariantConst manifest, uint32_t now = 0) {
       return path;
   return ""; // Do not select an arbitrary expression/frame without metadata.
 }
+// Only explicitly referenced pet backgrounds may exceed the sidebar's 80x80 size.
+inline bool avatarImageSize(JsonVariantConst definition, const std::string &path, uint32_t w,
+                            uint32_t h) {
+  bool background = false;
+  for (const char *key : {"day", "night"})
+    if (definition["tamagotchi"]["backgrounds"][key].is<const char *>() &&
+        definition["tamagotchi"]["backgrounds"][key].as<std::string>() == path)
+      background = true;
+  return background ? w == 256 && h == 142 : w == 80 && h == 80;
+}
 // Pure validation shared by target code and host-side protocol tests.
 inline bool manifestMetadata(JsonVariantConst m, size_t maxBytes, size_t maxFiles = 256) {
   if (m["schemaVersion"] != 1 || !identifier(m["packageId"] | "") || !m["version"].is<int>() ||

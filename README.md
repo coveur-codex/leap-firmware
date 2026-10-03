@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.0-beta.9`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.0-beta.10`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -170,6 +170,30 @@ richtige. Rechts LINKS öffnet die ganze Frage, Rechts RECHTS die ausgewählte A
 zum Lesen mit UP/DOWN; MITTE kehrt zur Auswahl zurück. Nach dem Beantworten
 UP/DOWN für die Erklärung. Maximal 200 lokal zusammengestellte Fragen.
 
+**Neue Spiele (beta.10):** Im vorhandenen Spielebereich stehen „Mein Haustier“
+(`tamagotchi`) und `snake` zusätzlich zur Verfügung. Dafür auch den Homeserver
+aktualisieren, der die Spiel-IDs in der Geräte-Konfiguration anbietet.
+
+Das Haustier nutzt das gewählte Avatarpaket. Links bleibt die 86-Pixel-Navigation,
+in der Mitte Hintergrund (256×142) und Tier (80×80), rechts vier Aktionen.
+Rechts UP/DOWN wählen, CENTER bestätigt: Füttern, Spielen, Waschen, Schlafen.
+Die Aktion dauert optisch drei Sekunden, Frames mindestens 250 ms (Standard 400 ms).
+Die vier Bedürfnisse starten großzügig bei 85, sinken pro eingeschalteter Stunde
+um 1–2 Punkte und nie unter 35. Während stromloser Zeit gibt es keinen Abzug.
+NVS speichert Aktionen sofort und veränderte Bedürfnisse stündlich, unabhängig
+vom Inhalts-Sync. Avatarwechsel wechselt die Grafik, behält aber das Haustier.
+Tageshintergrund 07:00–19:59, Nachthintergrund 20:00–06:59 gemäß der bestehenden
+Geräte-Zeitzone; ohne bekannte Uhrzeit Tag. Fehlende Grafiken verhindern das
+Spielen nicht; vorhandenes Avatarbild oder einfache Zeichnung dient als Ersatz.
+
+Snake: 40×13 Felder mit 8-Pixel-Zellen, Bewegung alle 220 ms. Rechter Schalter
+steuert; unmittelbare Gegenrichtung und weitere Richtungswechsel vor dem nächsten
+Schritt werden ignoriert. Punkte und Rekord stehen oberhalb des Feldes.
+Wand/eigener Körper beendet die Runde; rechts CENTER startet neu.
+Jeder neue Rekord wird sofort in NVS gespeichert. Links CENTER verlässt jedes
+Spiel, Links LEFT/RIGHT wechselt weiterhin die Seite. Sperren und Seitenwechsel
+beenden die laufende Runde. Das Haustier bleibt gespeichert.
+
 **Spiele:** `hot_potato` = 15-Sekunden-Weitergabe-/Tastenspiel,
 `simon_motion` = Richtungsfolge merken und durch Kippen/Schalter nachspielen,
 `tilt_maze` = Kipp-Labyrinth mit zusätzlicher Schaltersteuerung. Bei Hot Potato
@@ -201,8 +225,10 @@ verwendet wird ausschließlich LittleFS.
   solange ein behaltenes Manifest sie referenziert.
 - Fehlende Providerdaten lassen den bisherigen Snapshot unverändert. Wetter und
   Flugradar werden regelmäßig erneuert, auch wenn deren Versionszähler gleich sind.
-- **Avatare ausschließlich PNG mit 80 × 80 Pixeln**, ohne Skalierung in der
-  Sidebar. Animationen über `animations.idle`; anschließend `preview`, sofern
+- **Avatar-Tiere ausschließlich PNG mit 80 × 80 Pixeln**, ohne Skalierung in der
+  Sidebar. Nur explizit unter `tamagotchi.backgrounds.day/night` referenzierte
+  Hintergründe dürfen 256×142 groß sein. Tier-PNGs werden mit einer Alpha-Maske
+  über den Hintergrund gezeichnet (Schwellwert 128). Animationen über `animations.idle`; anschließend `preview`, sofern
   PNG, oder der bestätigte Pfad `data/pet/idle/frame_01.png` (auch mit tatsächlichem
   `files/`-Präfix im Manifest unterstützt). Die Download-URL lautet normalerweise
   `/api/v1/packages/{id}/versions/{v}/files/data/pet/idle/frame_01.png`.

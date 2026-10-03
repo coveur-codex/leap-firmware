@@ -59,6 +59,12 @@ int main(int argc, char **argv) {
   assert(!requiredAssetFile("avatar", "preview.SVG"));
   assert(requiredAssetFile("avatar", "data/pet/idle/frame_01.png"));
   assert(requiredAssetFile("avatar", "definition.json"));
+  JsonDocument petDefinition;
+  petDefinition["tamagotchi"]["backgrounds"]["day"] = "outer/background_day/day.png";
+  assert(avatarImageSize(petDefinition, "outer/background_day/day.png", 256, 142));
+  assert(!avatarImageSize(petDefinition, "outer/background_day/day.png", 80, 80));
+  assert(avatarImageSize(petDefinition, "idle/frame_01.png", 80, 80));
+  assert(!avatarImageSize(petDefinition, "unreferenced.png", 256, 142));
   JsonDocument avatar;
   avatar["definition"]["preview"] = "preview.svg";
   avatar["files"].to<JsonArray>().add<JsonObject>()["path"] = "data/pet/idle/frame_01.png";
@@ -103,6 +109,8 @@ int main(int argc, char **argv) {
       assert(manifestMetadata(m, 8 * 1024 * 1024));
       if (m["type"] == "avatar") {
         assert(avatarFrame(m) == "data/pet/idle/frame_01.png");
+        assert(avatarImageSize(m["definition"], "background_day.png", 256, 142));
+        assert(avatarImageSize(m["definition"], "background_night.png", 256, 142));
         JsonArray fileRows = m["files"].as<JsonArray>();
         for (JsonObject f : fileRows)
           if (suffix(f["path"] | "", ".svg"))

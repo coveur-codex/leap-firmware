@@ -1,5 +1,6 @@
 #include "Media.h"
 #include "MediaColor.h"
+#include "MediaMask.h"
 #include <JPEGDEC.h>
 #include <PNGdec.h>
 #include <esp_heap_caps.h>
@@ -17,6 +18,7 @@ static PNG png;
 static JPEGDEC jpeg;
 static File input;
 static uint16_t *output;
+static uint8_t *opacity;
 static int ow, oh, iw, ih;
 static uint32_t backgroundColor, lastYield;
 struct MediaJob {
@@ -24,10 +26,14 @@ struct MediaJob {
   std::atomic<bool> done{false};
   String path, name;
   int width, height, fittedWidth = 0, fittedHeight = 0;
-  bool fit;
+  bool fit, transparent = false;
   uint16_t background;
   uint16_t *pixels = nullptr;
-  ~MediaJob() { free(pixels); }
+  uint8_t *alpha = nullptr;
+  ~MediaJob() {
+    free(pixels);
+    free(alpha);
+  }
 };
 static QueueHandle_t decodeRequests = nullptr;
 static void releaseJob(MediaJob *job) {
@@ -40,8 +46,9 @@ static void decodeWorker(void *) {
     if (xQueueReceive(decodeRequests, &job, portMAX_DELAY) != pdTRUE)
       continue;
     job->pixels = Media::decode(job->path, job->name, job->width, job->height,
-                               job->fit ? &job->fittedWidth : nullptr,
-                               job->fit ? &job->fittedHeight : nullptr, job->background);
+                                job->fit ? &job->fittedWidth : nullptr,
+                                job->fit ? &job->fittedHeight : nullptr, job->background,
+                                job->transparent ? &job->alpha : nullptr);
     if (!job->fit) {
       job->fittedWidth = job->width;
       job->fittedHeight = job->height;
@@ -66,6 +73,7 @@ bool Media::beginWorker() {
 Media::~Media() {
   releaseJob(pending);
   free(pixels);
+  free(alpha);
 }
 static void codecYield() {
   if (uint32_t(millis() - lastYield) >= 8) {
@@ -104,8 +112,12 @@ static int drawPng(PNGDRAW *row) {
   uint16_t line[1024];
   png.getLineAsRGB565(row, line, PNG_RGB565_LITTLE_ENDIAN, backgroundColor);
   for (int y = from; y < to && y < oh; y++)
-    for (int x = 0; x < ow; x++)
-      output[y * ow + x] = line[x * iw / ow];
+    for (int x = 0; x < ow; x++) {
+      int source = x * iw / ow;
+      output[y * ow + x] = line[source];
+      if (opacity)
+        opacity[y * ow + x] = pngOpaque(*row, source, png.getTransparentColor()) ? 1 : 0;
+    }
   codecYield();
   return 1;
 }
@@ -129,7 +141,7 @@ static int drawJpg(JPEGDRAW *block) {
   return 1;
 }
 uint16_t *Media::decode(const String &path, const String &name, int width, int height,
-                        int *fittedWidth, int *fittedHeight, uint16_t background) {
+                        int *fittedWidth, int *fittedHeight, uint16_t background, uint8_t **mask) {
   if (width < 1 || height < 1 || width > 428 || height > 142 || !codecMutex)
     return nullptr;
   xSemaphoreTake(codecMutex, portMAX_DELAY);
@@ -140,6 +152,15 @@ uint16_t *Media::decode(const String &path, const String &name, int width, int h
   output =
       static_cast<uint16_t *>(heap_caps_calloc(ow * oh, 2, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
   if (!output) {
+    xSemaphoreGive(codecMutex);
+    return nullptr;
+  }
+  opacity = mask ? static_cast<uint8_t *>(
+                       heap_caps_calloc(ow * oh, 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT))
+                 : nullptr;
+  if (mask && !opacity) {
+    free(output);
+    output = nullptr;
     xSemaphoreGive(codecMutex);
     return nullptr;
   }
@@ -183,6 +204,14 @@ uint16_t *Media::decode(const String &path, const String &name, int width, int h
     free(result);
     result = nullptr;
   }
+  if (mask) {
+    if (!ok) {
+      free(opacity);
+      opacity = nullptr;
+    }
+    *mask = opacity;
+  }
+  opacity = nullptr;
   output = nullptr;
   if (fittedWidth) *fittedWidth = ow;
   if (fittedHeight) *fittedHeight = oh;
@@ -212,13 +241,18 @@ bool Media::validate(const String &path, const String &name) {
   return ok;
 }
 bool Media::draw(Arduino_GFX &gfx, const String &path, const String &original, int x, int y, int w,
-                 int h, bool fit, uint16_t background, bool asynchronous, bool retainFrame) {
+                 int h, bool fit, uint16_t background, bool asynchronous, bool retainFrame,
+                 bool transparent) {
   if (!path.length())
     return false;
   if (pending && pending->done.load(std::memory_order_acquire)) {
     if (pending->width == w && pending->height == h && pending->fit == fit &&
-        pending->background == background && (pending->path == path || retainFrame)) {
+        pending->background == background && pending->transparent == transparent &&
+        (pending->path == path || retainFrame)) {
       free(pixels);
+      free(alpha);
+      alpha = pending->alpha;
+      pending->alpha = nullptr;
       pixels = pending->pixels;
       pending->pixels = nullptr;
       pw = pending->fittedWidth;
@@ -228,11 +262,13 @@ bool Media::draw(Arduino_GFX &gfx, const String &path, const String &original, i
       ch = h;
       cachedFit = fit;
       cachedBackground = background;
+      cachedTransparent = transparent;
     }
     releaseJob(pending);
     pending = nullptr;
   }
-  bool compatible = cw == w && ch == h && cachedFit == fit && cachedBackground == background;
+  bool compatible = cw == w && ch == h && cachedFit == fit && cachedBackground == background &&
+                    cachedTransparent == transparent;
   if (cached != path || !compatible) {
     if (asynchronous) {
       if (!pending && decodeRequests) {
@@ -244,6 +280,7 @@ bool Media::draw(Arduino_GFX &gfx, const String &path, const String &original, i
           job->height = h;
           job->fit = fit;
           job->background = background;
+          job->transparent = transparent;
           if (xQueueSend(decodeRequests, &job, 0) == pdTRUE)
             pending = job;
           else
@@ -252,20 +289,30 @@ bool Media::draw(Arduino_GFX &gfx, const String &path, const String &original, i
       }
     } else {
       free(pixels);
+      free(alpha);
+      alpha = nullptr;
       pw = w;
       ph = h;
-      pixels = decode(path, original, w, h, fit ? &pw : nullptr, fit ? &ph : nullptr, background);
+      pixels = decode(path, original, w, h, fit ? &pw : nullptr, fit ? &ph : nullptr, background,
+                      transparent ? &alpha : nullptr);
       cached = path;
       cw = w;
       ch = h;
       cachedFit = fit;
       cachedBackground = background;
+      cachedTransparent = transparent;
       compatible = true;
     }
   }
   if (!pixels || !compatible || (!retainFrame && cached != path))
     return false;
-  gfx.draw16bitRGBBitmap(x + (w - pw) / 2, y + (h - ph) / 2, pixels, pw, ph);
+  if (transparent && alpha) {
+    for (int row = 0; row < ph; ++row)
+      for (int col = 0; col < pw; ++col)
+        if (alpha[row * pw + col])
+          gfx.drawPixel(x + (w - pw) / 2 + col, y + (h - ph) / 2 + row, pixels[row * pw + col]);
+  } else
+    gfx.draw16bitRGBBitmap(x + (w - pw) / 2, y + (h - ph) / 2, pixels, pw, ph);
   return true;
 }
 } // namespace leap

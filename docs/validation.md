@@ -190,3 +190,23 @@ keinen dieser Hardwaretests.
   `tools/check_image.py` prüft deshalb zusätzlich die echte 4-MiB-Appgrenze.
 - Build mit `LocalConfig.example.h`: keine persönlichen WLAN-Zugangsdaten
   enthalten. Vor dem Einsatz die eigene `LocalConfig.h` anlegen und neu bauen.
+
+## Haustier und Snake: 1.0.0-beta.10
+
+- Basierend auf dem aktuellen Firmware-Stand `9113238` und Homeserver `a940ce9`.
+- Native Regeln und echte `Games.cpp` im simulierten Gerätekontext bestanden:
+  Start/Beenden/Neustart, vier Aktionsframes und Gemütswechsel, alle Aktionen,
+  langsamer Bedarf, Preferences-Restart und korrupter Datensatz, Richtungswechsel,
+  Futter, Wand/Körper/freigegebener Schwanz, voller Spielbereich und Rekord.
+- Echte Homeserver-API-Fix­tures enthalten Pet-PNGs und 256×142-Hintergründe;
+  Firmware-Protokollvalidator und unveränderte Sync-Aktivierung bestehen.
+- PNGdec 1.1.6: elf Bildfixtures einschließlich 256×142, RGBA-Alpha und ungültiger
+  PNGs; zusätzliche Maskenprüfungen für Palette, tRNS und deckendes Schwarz.
+- Homeserver: 55 Tests bestanden, darunter neun neue Tests für Spiel-IDs,
+  ZIP-Import, Versionsschutz, Synchronisation, Referenzfehler und Geräte-Vorschau.
+- Arduino-Downloadserver sind in dieser Umgebung gesperrt. Der vollständige
+  ESP32-S3-N16R8-Build wurde im bestehenden GitHub-Workflow erfolgreich geprüft,
+  einschließlich App-Image-Validierung und Export der Build-Artefakte.
+- Physische Display-/Tasten-/Sound-Abnahme, Neustart und Stromverlust am Gerät
+  bleiben erforderlich. Das erwähnte Beispiel-ZIP war nicht angehängt;
+  automatische Prüfungen verwenden synthetische Frames und Hintergründe.
