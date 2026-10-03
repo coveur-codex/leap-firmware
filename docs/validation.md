@@ -2,6 +2,17 @@
 
 Stand: 2026-10-02. Referenz-Homeserver `8175c9f`, unverändert.
 
+## Sidebar und Regenradar: 1.0.0-beta.4 (2026-10-03)
+
+- Sidebar-Geometrie: x=0–85, Status y=4–11, Uhr y=15–36, Avatar
+  x=3–82/y=38–117, Seitenicons y=119–129, Seitentitel y=133–140.
+- Hauptinhalt beginnt bei x=94; die bisherige Titelzeile entfällt. Wetterradar
+  x=308–419/y=8–119, Quellenhinweis y=122–129.
+- Native Firmwaretests bestanden; ESP32-Cross-Build erfolgt im Push-Workflow.
+- Homeserver-Radartests prüfen echte PNG-Verarbeitung anhand lokaler Fixtures,
+  Cache/Offline-Fallback, feste Providerhosts und Geräte-/Bild-Endpunkte.
+- Live-RainViewer-Abruf und Darstellung am physischen Display bleiben zu prüfen.
+
 ## LittleFS-Erststart und Diagnose: 1.0.0-beta.3 (2026-10-03)
 
 Das Hardwarelog mit `fsFree=0`, `selftest=0` und `wifi=1` zeigt einen

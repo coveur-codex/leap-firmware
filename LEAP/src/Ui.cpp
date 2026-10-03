@@ -220,15 +220,34 @@ bool Ui::drawAsset(const String &id, Media &media, int x, int y, int width, int 
   }
   return media.draw(*canvas, assets.resolve(id, version, path), path, x, y, width, height);
 }
+// Seven-pixel page glyphs keep all ten supported pages visible in their configured order.
+static const uint8_t pageIcons[][7] = {
+    {8, 28, 62, 127, 34, 42, 62},     // home
+    {127, 65, 93, 65, 93, 65, 127},   // news
+    {8, 42, 28, 127, 28, 42, 8},     // weather
+    {8, 8, 28, 127, 28, 28, 42},     // aircraft
+    {28, 34, 2, 12, 8, 0, 8},        // quiz
+    {0, 62, 65, 93, 73, 65, 34},     // games
+    {62, 65, 85, 65, 62, 16, 32},    // communication
+    {54, 73, 73, 73, 73, 73, 62},    // knowledge
+    {8, 42, 28, 99, 28, 42, 8},      // settings
+    {2, 6, 14, 30, 62, 60, 24}};     // chill
+static const char *pageIds[] = {"home", "news", "weather", "aircraft", "quiz", "games",
+                                "communication", "knowledge", "settings", "chill"};
 void Ui::sidebar() {
-  canvas->fillRect(0, 0, 100, 142, Panel);
+  canvas->fillRect(0, 0, 86, 142, Panel);
   for (int i = 0; i < 3; i++)
-    canvas->fillRect(8 + i * 5, 17 - i * 4, 3, 4 + i * 4, network.connected ? Accent : Muted);
+    canvas->drawFastVLine(7 + i * 3, 9 - i * 2, 2 + i * 2,
+                          network.connected ? Accent : Muted);
+  // ESP-NOW group radio; no Bluetooth connection is advertised.
+  canvas->drawCircle(28, 7, 2, radio.enabled ? Accent : Muted);
+  canvas->drawFastVLine(28, 9, 3, radio.enabled ? Accent : Muted);
+  // No wired battery ADC: outline and dash explicitly mean unknown.
+  canvas->drawRect(48, 4, 12, 7, Muted);
+  canvas->drawFastVLine(60, 6, 3, Muted);
+  canvas->drawFastHLine(52, 7, 4, Muted);
   if (network.busy)
-    canvas->drawCircle(88, 12, 4, Accent);
-  if (radio.enabled) {
-    text("G", 32, 10, 1, Accent);
-  } // group radio, not Bluetooth
+    canvas->drawCircle(77, 7, 2, Accent);
   time_t now = time(nullptr);
   tm local{};
   localtime_r(&now, &local);
@@ -237,23 +256,54 @@ void Ui::sidebar() {
     strftime(clock, sizeof(clock), "%H:%M", &local);
   else
     strlcpy(clock, "--:--", sizeof(clock));
-  text(String(network.timeSynced ? "" : "~") + clock, 8, 25, 2);
-  char date[12];
-  if (now > 1700000000) {
-    strftime(date, sizeof(date), "%d.%m.%y", &local);
-    text(date, 8, 43, 1, Muted);
+  // 22px high clock, larger than the old 16px font and still within 86px.
+  const uint8_t segments[] = {0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x6f};
+  for (int i = 0; i < 5; ++i) {
+    int x = 7 + i * 16 - (i > 2 ? 8 : 0), y = 15;
+    if (i == 2) {
+      canvas->fillRect(x + 1, y + 6, 2, 2, 0xffff);
+      canvas->fillRect(x + 1, y + 15, 2, 2, 0xffff);
+      continue;
+    }
+    uint8_t mask = clock[i] == '-' ? 0x40 : segments[clock[i] - '0'];
+    if (mask & 1) canvas->fillRect(x + 2, y, 9, 2, 0xffff);
+    if (mask & 2) canvas->fillRect(x + 11, y + 2, 2, 8, 0xffff);
+    if (mask & 4) canvas->fillRect(x + 11, y + 12, 2, 8, 0xffff);
+    if (mask & 8) canvas->fillRect(x + 2, y + 20, 9, 2, 0xffff);
+    if (mask & 16) canvas->fillRect(x, y + 12, 2, 8, 0xffff);
+    if (mask & 32) canvas->fillRect(x, y + 2, 2, 8, 0xffff);
+    if (mask & 64) canvas->fillRect(x + 2, y + 10, 9, 2, 0xffff);
   }
+  if (!network.timeSynced)
+    canvas->drawPixel(82, 35, Muted);
   String id = state["config"]["avatar"] | "dragon";
   if (!id.startsWith("avatar-"))
     id = "avatar-" + id;
-  if (!drawAsset(id, avatar, 10, 53, 80, 80, true)) {
-    canvas->fillCircle(50, 90, 24, Accent);
-    canvas->fillCircle(42, 85, 3, Background);
-    canvas->fillCircle(58, 85, 3, Background);
-    canvas->drawFastHLine(43, 100, 14, Background);
+  if (!drawAsset(id, avatar, 3, 38, 80, 80, true)) {
+    canvas->fillCircle(43, 78, 24, Accent);
+    canvas->fillCircle(35, 73, 3, Background);
+    canvas->fillCircle(51, 73, 3, Background);
+    canvas->drawFastHLine(36, 88, 14, Background);
   }
-  String name = state["config"]["avatarName"] | "LEAP";
-  text(displayText(name).substring(0, 14), 8, 134, 1, Muted);
+  int active = menu ? constrain(selection, 0, int(pages.size()) - 1) : page;
+  int count = std::min(10, int(pages.size()));
+  int start = std::max(0, active - count + 1);
+  int left = (86 - count * 8) / 2;
+  for (int i = 0; i < count; ++i) {
+    int index = start + i, glyph = 0, x = left + i * 8;
+    for (int j = 0; j < 10; ++j)
+      if (pages[index].id == pageIds[j]) glyph = j;
+    bool selected = !locked && index == active;
+    if (selected) canvas->fillRect(x, 119, 8, 11, Accent);
+    for (int row = 0; row < 7; ++row)
+      for (int col = 0; col < 7; ++col)
+        if (pageIcons[glyph][row] & (1 << (6 - col)))
+          canvas->drawPixel(x + col, 121 + row, selected ? Background : Muted);
+  }
+  String title = locked ? "Gesperrt" : menu ? "Menue" : pages[page].title;
+  title = displayText(title);
+  if (title.length() > 13) title = title.substring(0, 11) + "..";
+  text(title, (86 - title.length() * 6) / 2, 133, 1, Muted);
 }
 void Ui::nextQuestion(int delta) {
   int count = quiz["questions"].size();
@@ -272,7 +322,7 @@ void Ui::drawPage(const String &id) {
     String child = state["config"]["childName"] | "";
     if (!child.length())
       child = state["config"]["name"] | "du";
-    text("Hallo " + displayText(child).substring(0, 18) + "!", 112, 40, 2, Accent);
+    text("Hallo " + displayText(child).substring(0, 18) + "!", 94, 12, 2, Accent);
     int row = 0;
     JsonObject slots = state["config"]["homeSlots"].as<JsonObject>();
     for (JsonPair slot : slots) {
@@ -285,12 +335,12 @@ void Ui::drawPage(const String &id) {
       if (kind == "question_of_day")
         label = "Quiz: " + String(quiz["questions"].size()) + " Fragen";
       if (label.length())
-        text(label, 112, 68 + (row++) * 14);
+        text(label, 94, 44 + (row++) * 14);
     }
     if (state["config"]["deviceId"].isNull())
       body("Willkommen! WLAN und Geraete-ID in LocalConfig.h einrichten. Danach hier offline "
            "weiter nutzen.",
-           112, 70, 290, 55);
+           94, 46, 290, 55);
   } else if (id == "news") {
     auto rows = content["news"]["articles"].as<JsonArray>();
     if (!rows.size()) {
@@ -300,10 +350,10 @@ void Ui::drawPage(const String &id) {
     item = (item + rows.size()) % rows.size();
     auto a = rows[item];
     String image = a["image"] | "", hash = state["images"][image] | "";
-    bool shown = hash.length() && picture.draw(*canvas, storage.blob(hash), image, 320, 40, 96, 66);
+    bool shown = hash.length() && picture.draw(*canvas, storage.blob(hash), image, 320, 12, 96, 80);
     body(String(a["title"] | "") + "\n\n" + String(a["summary"] | "") + "\n" +
              String(a["source"] | "") + " | " + String(a["published"] | ""),
-         112, 42, shown ? 196 : 302, 82);
+         94, 12, shown ? 216 : 326, 112);
   } else if (id == "weather") {
     auto w = content["weather"];
     if (w["current"].isNull()) {
@@ -311,7 +361,7 @@ void Ui::drawPage(const String &id) {
       return;
     }
     text(String(w["current"]["temperature"].as<float>(), 0) + " Grad " + String(w["unit"] | "C"),
-         112, 39, 2, Accent);
+         94, 12, 2, Accent);
     String details =
         String(w["location"] | "") + "\nMin " + String(w["today"]["min"].as<float>(), 0) +
         " / Max " + String(w["today"]["max"].as<float>(), 0) + "\nRegen " +
@@ -319,7 +369,28 @@ void Ui::drawPage(const String &id) {
         String(w["current"]["windSpeed"].as<float>(), 0) + "\nStand: " + String(w["updated"] | "");
     if (w["stale"] == true)
       details += " (Cache)";
-    body(details, 112, 65, 300, 58);
+    body(details, 94, 38, 204, 68);
+    auto radar = content["weatherRadar"];
+    String hash = radar["hash"] | "";
+    bool shown = digestValid(hash.c_str()) &&
+                 picture.draw(*canvas, "/radar/" + hash, "radar.png", 308, 8, 112, 112);
+    if (!shown) {
+      canvas->drawRect(308, 8, 112, 112, Muted);
+      text("Regenradar", 314, 43, 1, Muted);
+      text("nicht verfuegbar", 314, 58, 1, Muted);
+    } else {
+      String updated = radar["updated"] | "";
+      bool stale = radar["stale"] == true || !network.connected;
+      tm observed{};
+      if (strptime(updated.c_str(), "%Y-%m-%dT%H:%M:%S", &observed)) {
+        time_t stamp = utcTimestamp(observed.tm_year + 1900, observed.tm_mon + 1,
+                                    observed.tm_mday, observed.tm_hour, observed.tm_min, observed.tm_sec);
+        stale = stale || !network.timeSynced || time(nullptr) - stamp > 1800;
+      }
+      text("Radar " + updated.substring(11, 16) + " UTC" + (stale ? " alt" : ""),
+           94, 115, 1, stale ? Muted : Accent);
+    }
+    text("RainViewer", 308, 122, 1, Muted);
   } else if (id == "aircraft") {
     auto rows = content["aircraft"]["aircraft"].as<JsonArray>();
     if (!rows.size()) {
@@ -341,8 +412,8 @@ void Ui::drawPage(const String &id) {
     }
     auto q = rows[item % rows.size()];
     if (quizDetail) {
-      body(quizDetail == 1 ? String(q["q"] | "") : String(q["a"][answerOrder[selection]] | ""), 112,
-           40, 302, 82);
+      body(quizDetail == 1 ? String(q["q"] | "") : String(q["a"][answerOrder[selection]] | ""), 94,
+           12, 326, 110);
       notice = "Oben/Unten: lesen | Mitte: zurueck";
       return;
     }
@@ -351,15 +422,15 @@ void Ui::drawPage(const String &id) {
            String(q["a"][0] | "") + "\n" + String(q["explanation"] | "") +
            "\nRechts/Links: naechste Frage");
     else {
-      body(q["q"] | "", 112, 36, 300, 30);
+      body(q["q"] | "", 94, 12, 326, 30);
       std::vector<String> labels;
       for (int i : answerOrder)
         labels.push_back(q["a"][i] | "");
-      list(labels, 112, 69, 302);
+      list(labels, 94, 49, 326);
     }
   } else if (id == "games") {
     if (gameOpen)
-      game.draw(*canvas, 112, 38);
+      game.draw(*canvas, 94, 10);
     else {
       std::vector<String> labels;
       JsonArray configuredGames = state["config"]["games"].as<JsonArray>();
@@ -376,19 +447,19 @@ void Ui::drawPage(const String &id) {
     auto messages = radio.messages();
     if (messages.size()) {
       selection = constrain(selection, 0, int(messages.size()) - 1);
-      body(messages[selection]["text"] | "", 112, 85, 300, 35);
+      body(messages[selection]["text"] | "", 94, 72, 326, 35);
     } else
-      text("Keine Vorlagen", 112, 90, 1, Muted);
+      text("Keine Vorlagen", 94, 78, 1, Muted);
     if (radio.count) {
       auto &last =
           radio.history[radio.count - 1 - std::min(size_t(std::max(0, item)), radio.count - 1)];
-      text(displayText(last.name).substring(0, 40), 112, 38, 1, Accent);
+      text(displayText(last.name).substring(0, 40), 94, 10, 1, Accent);
       int old = scroll;
       scroll = 0;
-      body(last.text, 112, 50, 300, 28);
+      body(last.text, 94, 26, 326, 28);
       scroll = old;
     } else
-      text("Gemeinsamer Gruppenchat", 112, 43, 1, Muted);
+      text("Gemeinsamer Gruppenchat", 94, 15, 1, Muted);
   } else if (id == "knowledge") {
     auto k = content["knowledge"];
     if (knowledgeMode == 0)
@@ -399,10 +470,10 @@ void Ui::drawPage(const String &id) {
            "\n\nQuelle: " + String(k["sourceName"] | k["source"] | "") + "\n" +
            String(k["originalUrl"] | "") + "\n" + String(k["license"] | ""));
     if (knowledgeMode == 2) {
-      text(query, 112, 44, 2, Accent);
+      text(query, 94, 20, 2, Accent);
       const char *alphabet = "abcdefghijklmnopqrstuvwxyz ";
-      text(String("< ") + alphabet[character] + " >", 112, 75, 2);
-      text("Oben: + | Unten: loeschen", 112, 106);
+      text(String("< ") + alphabet[character] + " >", 94, 55, 2);
+      text("Oben: + | Unten: loeschen", 94, 86);
     }
     if (knowledgeMode == 3 || knowledgeMode == 4) {
       auto rows =
@@ -437,19 +508,18 @@ void Ui::render() {
     text("LEAP", 135, 40, 4, Accent);
     text("Mitte druecken zum Starten", 122, 99);
   } else if (menu) {
-    text("Entdecken", 112, 13, 2, Accent);
     std::vector<String> labels;
     for (auto &p : pages)
       labels.push_back(p.title);
     list(labels);
   } else {
-    text(displayText(pages[page].title).substring(0, 24), 112, 12, 2, Accent);
+    // Current page title lives below the sidebar navigation.
     drawPage(pages[page].id);
   }
-  canvas->fillRect(103, 132, 325, 10, Panel);
+  canvas->fillRect(86, 132, 342, 10, Panel);
   text(notice.length() ? displayText(notice).substring(0, 52)
                        : "L: Seiten / Menue   R: Waehlen / OK",
-       108, 134, 1, Muted);
+       94, 134, 1, Muted);
   canvas->flush();
 }
 void Ui::input(const InputEvent &e) {

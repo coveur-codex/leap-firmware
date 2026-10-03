@@ -11,7 +11,7 @@ public:
   bool json(const String &path, JsonDocument &response, JsonDocument *body = nullptr);
   bool download(const String &path, size_t size, const String &hash,
                 const std::function<bool(const uint8_t *, size_t)> &sink);
-  String cacheImage(const String &path);
+  String cacheImage(const String &path, bool radar = false);
   static String encode(const String &value);
 
 private:

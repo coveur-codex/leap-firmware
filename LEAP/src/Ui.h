@@ -28,9 +28,9 @@ class Ui {
   void reload();
   void render();
   void sidebar();
-  void body(const String &text, int x = 112, int y = 52, int width = 302, int height = 73);
+  void body(const String &text, int x = 94, int y = 12, int width = 326, int height = 110);
   void text(const String &text, int x, int y, int size = 1, uint16_t color = 0xffff);
-  void list(const std::vector<String> &labels, int x = 112, int y = 47, int width = 302);
+  void list(const std::vector<String> &labels, int x = 94, int y = 18, int width = 326);
   void nextQuestion(int delta);
   void drawPage(const String &id);
   void action(const InputEvent &event);

@@ -125,7 +125,7 @@ bool Transport::download(const String &path, size_t size, const String &hash,
     snprintf(encoded + 2 * i, 3, "%02x", digest[i]);
   return ok && hash == encoded;
 }
-String Transport::cacheImage(const String &path) {
+String Transport::cacheImage(const String &path, bool radar) {
   WiFiClient plain;
   WiFiClientSecure tls;
   HTTPClient http;
@@ -159,7 +159,8 @@ String Transport::cacheImage(const String &path) {
   char hash[65];
   for (int i = 0; i < 32; i++)
     snprintf(hash + 2 * i, 3, "%02x", digest[i]);
-  if (!ok || !LittleFS.rename("/image.part", storage.blob(hash))) {
+  String target = radar ? String("/radar/") + hash : storage.blob(hash);
+  if (!ok || !storage.parents(target) || !LittleFS.rename("/image.part", target)) {
     LittleFS.remove("/image.part");
     return "";
   }

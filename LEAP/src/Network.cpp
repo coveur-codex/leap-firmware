@@ -27,6 +27,21 @@ static void imageCache(JsonDocument &state, JsonVariantConst value, Transport &n
     state["images"][url] = hash;
   }
 }
+static void pruneRadar() {
+  // Keep both persistent snapshots usable; radar never shares the asset blob directory.
+  JsonDocument a(&jsonRam), b(&jsonRam);
+  storage.readJson("/state0.json", a);
+  storage.readJson("/state1.json", b);
+  String first = a["content"]["weatherRadar"]["hash"] | "";
+  String second = b["content"]["weatherRadar"]["hash"] | "";
+  File dir = LittleFS.open("/radar");
+  if (!dir || !dir.isDirectory()) return;
+  for (File file = dir.openNextFile(); file; file = dir.openNextFile()) {
+    String name = file.name(), path = file.path();
+    file.close();
+    if (name != first && name != second) LittleFS.remove(path);
+  }
+}
 bool Network::begin() {
   base = "/api/v1/devices/" + Transport::encode(LEAP_DEVICE_ID);
   requests = xQueueCreate(3, sizeof(KnowledgeRequest));
@@ -102,6 +117,25 @@ void Network::content(JsonDocument &state) {
     }
   }
   state["contentConfig"] = state["config"]["configVersion"];
+  if (enabled(state, "weather")) {
+    JsonDocument radar(&jsonRam);
+    if (net.json(base + "/weather/radar", radar) && radar["available"] == true) {
+      String url = radar["image"] | "";
+      String oldUrl = state["content"]["weatherRadar"]["image"] | "";
+      String hash = state["content"]["weatherRadar"]["hash"] | "";
+      if (url.startsWith("/api/v1/assets/weather-radar/") && url.endsWith(".png")) {
+        if (url != oldUrl || !digestValid(hash.c_str()) || !LittleFS.exists("/radar/" + hash))
+          hash = net.cacheImage(url, true);
+        if (hash.length() && Media::validate("/radar/" + hash, url)) {
+          radar["hash"] = hash;
+          state["content"]["weatherRadar"] = radar;
+        } else
+          state["content"]["weatherRadar"]["stale"] = true;
+      }
+    } else {
+      state["content"]["weatherRadar"]["stale"] = true;
+    }
+  }
   int images = 0;
   JsonArray articles = state["content"]["news"]["articles"].as<JsonArray>();
   for (JsonObject article : articles)
@@ -269,6 +303,7 @@ void Network::run() {
         (requested.exchange(false) || elapsed(millis(), lastSync, interval))) {
       busy = true;
       bool ok = sync();
+      pruneRadar();
       busy = false;
       lastSync = millis();
       interval = ok ? SyncInterval : std::min(interval * 2, SyncInterval);

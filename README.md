@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.0-beta.3`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.0-beta.4`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -108,13 +108,26 @@ SPI zunächst konservativ 20 MHz.
 | Rechts CENTER | Bestätigen, Nachricht senden, Quiz beantworten |
 
 Nach einer Minute wird gedimmt, nach drei Minuten ohne Eingabe gesperrt.
-Die Sidebar zeigt WLAN, Gruppenfunk, Sync-Aktivität, Uhr und Avatar. `~` vor der
-Uhr bedeutet: letzter gespeicherter Zeitstand, seit diesem Start noch nicht vom
-Homeserver bestätigt. Ohne RTC kennt das Gerät eine stromlose Zeitspanne nicht.
+Die Sidebar ist exakt **86 Pixel** breit. Sie zeigt kleine WLAN-/Gruppenfunk- und
+Sync-Symbole, eine 22 Pixel hohe Uhr und den unskalierten 80×80-Avatar. Das
+Akku-Symbol mit Strich bedeutet „unbekannt“ (keine angeschlossene Messleitung).
+Unten stehen alle Seitenicons in der konfigurierten Reihenfolge, die aktuelle
+Seite ist hervorgehoben; ihr Titel steht darunter statt im Hauptbereich. Ein
+kleiner Punkt rechts neben der Uhr kennzeichnet einen noch nicht bestätigten Zeitstand. Ohne RTC kennt das Gerät eine stromlose Zeitspanne nicht.
 Nach einem Check-in läuft die Uhr lokal weiter; Sommerzeit über POSIX-Zeitzone.
 
 **Gruppenchat:** Rechts UP/DOWN wählt Vorlagen, MITTE sendet, LINKS/RECHTS
 blättert durch die letzten acht Chatzeilen. Historie bleibt nur im RAM.
+
+**Regenradar:** Die Wetterseite zeigt rechts eine 112×112-Pixel-Aufnahme von
+RainViewer, zentriert auf den im Homeserver konfigurierten Standort (Zoom 7,
+Nord oben, weißer Standortpunkt). Zeitstempel in UTC; „alt“ kennzeichnet Cache,
+Offlinebetrieb oder Aufnahmen älter als 30 Minuten. Kein Bild wird als „kein Regen“
+ersetzt: Fehlen Daten, steht dort „nicht verfügbar“. Das letzte Bild bleibt offline
+verfügbar. Radar-Dateien werden separat gespeichert; nur die beiden aktuellen
+Snapshots werden aufbewahrt. Hierfür muss auch der Homeserver auf den Stand mit
+`GET /api/v1/devices/{id}/weather/radar` aktualisiert werden. Der Radarabruf erfolgt
+mit dem regulären Sync (15 Minuten), keine Animation oder Vorhersage.
 
 **Wissen:** Lesen, Suche, Zufall und Artikelverweise. Im Suchfeld rechts LINKS/
 RECHTS Buchstaben wählen, OBEN anhängen, UNTEN löschen, MITTE suchen. Text, Quelle,
