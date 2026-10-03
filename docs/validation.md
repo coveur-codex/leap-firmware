@@ -228,3 +228,18 @@ keinen dieser Hardwaretests.
 - Homeserver: 57 Tests bestanden. Bestehende Uploads erhalten genau eine neue
   Version mit ergänzten Metadaten; alte Version und Bild-Hashes bleiben erhalten.
   Regulärer Sync und Übereinstimmung der neuen definition.json geprüft.
+
+
+## Einfaches Tamagotchi: beta.12
+
+- Native Tests: Drachi-v6-Pfadstruktur, alle neun Zustände, vier Frames je Aktion,
+  Statusmeldungen, Warnbalken, Nacht beim Schlafen, lokale Ersatzlandschaft,
+  Bedürfnisabnahme innerhalb von Minuten und bestehende Spielstand-/Snake-Tests.
+- Echter PNGdec 1.1.6 / Media-Worker: Tagbild und transparente Tierframes;
+  erst fehlender, später verfügbarer Hintergrund unter demselben Blob-Pfad wird
+  nach dem Retry-Intervall sichtbar. Fixtures sind synthetisch, nicht die Drachi-Dateien.
+- Das mitgelieferte Manifest enthält nur relative Download-URLs. Die konkreten
+  Drachi-PNGs und ein physisches Leap-Gerät standen hier nicht zur Verfügung.
+  Deren Darstellung sowie Tasten-/Animationsgefühl bleiben auf Hardware zu prüfen.
+- Der lokale ESP32-Komplettbuild ist durch die Netzwerkfreigaben für Arduino- und
+  Espressif-Downloads blockiert; der Repository-Workflow baut mit der festgelegten Toolchain.

@@ -14,10 +14,11 @@ void Games::begin() {
       gamePrefs.getBytes("pet", &saved, sizeof(saved)) == sizeof(saved) && saved.valid())
     pet = saved;
   highscore = constrain(gamePrefs.getInt("snake-best", 0), 0, SnakeState::Capacity - 3);
-  petLast = millis();
+  petLast = petSavedAt = millis();
 }
 void Games::savePet() {
-  gamePrefs.putBytes("pet", &pet, sizeof(pet));
+  petDirty = gamePrefs.putBytes("pet", &pet, sizeof(pet)) != sizeof(pet);
+  petSavedAt = millis();
 }
 void Games::avatarPackage(const String &id, int version, JsonVariantConst manifest) {
   if (avatarId == id && avatarVersion == version && petManifest.as<JsonVariantConst>() == manifest)
@@ -34,6 +35,8 @@ String Games::petBlob(const String &path) const {
   return "";
 }
 void Games::close() {
+  if (opened && petDirty)
+    savePet();
   opened = running = false;
   petAction = -1;
 }
@@ -119,15 +122,18 @@ void Games::input(Key key) {
 }
 void Games::tick() {
   uint32_t now = millis();
-  if (uint32_t(now - petLast) >= 3600000) {
-    unsigned hours = uint32_t(now - petLast) / 3600000;
-    petLast += hours * 3600000;
+  if (uint32_t(now - petLast) >= PetState::DecayIntervalMs) {
+    unsigned ticks = uint32_t(now - petLast) / PetState::DecayIntervalMs;
+    petLast += ticks * PetState::DecayIntervalMs;
     PetState before = pet;
-    pet.decay(hours);
+    pet.decay(ticks);
     if (before.food != pet.food || before.joy != pet.joy || before.clean != pet.clean ||
         before.energy != pet.energy)
-      savePet();
+      petDirty = true;
   }
+  // Persist care immediately; batch passive decay to avoid a flash write per tick.
+  if (petDirty && elapsed(now, petSavedAt, 300000))
+    savePet();
   if (petAction >= 0 && elapsed(now, actionAt, 3000))
     petAction = -1;
   if (isSnake() && opened && running && elapsed(now, last, 220)) {
@@ -240,12 +246,27 @@ void Games::drawPet(Arduino_GFX &gfx) {
   time_t now = time(nullptr);
   struct tm local {};
   localtime_r(&now, &local);
-  bool night = petNight(now > 1700000000, local.tm_hour);
+  bool night = petAction == 3 || petNight(now > 1700000000, local.tm_hour);
   gfx.fillRect(86, 0, 256, 142, night ? 0x1086 : 0xb6ff);
   JsonVariantConst definition = petAssets;
   String background = definition["backgrounds"][night ? "night" : "day"] | "";
-  if (background.length())
-    petBackground.draw(gfx, petBlob(background), background, 86, 0, 256, 142);
+  // A complete local scene also covers missing packages and asynchronous decoding.
+  bool backgroundShown =
+      background.length() && petBackground.draw(gfx, petBlob(background), background, 86, 0, 256,
+                                                142, false, night ? 0x1086 : 0xb6ff);
+  if (!backgroundShown) {
+    gfx.fillCircle(310, 36, 12, night ? 0xffde : 0xffe0);
+    if (night) {
+      gfx.fillCircle(315, 31, 11, 0x1086);
+      for (int i = 0; i < 7; ++i)
+        gfx.fillRect(104 + i * 29, 27 + (i % 3) * 11, 2, 2, 0xffff);
+    } else {
+      gfx.fillRoundRect(112, 32, 42, 10, 5, 0xffff);
+      gfx.fillRoundRect(270, 56, 34, 8, 4, 0xffff);
+    }
+    gfx.fillRoundRect(86, 95, 256, 47, 18, night ? 0x1a68 : 0x6d69);
+    gfx.fillRect(86, 113, 256, 29, night ? 0x1245 : 0x4545);
+  }
   const char *actionNames[] = {"eating", "playing", "happy", "sleeping"};
   const char *mood = petAction >= 0 ? actionNames[petAction] : pet.mood();
   auto animation = definition["animations"][mood];
@@ -262,21 +283,82 @@ void Games::drawPet(Arduino_GFX &gfx) {
   }
   if (!path.length())
     path = avatarFrame(petManifest, millis()).c_str();
-  bool shown = suffix(path.c_str(), ".png") && petImage.draw(gfx, petBlob(path), path, 174, 40, 80,
-                                                             80, false, 0x10e5, true, true, true);
+  // Small whole-body motion keeps even subtle four-frame assets lively.
+  bool resting = String(mood) == "sleeping" || String(mood) == "tired";
+  int beat = (millis() / 200) % 8;
+  int lift = resting ? 0 : (beat < 4 ? beat : 7 - beat);
+  if (String(mood) == "playing" || String(mood) == "happy")
+    lift *= 2;
+  int petX = 174 + (String(mood) == "playing" ? (beat - 3) * 2 : 0);
+  int petY = 34 - lift;
+  bool shown =
+      suffix(path.c_str(), ".png") &&
+      petImage.draw(gfx, petBlob(path), path, petX, petY, 80, 80, false, 0x10e5, true, true, true);
   if (!shown) {
-    gfx.fillCircle(214, 80, 30, 0x06b8);
-    gfx.fillCircle(204, 74, 3, 0x0000);
-    gfx.fillCircle(224, 74, 3, 0x0000);
-    if (String(mood) == "sleeping" || String(mood) == "tired") {
-      gfx.drawLine(200, 74, 208, 74, 0x0000);
-      gfx.drawLine(220, 74, 228, 74, 0x0000);
+    int cx = petX + 40, cy = petY + 40;
+    gfx.fillCircle(cx, cy, 30, 0x06b8);
+    if (resting) {
+      gfx.drawLine(cx - 14, cy - 6, cx - 6, cy - 6, 0x0000);
+      gfx.drawLine(cx + 6, cy - 6, cx + 14, cy - 6, 0x0000);
+    } else {
+      gfx.fillCircle(cx - 10, cy - 6, 3, 0x0000);
+      gfx.fillCircle(cx + 10, cy - 6, 3, 0x0000);
     }
-    gfx.drawLine(207, String(mood) == "sad" ? 94 : 91, 221, 91, 0x0000);
-    gfx.setTextSize(1);
+    if (String(mood) == "hungry" || String(mood) == "eating")
+      gfx.fillCircle(cx, cy + 12, 4, 0x0000);
+    else {
+      int corner = String(mood) == "sad" ? 17 : 10;
+      gfx.drawLine(cx - 7, cy + corner, cx, cy + 14, 0x0000);
+      gfx.drawLine(cx, cy + 14, cx + 7, cy + corner, 0x0000);
+    }
+    if (String(mood) == "dirty") {
+      gfx.fillCircle(cx - 18, cy + 9, 4, 0x8300);
+      gfx.fillCircle(cx + 14, cy + 18, 3, 0x8300);
+    }
+  }
+  const char *status = "Mir geht es gut";
+  if (String(mood) == "happy")
+    status = "Ich bin gluecklich!";
+  if (String(mood) == "hungry")
+    status = "Ich habe Hunger!";
+  if (String(mood) == "tired")
+    status = "Ich bin muede";
+  if (String(mood) == "dirty")
+    status = "Bitte wasch mich";
+  if (String(mood) == "sad")
+    status = "Spiel mit mir!";
+  if (petAction == 0)
+    status = "Mjam, danke!";
+  if (petAction == 1)
+    status = "Juhu, spielen!";
+  if (petAction == 2)
+    status = "Wieder sauber!";
+  if (petAction == 3)
+    status = "Zzz... gute Nacht";
+  gfx.fillRoundRect(94, 4, 240, 17, 5, 0x18e7);
+  gfx.setTextSize(1);
+  gfx.setTextColor(0xffff);
+  gfx.setCursor(101, 9);
+  gfx.print(status);
+  if (resting) {
+    gfx.setCursor(258, 38 + beat / 2);
+    gfx.print("z Z");
+  } else if (String(mood) == "happy" || String(mood) == "playing") {
+    gfx.fillCircle(264, 53 - lift, 3, 0xfbc0);
+    gfx.drawLine(258, 53 - lift, 270, 53 - lift, 0xfbc0);
+    gfx.drawLine(264, 47 - lift, 264, 59 - lift, 0xfbc0);
+  }
+  const char *needs[] = {"Satt", "Spass", "Sauber", "Kraft"};
+  const uint8_t values[] = {pet.food, pet.joy, pet.clean, pet.energy};
+  gfx.fillRect(86, 117, 256, 25, 0x18e7);
+  for (int i = 0; i < 4; ++i) {
+    int x = 90 + i * 63;
+    uint16_t color = values[i] < 55 ? 0xf9a0 : values[i] < 80 ? 0xffe0 : 0x07e0;
     gfx.setTextColor(0xffff);
-    gfx.setCursor(90, 129);
-    gfx.print("Tiergrafik wartet auf Sync");
+    gfx.setCursor(x, 120);
+    gfx.print(needs[i]);
+    gfx.fillRect(x, 132, 57, 5, 0x4a69);
+    gfx.fillRect(x, 132, 57 * values[i] / 100, 5, color);
   }
   gfx.fillRect(342, 0, 86, 142, 0x18e7);
   const char *labels[] = {"Fuettern", "Spielen", "Waschen", "Schlafen"};

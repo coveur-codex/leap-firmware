@@ -13,7 +13,8 @@ class Games {
   PetState pet;
   SnakeState snake;
   Preferences gamePrefs;
-  uint32_t petLast = 0, actionAt = 0;
+  uint32_t petLast = 0, petSavedAt = 0, actionAt = 0;
+  bool petDirty = false;
   int petAction = -1, highscore = 0;
   bool opened = false;
   void savePet();

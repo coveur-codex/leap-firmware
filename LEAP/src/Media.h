@@ -6,6 +6,7 @@ struct MediaJob;
 class Media {
   String cached;
   int cw = 0, ch = 0;
+  uint32_t decodedAt = 0;
   int pw = 0, ph = 0;
   bool cachedFit = false, cachedTransparent = false;
   uint8_t *alpha = nullptr;

@@ -4,17 +4,18 @@
 namespace leap {
 // Values are wellbeing, not penalties. No decay while the device is powered off.
 struct PetState {
+  static constexpr uint32_t DecayIntervalMs = 30000;
   uint8_t version = 1, food = 85, joy = 85, clean = 85, energy = 85;
   bool valid() const {
     return version == 1 && food >= 35 && food <= 100 && joy >= 35 && joy <= 100 && clean >= 35 &&
            clean <= 100 && energy >= 35 && energy <= 100;
   }
-  void decay(unsigned hours) {
-    auto lower = [hours](uint8_t &v, unsigned rate) {
-      v = uint8_t(std::max(35, int(v) - int(std::min(hours, 24u) * rate)));
+  void decay(unsigned ticks) {
+    auto lower = [ticks](uint8_t &v, unsigned rate) {
+      v = uint8_t(std::max(35, int(v) - int(std::min(ticks, 100u) * rate)));
     };
     lower(food, 2);
-    lower(joy, 1);
+    lower(joy, 2);
     lower(clean, 1);
     lower(energy, 2);
   }
@@ -29,14 +30,17 @@ struct PetState {
       energy = 100;
   }
   const char *mood() const {
-    if (food < 55)
-      return "hungry";
-    if (energy < 55)
-      return "tired";
-    if (clean < 55)
-      return "dirty";
-    if (joy < 55)
+    // Show the most urgent need, with a stable tie break to avoid flicker.
+    uint8_t lowest = std::min(std::min(food, energy), std::min(clean, joy));
+    if (lowest < 55) {
+      if (food == lowest)
+        return "hungry";
+      if (energy == lowest)
+        return "tired";
+      if (clean == lowest)
+        return "dirty";
       return "sad";
+    }
     if (food >= 80 && joy >= 80 && clean >= 80 && energy >= 80)
       return "happy";
     return "idle";

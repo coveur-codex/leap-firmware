@@ -7,7 +7,7 @@ int main() {
   PetState pet;
   assert(pet.valid() && std::strcmp(pet.mood(), "happy") == 0);
   pet.decay(5);
-  assert(pet.food == 75 && pet.energy == 75 && pet.joy == 80);
+  assert(pet.food == 75 && pet.energy == 75 && pet.joy == 75);
   assert(std::strcmp(pet.mood(), "idle") == 0);
   pet.decay(1000000);
   assert(pet.valid() && pet.food >= 35);
@@ -15,7 +15,10 @@ int main() {
   pet.care(0);
   assert(std::strcmp(pet.mood(), "tired") == 0);
   pet.care(3);
-  assert(std::strcmp(pet.mood(), "idle") == 0);
+  assert(std::strcmp(pet.mood(), "dirty") == 0);
+  pet.care(2);
+  assert(std::strcmp(pet.mood(), "sad") == 0);
+  pet.care(1);
   pet.clean = 40;
   assert(std::strcmp(pet.mood(), "dirty") == 0);
   pet.care(2);
@@ -23,6 +26,9 @@ int main() {
   assert(std::strcmp(pet.mood(), "sad") == 0);
   pet.care(1);
   assert(pet.valid());
+  pet.food = 50;
+  pet.energy = 40;
+  assert(std::strcmp(pet.mood(), "tired") == 0); // Lowest need wins over fixed priority.
   PetState reboot;
   std::memcpy(&reboot, &pet, sizeof(pet));
   assert(reboot.valid() && reboot.food == pet.food && reboot.energy == pet.energy);

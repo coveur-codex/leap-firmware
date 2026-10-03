@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.0-beta.11`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.0-beta.12`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -184,10 +184,18 @@ Das Haustier nutzt das gewählte Avatarpaket. Links bleibt die 86-Pixel-Navigati
 in der Mitte Hintergrund (256×142) und Tier (80×80), rechts vier Aktionen.
 Rechts UP/DOWN wählen, CENTER bestätigt: Füttern, Spielen, Waschen, Schlafen.
 Die Aktion dauert optisch drei Sekunden, Frames mindestens 250 ms (Standard 400 ms).
-Die vier Bedürfnisse starten großzügig bei 85, sinken pro eingeschalteter Stunde
-um 1–2 Punkte und nie unter 35. Während stromloser Zeit gibt es keinen Abzug.
-NVS speichert Aktionen sofort und veränderte Bedürfnisse stündlich, unabhängig
-vom Inhalts-Sync. Avatarwechsel wechselt die Grafik, behält aber das Haustier.
+Statusmeldungen und vier farbige Balken zeigen Sättigung, Spaß, Sauberkeit und
+Energie. Die vier Bedürfnisse starten bei 85, sinken alle 30 Sekunden um 1–2
+Punkte und nie unter 35. Ohne Pflege wird das Tier nach etwa acht Betriebsminuten
+hungrig; der niedrigste Wert bestimmt das dringendste Bedürfnis. Kleine Hüpf- und
+Spielbewegungen ergänzen die Paketanimationen. Schlafen zeigt die Nachtszene.
+Während stromloser Zeit gibt es keinen Abzug. NVS speichert Aktionen und Änderungen
+beim Verlassen sofort, passive Änderungen ansonsten gebündelt alle fünf Minuten.
+Avatarwechsel wechselt die Grafik, behält aber das Haustier.
+Tag-/Nachtbilder aus dem Manifest haben Vorrang. Solange ein Bild fehlt oder lädt,
+zeichnet die Firmware eine Landschaft mit Sonne/Mond. Fehlgeschlagene Bildladevorgänge
+werden nach zwei Sekunden erneut versucht, damit ein vorübergehender Fehler den
+Hintergrund nicht dauerhaft ausblendet.
 Tageshintergrund 07:00–19:59, Nachthintergrund 20:00–06:59 gemäß der bestehenden
 Geräte-Zeitzone; ohne bekannte Uhrzeit Tag. Fehlende Grafiken verhindern das
 Spielen nicht; vorhandenes Avatarbild oder einfache Zeichnung dient als Ersatz.

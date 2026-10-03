@@ -258,6 +258,7 @@ bool Media::draw(Arduino_GFX &gfx, const String &path, const String &original, i
       pw = pending->fittedWidth;
       ph = pending->fittedHeight;
       cached = pending->path;
+      decodedAt = millis();
       cw = w;
       ch = h;
       cachedFit = fit;
@@ -269,7 +270,9 @@ bool Media::draw(Arduino_GFX &gfx, const String &path, const String &original, i
   }
   bool compatible = cw == w && ch == h && cachedFit == fit && cachedBackground == background &&
                     cachedTransparent == transparent;
-  if (cached != path || !compatible) {
+  // A transient file/allocation failure must not poison this cache forever.
+  bool retryFailed = !pixels && uint32_t(millis() - decodedAt) >= 2000;
+  if (cached != path || !compatible || retryFailed) {
     if (asynchronous) {
       if (!pending && decodeRequests) {
         auto *job = new (std::nothrow) MediaJob;
@@ -296,6 +299,7 @@ bool Media::draw(Arduino_GFX &gfx, const String &path, const String &original, i
       pixels = decode(path, original, w, h, fit ? &pw : nullptr, fit ? &ph : nullptr, background,
                       transparent ? &alpha : nullptr);
       cached = path;
+      decodedAt = millis();
       cw = w;
       ch = h;
       cachedFit = fit;

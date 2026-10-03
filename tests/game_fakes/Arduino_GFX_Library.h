@@ -3,8 +3,14 @@
 #include <cstdint>
 #include <cstdio>
 #include <string>
+#include <vector>
 struct Arduino_GFX {
   std::string text;
+  struct Rect {
+    int x, y, w, h;
+    uint16_t color;
+  };
+  std::vector<Rect> rects;
   void setTextColor(uint16_t) {}
   void setTextSize(int) {}
   void setCursor(int, int) {}
@@ -19,7 +25,9 @@ struct Arduino_GFX {
     va_end(args);
     text += out;
   }
-  void fillRect(int, int, int, int, uint16_t) {}
+  void fillRect(int x, int y, int w, int h, uint16_t color) {
+    rects.push_back({x, y, w, h, color});
+  }
   void drawRect(int, int, int, int, uint16_t) {}
   void fillCircle(int, int, int, uint16_t) {}
   void fillRoundRect(int, int, int, int, int, uint16_t) {}

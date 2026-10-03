@@ -1,6 +1,6 @@
 # Haustier und Snake: Asset-Vertrag und Abnahme
 
-Firmware `1.0.0-beta.11` und zugehöriger Homeserver. Beide neuen IDs werden in
+Firmware `1.0.0-beta.12` und zugehöriger Homeserver. Beide neuen IDs werden in
 `config.games` angeboten; bestehende Spiele bleiben erhalten. Kein neues Netzwerk-
 oder Speicherprotokoll. Pet-Zustand und Snake-Rekord sind lokal im NVS-Namespace
 `leap-games` (`pet`, versionierter 5-Byte-Wellbeing-Datensatz; `snake-best`, Integer).
@@ -46,6 +46,25 @@ Paketversionen und explizite Konfiguration bleiben erhalten.
 Die Firmware nutzt gecachte Manifeste und den bestehenden asynchronen Media-Worker.
 Eine zusätzliche Maske lässt transparente Bereiche des Tieres frei.
 
+## Einfaches Tamagotchi (beta.12)
+
+Vier Balken („Satt“, „Spass“, „Sauber“, „Kraft“) zeigen die Bedürfnisse dauerhaft:
+grün ab 80, gelb ab 55, orange darunter. Eine Statuszeile benennt das dringendste
+Bedürfnis und bestätigt jede Pflegeaktion. Alle 30 Betriebssekunden sinken Essen,
+Spaß und Energie um zwei Punkte, Sauberkeit um einen. Der Mindestwert bleibt 35;
+das Tier stirbt nicht. Nach etwa acht Minuten ohne Pflege wird ein neues Tier
+hungrig. Pflege füllt den jeweiligen Wert auf 100. Die unveränderten gespeicherten
+5-Byte-Spielstände bleiben gültig. Passive Änderungen werden alle fünf Minuten
+und beim Verlassen gespeichert, Pflege sofort. Ein harter Stromverlust kann bis
+zu fünf Minuten passiver Änderungen verlieren; ausgeschaltete Zeit zählt nicht.
+
+Die vier Paketframes werden durch leichtes Hüpfen, seitliche Spielbewegung,
+Glitzern und Schlaf-„Z“ ergänzt. Schlafen nutzt während der dreisekündigen Aktion
+den Nachthintergrund. Sonst gilt die lokale Uhr (20–7 Uhr, ohne Uhr Tag).
+Fehlende/ladebereite Hintergründe erhalten eine lokale Landschaft als Ersatz;
+sobald das Paketbild dekodiert ist, übernimmt es. Ein fehlgeschlagener Decode wird
+nach zwei Sekunden erneut versucht, auch wenn sich der Blob-Pfad nicht ändert.
+
 ## Automatisierte Prüfungen
 
 `tools/test.sh` prüft Regeln und die echte `Games.cpp` mit simulierten GPIOs,
@@ -64,6 +83,7 @@ ungültige Referenzen und die Geräte-Vorschau.
 - Spieleliste: neue und bisherige Spiele erreichbar, Navigation links unverändert.
 - Haustier: rechts UP/DOWN/CENTER, alle vier Aktionen und vier Frames pro Zustand;
   alle Gemüter mit passenden Testwerten; Tier transparent über Tag-/Nachtbild.
+  Statuszeile, vier Balken und Bewegungen prüfen; acht Minuten ohne Pflege warten.
 - Uhr auf 06:59/07:00 und 19:59/20:00 setzen, auch nach Offline-Neustart prüfen.
 - Haustier verlassen, sperren, Seite wechseln und Gerät neu starten: Bedürfnisse
   bleiben erhalten. Mehrere Stunden ausgeschaltet verursacht keinen Abzug.
