@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.0-beta.4`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.0-beta.5`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -129,6 +129,21 @@ Snapshots werden aufbewahrt. Hierfür muss auch der Homeserver auf den Stand mit
 `GET /api/v1/devices/{id}/weather/radar` aktualisiert werden. Der Radarabruf erfolgt
 mit dem regulären Sync (15 Minuten), keine Animation oder Vorhersage.
 
+**Avatar:** Die Standard-Avatare werden im Homeserver als 80×80-PNG-Paket ausgeliefert.
+Unveränderte alte SVG-Standardpakete erhalten beim Serverstart eine neue Version;
+eigene Pakete bleiben unverändert. Nach dem Sync zeigt die Sidebar den zugewiesenen
+Avatar, bis dahin „Avatar wartet auf Sync“. PNG-Animationen eigener Pakete bleiben
+unterstützt; Standard-Avatare sind statische Bilder.
+
+**Flugradar:** Rechts zeigt eine 112×112-Ansicht die gemeldeten Flugzeugpositionen
+um den Gerätestandort (`aircraft.center` aus der Server-API), Nord oben. Der äußere
+Ring entspricht `radiusNm`, der innere der halben Entfernung. Weiß markiert den
+Standort, Gelb das links ausgewählte Flugzeug. Symbole zeigen die gemeldete
+Flugrichtung; bei fehlender Richtung erscheint ein Punkt. Rechts LINKS/RECHTS
+wechselt die Auswahl. Es ist eine Positionsansicht ohne Straßenkarte; Daten
+entsprechen dem angezeigten Abrufzeitpunkt, keine Live-Verfolgung. Dafür ebenfalls
+den Homeserver aktualisieren.
+
 **Wissen:** Lesen, Suche, Zufall und Artikelverweise. Im Suchfeld rechts LINKS/
 RECHTS Buchstaben wählen, OBEN anhängen, UNTEN löschen, MITTE suchen. Text, Quelle,
 Original-URL und Lizenzhinweis sind scrollbar. Offline bleiben letzter Artikel
@@ -191,8 +206,9 @@ verwendet wird ausschließlich LittleFS.
   Gerät. Pakete entsprechend klein halten; alte aktive Inhalte werden bei
   Platzmangel nicht gelöscht.
 
-News-Bilder (bis zu 20 je Abruf) werden offline gecacht. Wissensbilder werden
-gecacht; die Leseseite priorisiert derzeit Text. Generische Common-/Weather-/Game-
+News-Bilder (bis zu 20 je Abruf) und Wissensbilder werden offline gecacht.
+Die Wissens-Leseseite zeigt das Artikelbild rechts in einem 112×100-Pixel-Bereich
+mit erhaltenem Seitenverhältnis. Ohne Bild nutzt der Text die ganze Breite. Generische Common-/Weather-/Game-
 Paketdaten werden synchronisiert, besitzen aber ohne eindeutige Server-Metadaten
 noch keine automatische Zuordnung zu jedem UI-Element. Details und konkrete
 API-Ergänzungen: [Serverabgleich](docs/server-contract.md).

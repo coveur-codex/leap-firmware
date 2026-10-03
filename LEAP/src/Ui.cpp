@@ -1,4 +1,5 @@
 #include "Ui.h"
+#include "AircraftMap.h"
 #include "Audio.h"
 #include "Hardware.h"
 #include "Motion.h"
@@ -280,10 +281,9 @@ void Ui::sidebar() {
   if (!id.startsWith("avatar-"))
     id = "avatar-" + id;
   if (!drawAsset(id, avatar, 3, 38, 80, 80, true)) {
-    canvas->fillCircle(43, 78, 24, Accent);
-    canvas->fillCircle(35, 73, 3, Background);
-    canvas->fillCircle(51, 73, 3, Background);
-    canvas->drawFastHLine(36, 88, 14, Background);
+    text("Avatar", 25, 67, 1, Muted);
+    text("wartet auf", 13, 80, 1, Muted);
+    text("Sync", 31, 93, 1, Muted);
   }
   int active = menu ? constrain(selection, 0, int(pages.size()) - 1) : page;
   int count = std::min(10, int(pages.size()));
@@ -392,9 +392,50 @@ void Ui::drawPage(const String &id) {
     }
     text("RainViewer", 308, 122, 1, Muted);
   } else if (id == "aircraft") {
-    auto rows = content["aircraft"]["aircraft"].as<JsonArray>();
+    auto snapshot = content["aircraft"];
+    auto rows = snapshot["aircraft"].as<JsonArray>();
+    bool centered = snapshot["center"]["latitude"].is<double>() &&
+                    snapshot["center"]["longitude"].is<double>();
+    double lat = snapshot["center"]["latitude"] | 0.0;
+    double lon = snapshot["center"]["longitude"] | 0.0;
+    double radius = snapshot["radiusNm"] | 25.0;
+    centered = centered && std::isfinite(lat) && std::isfinite(lon) && std::abs(lat) <= 90 &&
+               std::abs(lon) <= 180 && std::isfinite(radius) && radius > 0;
+    constexpr int cx = 364, cy = 64, pixels = 46;
+    canvas->fillRect(308, 8, 112, 112, Panel);
+    if (centered) {
+      for (int r : {23, 46}) canvas->drawCircle(cx, cy, r, Muted);
+      canvas->drawFastVLine(cx, cy - pixels, 2 * pixels + 1, Muted);
+      canvas->drawFastHLine(cx - pixels, cy, 2 * pixels + 1, Muted);
+      canvas->fillCircle(cx, cy, 2, 0xffff);
+      text("N", cx - 2, 8, 1, Muted);
+      if (rows.size()) item = (item + rows.size()) % rows.size();
+      int index = 0;
+      for (JsonObject plane : rows) {
+        int dx, dy;
+        bool selected = index++ == item;
+        if (!plane["latitude"].is<double>() || !plane["longitude"].is<double>() ||
+            !aircraftOffset(lat, lon, plane["latitude"], plane["longitude"], radius, pixels, dx, dy))
+          continue;
+        int x = cx + dx, y = cy + dy;
+        uint16_t color = selected ? 0xffe0 : Accent;
+        if (plane["trackDegrees"].is<double>() && std::isfinite(plane["trackDegrees"].as<double>())) {
+          double heading = plane["trackDegrees"].as<double>() * 3.141592653589793 / 180;
+          int hx = std::lround(4 * std::sin(heading)), hy = -std::lround(4 * std::cos(heading));
+          canvas->drawLine(x - hx, y - hy, x + hx, y + hy, color);
+          canvas->drawLine(x - hy, y + hx, x + hy, y - hx, color);
+          canvas->fillCircle(x + hx, y + hy, 1, color);
+        } else
+          canvas->fillCircle(x, y, 2, color);
+        if (selected) canvas->drawCircle(x, y, 6, color);
+      }
+      text(String(radius, 0) + " NM | ADSB.lol", 308, 122, 1, Muted);
+    } else {
+      text("Standort fehlt", 314, 52, 1, Muted);
+      text("Server-Sync", 320, 66, 1, Muted);
+    }
     if (!rows.size()) {
-      body("Keine Flugzeuge im gespeicherten Umkreis.");
+      body("Keine Flugzeuge im gespeicherten Umkreis.", 94, 12, 204, 100);
       return;
     }
     item = (item + rows.size()) % rows.size();
@@ -403,7 +444,8 @@ void Ui::drawPage(const String &id) {
          "\nTyp: " + String(a["type"] | "?") +
          "\nEntfernung: " + String(a["distanceNm"].as<float>(), 1) + " NM\nHoehe: " +
          (a["altitudeFeet"].isNull() ? String("?") : String(a["altitudeFeet"].as<int>())) +
-         " ft\nStand: " + String(content["aircraft"]["updated"] | ""));
+         " ft\nStand: " + String(snapshot["updated"] | "") +
+         (snapshot["stale"] == true || !network.connected ? " (Cache)" : ""), 94, 12, 204, 110);
   } else if (id == "quiz") {
     auto rows = quiz["questions"].as<JsonArray>();
     if (!rows.size()) {
@@ -465,10 +507,15 @@ void Ui::drawPage(const String &id) {
     if (knowledgeMode == 0)
       list({"Gespeicherten Artikel lesen", "Suchen", "Zufaelligen Artikel laden",
             "Weiterfuehrende Artikel"});
-    if (knowledgeMode == 1)
+    if (knowledgeMode == 1) {
+      String image = k["image"] | "", hash = state["images"][image] | "";
+      bool shown = hash.length() &&
+                   picture.draw(*canvas, storage.blob(hash), image, 308, 12, 112, 100, true);
       body(String(k["title"] | "Noch kein Artikel") + "\n" + String(k["text"] | "") +
            "\n\nQuelle: " + String(k["sourceName"] | k["source"] | "") + "\n" +
-           String(k["originalUrl"] | "") + "\n" + String(k["license"] | ""));
+           String(k["originalUrl"] | "") + "\n" + String(k["license"] | ""),
+           94, 12, shown ? 204 : 326, 110);
+    }
     if (knowledgeMode == 2) {
       text(query, 94, 20, 2, Accent);
       const char *alphabet = "abcdefghijklmnopqrstuvwxyz ";
@@ -682,7 +729,7 @@ void Ui::action(const InputEvent &e) {
                       .as<JsonArray>();
       selection = constrain(selection + direction, 0, std::max(0, int(rows.size()) - 1));
       if (e.key == Key::Center && rows.size()) {
-        String ref = rows[selection]["articleRef"] | "";
+        String ref = rows[selection]["articleRef"] | rows[selection]["ref"] | "";
         if (ref.length() && network.connected)
           network.knowledge("/knowledge/article/" + ref);
         else

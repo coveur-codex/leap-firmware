@@ -2,6 +2,18 @@
 
 Stand: 2026-10-02. Referenz-Homeserver `8175c9f`, unverändert.
 
+## Avatare, Flugzeugpositionen und Artikelbilder: 1.0.0-beta.5
+
+- Standard-PNGs aus den bestehenden SVG-Avataren rasterisiert (CairoSVG 2.7.1,
+  80×80, Transparenz); keine neue Laufzeitabhängigkeit des Servers.
+- Servertests prüfen alle fünf Avatarbilder, idempotente Aktualisierung originaler
+  SVG-Pakete, erhaltene alte Versionen und Schutz eigener Avatarpakete.
+- Native Projektionstests prüfen Mittelpunkt, alle vier Himmelsrichtungen,
+  Entfernungsmaßstab, Datumsgrenze, Radiusgrenze und ungültige Koordinaten.
+- Server-/Firmware-Vertragstest prüft reale Sync-Routen und PNG-Paketmanifeste.
+- Wissensbilder werden rechts unter Erhalt des Seitenverhältnisses angezeigt.
+- Physische Display-Abnahme und Live-Provider bleiben offen; Cross-Build über CI.
+
 ## Sidebar und Regenradar: 1.0.0-beta.4 (2026-10-03)
 
 - Sidebar-Geometrie: x=0–85, Status y=4–11, Uhr y=15–36, Avatar

@@ -141,6 +141,9 @@ void Network::content(JsonDocument &state) {
   for (JsonObject article : articles)
     if (images++ < 20)
       imageCache(state, article["image"], net);
+  // Retry a missing article image on later syncs, including articles already stored offline.
+  if (enabled(state, "knowledge"))
+    imageCache(state, state["content"]["knowledge"]["image"], net);
 }
 bool Network::sync() {
   JsonDocument state(&jsonRam), plan(&jsonRam), body(&jsonRam), reply(&jsonRam);

@@ -54,7 +54,8 @@ static int drawJpg(JPEGDRAW *block) {
   }
   return 1;
 }
-uint16_t *Media::decode(const String &path, const String &name, int width, int height) {
+uint16_t *Media::decode(const String &path, const String &name, int width, int height,
+                        int *fittedWidth, int *fittedHeight) {
   if (width < 1 || height < 1 || width > 428 || height > 142 || !codecMutex)
     return nullptr;
   xSemaphoreTake(codecMutex, portMAX_DELAY);
@@ -67,12 +68,21 @@ uint16_t *Media::decode(const String &path, const String &name, int width, int h
     return nullptr;
   }
   bool ok = false;
+  auto fit = [&]() {
+    if (fittedWidth && fittedHeight && iw > 0 && ih > 0 && iw <= 1024 && ih <= 1024) {
+      if (iw * height > ih * width)
+        oh = std::max(1, ih * width / iw);
+      else
+        ow = std::max(1, iw * height / ih);
+    }
+  };
   String ext = name;
   ext.toLowerCase();
   if (ext.endsWith(".png")) {
     if (png.open(path.c_str(), openFile, closeFile, pngRead, pngSeek, drawPng) == PNG_SUCCESS) {
       iw = png.getWidth();
       ih = png.getHeight();
+      fit();
       ok = iw > 0 && ih > 0 && iw <= 1024 && ih <= 1024 && png.decode(nullptr, 0) == PNG_SUCCESS;
       png.close();
     }
@@ -80,6 +90,7 @@ uint16_t *Media::decode(const String &path, const String &name, int width, int h
     if (jpeg.open(path.c_str(), openFile, closeFile, jpgRead, jpgSeek, drawJpg)) {
       iw = jpeg.getWidth();
       ih = jpeg.getHeight();
+      fit();
       jpeg.setPixelType(RGB565_LITTLE_ENDIAN);
       ok = iw > 0 && ih > 0 && iw <= 1024 && ih <= 1024 && jpeg.decode(0, 0, 0);
       jpeg.close();
@@ -91,6 +102,8 @@ uint16_t *Media::decode(const String &path, const String &name, int width, int h
     result = nullptr;
   }
   output = nullptr;
+  if (fittedWidth) *fittedWidth = ow;
+  if (fittedHeight) *fittedHeight = oh;
   xSemaphoreGive(codecMutex);
   return result;
 }
@@ -110,19 +123,22 @@ bool Media::validate(const String &path, const String &name) {
   return ok;
 }
 bool Media::draw(Arduino_GFX &gfx, const String &path, const String &original, int x, int y, int w,
-                 int h) {
+                 int h, bool fit) {
   if (!path.length())
     return false;
-  if (cached != path || cw != w || ch != h) {
+  if (cached != path || cw != w || ch != h || cachedFit != fit) {
     free(pixels);
-    pixels = decode(path, original, w, h);
+    pw = w;
+    ph = h;
+    pixels = decode(path, original, w, h, fit ? &pw : nullptr, fit ? &ph : nullptr);
     cached = path;
     cw = w;
     ch = h;
+    cachedFit = fit;
   }
   if (!pixels)
     return false;
-  gfx.draw16bitRGBBitmap(x, y, pixels, w, h);
+  gfx.draw16bitRGBBitmap(x + (w - pw) / 2, y + (h - ph) / 2, pixels, pw, ph);
   return true;
 }
 } // namespace leap

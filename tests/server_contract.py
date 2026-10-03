@@ -46,7 +46,8 @@ with tempfile.TemporaryDirectory() as temp:
     files=distribution.file_map(old)
     png=BytesIO();Image.new("RGBA",(80,80),(60,200,180,255)).save(png,format="PNG")
     files["data/pet/idle/frame_01.png"]=distribution.store_bytes(png.getvalue())
-    distribution.publish(session,package,files,distribution.editable_definition(old),package.current_version)
+    # Explicitly exercise a mixed legacy SVG preview + device PNG package.
+    distribution.publish(session,package,files,{"preview":"preview.svg","animations":{}},package.current_version)
     session.commit()
     response = client.post(base + "/sync", json=report)
     assert response.status_code == 200, response.text
