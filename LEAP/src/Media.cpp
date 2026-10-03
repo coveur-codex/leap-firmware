@@ -2,6 +2,10 @@
 #include <JPEGDEC.h>
 #include <PNGdec.h>
 #include <esp_heap_caps.h>
+// PNGdec keeps two scanlines, alignment padding and an optional fast palette.
+// build_opt.h applies this size to both the sketch and the library implementation.
+static_assert(PNG_MAX_BUFFERED_PIXELS >= 2 * (1024 * 4 + 32) + 512,
+              "Keep LEAP/build_opt.h in the sketch: PNGdec must support 1024px RGBA rows");
 namespace leap {
 // Only one decode at a time; callback context never escapes this mutex.
 static SemaphoreHandle_t codecMutex = xSemaphoreCreateMutex();
@@ -79,13 +83,19 @@ uint16_t *Media::decode(const String &path, const String &name, int width, int h
   String ext = name;
   ext.toLowerCase();
   if (ext.endsWith(".png")) {
-    if (png.open(path.c_str(), openFile, closeFile, pngRead, pngSeek, drawPng) == PNG_SUCCESS) {
+    int code = png.open(path.c_str(), openFile, closeFile, pngRead, pngSeek, drawPng);
+    if (code == PNG_SUCCESS) {
       iw = png.getWidth();
       ih = png.getHeight();
       fit();
-      ok = iw > 0 && ih > 0 && iw <= 1024 && ih <= 1024 && png.decode(nullptr, 0) == PNG_SUCCESS;
-      png.close();
-    }
+      code = iw > 0 && ih > 0 && iw <= 1024 && ih <= 1024 ? png.decode(nullptr, 0) : PNG_TOO_BIG;
+      ok = code == PNG_SUCCESS;
+      if (!ok)
+        Serial.printf("[%10lu] [MEDIA   ] PNG decode failed: %s code=%d size=%dx%d\n",
+                      millis(), name.c_str(), code, iw, ih);
+    } else
+      Serial.printf("[%10lu] [MEDIA   ] PNG open failed: %s code=%d\n", millis(), name.c_str(), code);
+    png.close();
   } else if (ext.endsWith(".jpg") || ext.endsWith(".jpeg")) {
     if (jpeg.open(path.c_str(), openFile, closeFile, jpgRead, jpgSeek, drawJpg)) {
       iw = jpeg.getWidth();

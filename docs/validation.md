@@ -2,6 +2,21 @@
 
 Stand: 2026-10-02. Referenz-Homeserver `8175c9f`, unverändert.
 
+## PNG-Pufferkorrektur: 1.0.0-beta.7
+
+- PNGdec **1.1.6**, unveränderter Bibliotheksquelltext: 80×80 RGBA erfolgreich;
+  synthetisches 428×142 RGBA bricht mit Code 2 nach 11 Zeilen ab, Pixelvergleich
+  schlägt fehl. Die intern gepufferten zwei Zeilen überlaufen den Standardpuffer.
+- Identischer Test mit global `PNG_MAX_BUFFERED_PIXELS=8768`: alle Pixel korrekt,
+  142 Zeilen dekodiert. Zusätzlich RGB/RGBA mit 80 und 1024 Pixeln Breite geprüft.
+- Defekte IHDR-CRC und Interlacing werden im Regressionstest weiterhin abgelehnt.
+- Der ESP32-Core 3.3.0 reicht `build_opt.h` an alle C-/C++-Übersetzungseinheiten
+  weiter. Ein `static_assert` verhindert Builds ohne ausreichend großen Puffer.
+- Die Original-PNG des eingebetteten Nutzerbilds war nicht als Datei zugänglich.
+  Die Reproduktion nutzt ausdrücklich synthetische Testbilder, nicht das Nutzerbild.
+- Gerätetest nach erneutem Flashen und Sync bleibt erforderlich. Keine Änderung
+  am Homeserver oder am Asset-Paket für diese Decoderkorrektur erforderlich.
+
 ## Asset-Fehlerdiagnose: 1.0.0-beta.6
 
 Der bereitgestellte Serverlog zeigt vier begonnene Paketinstallationen und einen

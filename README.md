@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.0-beta.6`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.0-beta.7`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -40,6 +40,8 @@ in einer Cloud-Umgebung nicht gemessen werden. Siehe [Abnahme](docs/acceptance.m
    USB CDC On Boot **Enabled**, USB Mode **Hardware CDC and JTAG**,
    Arduino läuft auf Core 1, **Partition Scheme: Custom**. `partitions.csv` neben dem Sketch wird vom Core
    automatisch übernommen. **Erase All Flash: Disabled** bei späteren Uploads.
+   `LEAP/build_opt.h` muss neben dem Sketch bleiben: Es vergrößert den PNGdec-
+   Scanline-Puffer konsistent für Firmware und Bibliothek auf 1024-Pixel-RGBA.
 6. Initial komplett über USB hochladen. Das installiert auch den zum Core
    gehörenden Bootloader und die Partitionstabelle. Serielle Ausgabe: **115200**.
 7. Eine vollständig gelöschte LittleFS-Partition wird beim ersten Start automatisch
@@ -279,3 +281,18 @@ Ein bestandenes Paket wird als „verified and staged“ protokolliert; es ist d
 noch nicht aktiv. Die Firmware aktiviert weiterhin erst das vollständig geprüfte
 Inventar. So kann ein Fehler in einem anderen Paket auch den Avatar zurückhalten.
 Diese Version verbessert die Diagnose, ohne unbekannte Paketfehler zu übergehen.
+
+### PNG-Decodierung ab beta.7
+
+PNGdec 1.1.6 reserviert standardmäßig nur Platz für zwei Zeilen eines etwa
+320 Pixel breiten RGBA-Bildes. Größere PNGs konnten beim Dekodieren den internen
+Puffer überschreiben, obwohl die Firmware sie als zulässig einstufte. Ein
+428×142-RGBA-Testbild reproduziert den Fehler. `LEAP/build_opt.h` setzt nun global
+`PNG_MAX_BUFFERED_PIXELS=8768`: zwei 1024-Pixel-RGBA-Zeilen inklusive Alignment
+und optionaler Palette. Nur ein lokales `#define` in `Media.cpp` wäre falsch,
+weil Bibliothek und Aufrufer dann unterschiedliche Objektgrößen hätten.
+
+Der Test `PNGDEC_SRC=/path/to/PNGdec/src tools/test_png.sh` verwendet die echte
+Bibliothek und prüft alle Pixel von RGB/RGBA-Bildern mit 80, 428 und 1024 Pixeln
+Breite. Defekte PNG-Header und Interlacing werden weiterhin abgelehnt. Es wird
+kein Paket übersprungen und keine Integritätsprüfung abgeschaltet.

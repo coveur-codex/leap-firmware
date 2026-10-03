@@ -21,7 +21,12 @@ jobs:
         env:
           ARDUINOJSON_INCLUDE: /home/runner/Arduino/libraries/ArduinoJson/src
         run: tools/test.sh
+      - name: PNG decoder regression (real pinned library)
+        env:
+          PNGDEC_SRC: /home/runner/Arduino/libraries/PNGdec/src
+        run: tools/test_png.sh
       - name: ESP32-S3 N16R8 build
+        # build_opt.h supplies PNGdec's scanline size to every translation unit.
         run: arduino-cli compile --warnings all --fqbn 'esp32:esp32:esp32s3:FlashSize=16M,PSRAM=opi,CDCOnBoot=cdc,PartitionScheme=custom' --output-dir build/export LEAP
       - name: Verify exported app image
         run: python3 tools/check_image.py build/export/LEAP.ino.bin
