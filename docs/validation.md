@@ -2,6 +2,24 @@
 
 Stand: 2026-10-02. Referenz-Homeserver `8175c9f`, unverändert.
 
+## LittleFS-Erststart und Diagnose: 1.0.0-beta.3 (2026-10-03)
+
+Das Hardwarelog mit `fsFree=0`, `selftest=0` und `wifi=1` zeigt einen
+fehlgeschlagenen Mount bei bereits verbundenem WLAN. Der Sync wartet auf Speicher
+und lokale Boot-Bestätigung. Eine vollständig gelöschte Partition wird nun nach
+vollständiger Leseprüfung initialisiert; belegte oder nicht lesbare Partitionen
+werden weiterhin ausschließlich nach physischer Bestätigung formatiert.
+
+- Native Regressionstests: vollständig leere 8064-KiB-Partition, Daten am Anfang,
+  hinter den Superblöcken und am Ende, Lesefehler sowie unvollständiger letzter Block.
+- Bestehende Core-/Protokolltests mit ArduinoJson 7.4.2 und Partitionstest bestanden.
+- LittleFS-Aufrufreihenfolge gegen die Implementierung des ESP32-Core 3.3.0 geprüft.
+- WLAN-Verbindungswechsel melden IP/RSSI/Kanal bzw. Status; Sync meldet Blockaden.
+- Lokaler Cross-Build nicht ausführbar: Arduino-Downloadhosts sind durch die
+  Netzwerkpolicy gesperrt. Der bestehende GitHub-Actions-Workflow baut beim Push.
+- Am Gerät noch zu prüfen: Erstinitialisierung, anschließender automatischer Sync,
+  erneuter Start mit erhaltenen Daten sowie Recovery eines beschädigten Dateisystems.
+
 ## Display-Korrektur: 1.0.0-beta.2
 
 Abgleich mit dem vom Nutzer als funktionierend bestätigten Hardwaretest:

@@ -5,6 +5,7 @@ Benötigt werden mindestens zwei LEAP-Geräte, der aktuelle Homeserver, USB-Seri
 und eine Möglichkeit, die Versorgung kontrolliert zu unterbrechen.
 
 1. **Erststart:** Flash 16 MiB / PSRAM 8 MiB im Log; kein Warten auf USB. Frisches
+   Vollständig gelöschtes FS muss sich automatisch initialisieren; belegtes/defektes
    FS nur mit beiden Mitteltasten formatieren. Netzlosen Start und Bedienung prüfen.
 2. **Display:** alle vier Ränder sichtbar, keine 12-Pixel-Verschiebung, Rotation,
    RGB-Farben, Backlight-PWM und Flimmern prüfen. Die Initialisierung entspricht

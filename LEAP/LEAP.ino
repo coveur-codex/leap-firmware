@@ -73,10 +73,10 @@ void loop() {
   }
   if (elapsed(millis(), lastDiag, 60000)) {
     lastDiag = millis();
-    Serial.printf("[HEALTH] heap=%u min=%u psram=%u fsFree=%u wifi=%d\n",
+    Serial.printf("[HEALTH] heap=%u min=%u psram=%u fsFree=%u wifiConnected=%d fsReady=%d bootConfirmed=%d\n",
                   unsigned(ESP.getFreeHeap()), unsigned(ESP.getMinFreeHeap()),
                   unsigned(ESP.getFreePsram()), unsigned(storage.freeBytes()),
-                  network.connected.load());
+                  network.connected.load(), storage.ready, ota.locallyConfirmed.load());
   }
   delay(5);
 }

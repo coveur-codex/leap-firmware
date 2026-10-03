@@ -210,6 +210,12 @@ bool Network::sync() {
   return event(syncId, "sync_success", next, reply);
 }
 void Network::run() {
+  // WLAN must also work if ESP-NOW initialization failed before setting STA mode.
+  WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
+  WiFi.setAutoReconnect(true);
+  if (!strlen(LEAP_WIFI_SSID))
+    log("WIFI", "No SSID configured; check LEAP/LocalConfig.h");
   // Validate cached assets off the UI thread. Input/rendering can start immediately.
   JsonDocument bootState(&jsonRam);
   storage.load(bootState);
@@ -225,12 +231,39 @@ void Network::run() {
   bootState.clear();
   uint32_t lastConnect = millis() - 30000, lastSync = millis() - SyncInterval;
   uint32_t interval = 10000;
+  int lastWifiStatus = -1;
+  const char *lastBlock = nullptr;
   for (;;) {
-    connected = WiFi.status() == WL_CONNECTED;
+    int wifiStatus = WiFi.status();
+    connected = wifiStatus == WL_CONNECTED;
+    if (wifiStatus != lastWifiStatus) {
+      lastWifiStatus = wifiStatus;
+      if (connected) {
+        Serial.printf("[%10lu] [WIFI    ] Connected ip=%s rssi=%d channel=%d\n", millis(),
+                      WiFi.localIP().toString().c_str(), WiFi.RSSI(), WiFi.channel());
+      } else {
+        const char *reason = wifiStatus == WL_NO_SSID_AVAIL ? "SSID not found"
+                             : wifiStatus == WL_CONNECT_FAILED ? "Connection failed"
+                             : wifiStatus == WL_CONNECTION_LOST ? "Connection lost"
+                             : wifiStatus == WL_IDLE_STATUS ? "Connecting"
+                                                            : "Disconnected";
+        Serial.printf("[%10lu] [WIFI    ] %s status=%d; retry every 30s\n", millis(), reason,
+                      wifiStatus);
+      }
+    }
     if (!connected && strlen(LEAP_WIFI_SSID) && elapsed(millis(), lastConnect, 30000)) {
       lastConnect = millis();
       WiFi.begin(LEAP_WIFI_SSID, LEAP_WIFI_PASSWORD);
       log("WIFI", "Connection attempt");
+    }
+    const char *block = !storage.ready ? "Blocked: LittleFS unavailable; see STORE recovery message"
+                        : !selfTestPassed ? "Blocked: cached asset self-test failed"
+                        : !ota.locallyConfirmed ? "Waiting for local boot confirmation"
+                        : !connected ? "Waiting for WLAN"
+                                     : nullptr;
+    if (block != lastBlock) {
+      log("SYNC", block ? block : "Ready; starting scheduled synchronization");
+      lastBlock = block;
     }
     if (connected && storage.ready && ota.locallyConfirmed &&
         (requested.exchange(false) || elapsed(millis(), lastSync, interval))) {

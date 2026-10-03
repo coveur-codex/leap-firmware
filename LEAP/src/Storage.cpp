@@ -1,7 +1,9 @@
 #include "Storage.h"
 #include "Core.h"
 #include "Protocol.h"
+#include "StorageRecovery.h"
 #include <esp_heap_caps.h>
+#include <esp_partition.h>
 namespace leap {
 RamAllocator jsonRam;
 Storage storage;
@@ -17,20 +19,36 @@ void *RamAllocator::reallocate(void *p, size_t n) {
 }
 bool Storage::begin(bool formatRequested) {
   mutex = xSemaphoreCreateMutex();
-  if (!mutex || !prefs.begin("leap-store", false))
+  if (!mutex || !prefs.begin("leap-store", false)) {
+    log("STORE", "Mutex or NVS initialization failed");
     return false;
-  ready = LittleFS.begin(false);
-  if (formatRequested) {
+  }
+  const esp_partition_t *partition = esp_partition_find_first(
+      ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, "spiffs");
+  if (!partition) {
+    log("STORE", "Missing spiffs partition; upload the custom partition table over USB");
+    return false;
+  }
+  ready = LittleFS.begin(false, "/littlefs", 10, "spiffs");
+  bool blank = !ready && !formatRequested &&
+               partitionErased(partition->size, [&](size_t offset, uint8_t *data, size_t size) {
+                 bool ok = esp_partition_read(partition, offset, data, size) == ESP_OK;
+                 if (offset % 4096 == 0)
+                   delay(1);
+                 return ok;
+               });
+  if (formatRequested || blank) {
     LittleFS.end();
-    log("STORE", "Physical recovery: formatting requested");
-    ready = LittleFS.format() && LittleFS.begin(false);
+    log("STORE", blank ? "First boot: initializing fully erased LittleFS partition"
+                       : "Physical recovery: formatting requested");
+    ready = LittleFS.format() && LittleFS.begin(false, "/littlefs", 10, "spiffs");
   }
   if (ready) {
-    LittleFS.mkdir("/blobs");
-    LittleFS.mkdir("/packages");
+    ready = (LittleFS.exists("/blobs") || LittleFS.mkdir("/blobs")) &&
+            (LittleFS.exists("/packages") || LittleFS.mkdir("/packages"));
   }
-  log("STORE", ready ? "LittleFS mounted; automatic format disabled"
-                     : "Mount failed; USB recovery required");
+  log("STORE", ready ? "LittleFS ready; existing data protected"
+                     : "LittleFS unavailable; data retained. Hold BOTH centres at boot for 3s to erase");
   return ready;
 }
 size_t Storage::freeBytes() const {

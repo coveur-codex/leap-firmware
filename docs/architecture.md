@@ -68,4 +68,5 @@ weder lokalen Start noch lokale Bestätigung. Der Serverbericht folgt später.
 - Dateisystem voll: kein Löschen aktiver Daten; alter Zustand und Serial-Diagnose.
 - Falsches OTA: ESP-Image-/Chip-/Hashprüfung vor Auswahl, Bootloader-Rollback bei
   fehlender Bestätigung nach Neustart.
-- Kein FS: kein automatisches Format, sichere lokale Startanzeige und USB-Recovery.
+- Kein FS: automatische Erstinitialisierung nur bei vollständig nachweislich gelöschter
+  Partition; bestehende Daten bleiben geschützt, lokale Startanzeige und manuelle Recovery.

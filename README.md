@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.0-beta.2`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.0-beta.3`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -42,10 +42,12 @@ in einer Cloud-Umgebung nicht gemessen werden. Siehe [Abnahme](docs/acceptance.m
    automatisch übernommen. **Erase All Flash: Disabled** bei späteren Uploads.
 6. Initial komplett über USB hochladen. Das installiert auch den zum Core
    gehörenden Bootloader und die Partitionstabelle. Serielle Ausgabe: **115200**.
-7. Ein fabrikneues LittleFS muss einmal ausdrücklich formatiert werden:
-   **beide Mitteltasten beim Einschalten 3 Sekunden halten**. Jede Taste innerhalb
-   dieser Frist loslassen bricht ab. Dies löscht lokale Inhalte, keine serverseitigen
-   Daten. Ein Mount-Fehler führt niemals automatisch zu einer Formatierung.
+7. Eine vollständig gelöschte LittleFS-Partition wird beim ersten Start automatisch
+   initialisiert. Nach einem Mount-Fehler wird dafür die **gesamte Partition** auf
+   `0xFF` geprüft. Vorhandene Daten oder Lesefehler verhindern die automatische
+   Formatierung. Für eine bewusste Recovery: **beide Mitteltasten beim Einschalten
+   3 Sekunden halten**. Jede Taste innerhalb dieser Frist loslassen bricht ab.
+   Dies löscht lokale Inhalte, keine serverseitigen Daten.
 8. Gerät im Homeserver aktivieren, Inhalte zuordnen und synchronisieren lassen.
 
 Arduino CLI ist optional; PlatformIO wird nicht benötigt:
@@ -221,6 +223,12 @@ Direktnachrichten. Alle Geräte/AP müssen auf demselben Funkkanal arbeiten.
 Serial-Tags: `BOOT`, `STORE`, `DISPLAY`, `WIFI`, `HTTP`, `SYNC`, `ASSETS`, `RADIO`,
 `AUDIO`, `IMU`, `OTA`, `HEALTH`. Keine WLAN-Passwörter oder Inhaltspayloads in Logs.
 Min-Heap, freier PSRAM und Dateisystemplatz werden einmal pro Minute ausgegeben.
+`wifiConnected=1` bedeutet verbunden (auch das frühere `wifi=1` war ein Boolean,
+kein Arduino-WLAN-Statuscode). Beim Verbindungsaufbau erscheinen IP, RSSI und Kanal.
+`SYNC` nennt fehlendes LittleFS, fehlgeschlagene Asset-Prüfung oder ausstehende lokale
+Boot-Bestätigung als Blockade; `fsReady` und `bootConfirmed` stehen im Health-Log.
+Bei `Corrupted dir pair` auf einer benutzten Partition bleibt die manuelle Recovery
+nötig. Danach werden Konfiguration und Inhalte erneut vom Homeserver geladen.
 
 ```sh
 ARDUINOJSON_INCLUDE=/path/to/ArduinoJson/src tools/test.sh
