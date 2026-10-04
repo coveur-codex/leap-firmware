@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.0-beta.13`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.0-beta.14`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -395,3 +395,13 @@ der Netzwerktask alle 30 Sekunden neue Daten in den RAM. Nach zwei Minuten
 endet die Fortschreibung. Alte und geschätzte Positionen sind gekennzeichnet.
 Für Namen und verlässliches Cache-Alter wird die passende Homeserver-Änderung
 benötigt. Weitere Details: [Serververtrag](docs/server-contract.md).
+
+### Wetter mit Icons und Morgen-Vorschau ab beta.14
+
+Die Wetterseite zeigt „Jetzt“ und „Morgen“ neben dem bestehenden Regenradar.
+Sonne/Mond, Wolken, Nebel, Nieselregen, Regen/Eisregen, Schnee, Schauer und
+Gewitter/Hagel werden direkt aus Kreisen, Linien, Rechtecken und Dreiecken
+gezeichnet. Sie brauchen keine Bildpakete und funktionieren offline.
+Die Morgen-Karte zeigt Datum, Wetterlage, Temperaturspanne und
+Regenwahrscheinlichkeit. Fehlende Werte bleiben „?“, alte Wetterdaten sind
+gekennzeichnet. Ein älterer Homeserver ohne `tomorrow` zeigt „Vorhersage fehlt“.

@@ -111,3 +111,15 @@ Server-Cache-Alter, ADS-B-Positionsalter und seit dem Empfang vergangene Zeit
 Fortschreibung. Nach 120 Sekunden friert die Schätzung ein und heißt „Alte
 Position“. Offline-Snapshots ohne Empfangszeit werden als alt angezeigt.
 Die Seite behält beim Abruf ihre Flugzeugauswahl; lange Texte sind scrollbar.
+
+## Wetterdarstellung ab beta.14
+
+`current.isDay` steuert die Tag-/Nacht-Icons. Das zusätzliche `tomorrow`-Objekt
+enthält `date`, `weatherCode`, `min`, `max`, `precipitationProbability`.
+Die Seite zeigt neben dem unveränderten Regenradar einen großen aktuellen
+Wetterzustand und eine kleinere Morgen-Karte. `WeatherIcon.h` zeichnet alle
+WMO-Zustände aus Display-Primitiven; Bildpakete und Downloads sind unnötig.
+Unbekannte Codes erhalten ein Fragezeichen. Fehlendes `tomorrow` bleibt sichtbar
+als „Vorhersage fehlt“, fehlende Messwerte als „?“ statt als Null. Datum und
+Stand-Zeile helfen beim Einordnen gespeicherter Vorhersagen. Die bisherige
+Wetter-/Regenradar-Synchronisation bleibt erhalten.
