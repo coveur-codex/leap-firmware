@@ -17,6 +17,8 @@ c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_games.cpp -o build/t
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_game_lifecycle.cpp LEAP/src/Games.cpp -o build/tests/game-lifecycle
 build/tests/game-lifecycle
 build/tests/games
+c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_connect_four.cpp -o build/tests/connect-four
+build/tests/connect-four
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_aircraft_map.cpp -o build/tests/aircraft-map
 build/tests/aircraft-map
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_storage_recovery.cpp -o build/tests/storage-recovery

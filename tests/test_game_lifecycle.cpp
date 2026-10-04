@@ -274,6 +274,66 @@ int main() {
     ground |= r.x == 86 && r.y == 113 && r.w == 256 && r.h == 29;
   assert(ground && gfx.text.find("Fuettern") != std::string::npos);
   imagesAvailable = true;
+  Games four;
+  four.begin();
+  four.start("connect_four");
+  auto fourText = [&]() {
+    gfx.text.clear();
+    four.draw(gfx, 94, 10);
+    return gfx.text;
+  };
+  assert(four.active() && four.isConnectFour());
+  assert(fourText().find("Schwierigkeit") != std::string::npos);
+  four.input(Key::Down);
+  four.input(Key::Down);
+  four.input(Key::Down);
+  four.input(Key::Center);
+  assert(fourText().find("Stufe: Schwer") != std::string::npos);
+  four.input(Key::Center);
+  assert(fourText().find("LEAP denkt") != std::string::npos);
+  four.input(Key::Center); // No second human move while the device is thinking.
+  four.close();
+  fakeNow += 500;
+  four.tick();
+  assert(!four.active());
+  four.start("connect_four");
+  four.input(Key::Center); // Easy.
+  fakeRandom = 0; // Device always takes the first legal column.
+  for (int i = 0; i < 3; ++i)
+    four.input(Key::Right);
+  for (int turn = 0; turn < 4; ++turn) {
+    four.input(Key::Center);
+    if (turn < 3) {
+      four.input(Key::Center);
+      fakeNow += 299;
+      four.tick();
+      assert(fourText().find("LEAP denkt") != std::string::npos);
+      fakeNow += 1;
+      fakeRandom = 0;
+      four.tick();
+      assert(fourText().find("Du bist dran") != std::string::npos);
+    }
+  }
+  assert(!four.active() && fourText().find("Du gewinnst!") != std::string::npos);
+  four.input(Key::Center);
+  assert(four.active() && fourText().find("Schwierigkeit") != std::string::npos);
+  four.input(Key::Center);
+  // Alternate both players in the selected column until it is full.
+  for (int turn = 0; turn < 3; ++turn) {
+    four.input(Key::Center);
+    fakeNow += 300;
+    fakeRandom = 3;
+    four.tick();
+  }
+  four.input(Key::Center);
+  assert(fourText().find("Spalte voll!") != std::string::npos);
+  fakeNow += 300;
+  four.tick();
+  assert(fourText().find("Spalte voll!") != std::string::npos);
+  four.input(Key::Left);
+  four.input(Key::Center);
+  assert(fourText().find("LEAP denkt") != std::string::npos);
+  four.close();
   // Minutes, not hours: hunger becomes visible; exit persists the latest decay.
   fakeNow += 24 * PetState::DecayIntervalMs;
   petGame.tick();

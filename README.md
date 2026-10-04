@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.0-beta.14`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.0-beta.15`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -215,6 +215,19 @@ Wand/eigener Körper beendet die Runde; rechts CENTER startet neu.
 Jeder neue Rekord wird sofort in NVS gespeichert. Links CENTER verlässt jedes
 Spiel, Links LEFT/RIGHT wechselt weiterhin die Seite. Sperren und Seitenwechsel
 beenden die laufende Runde. Das Haustier bleibt gespeichert.
+
+**Vier Gewinnt (beta.15):** Neues Spiel `connect_four` auf der Spieleseite.
+Bei jedem Spielbeginn rechts UP/DOWN zwischen Leicht, Mittel und Schwer wählen,
+CENTER startet. Du beginnst mit Gelb, das Gerät spielt Rot. Rechts LEFT/RIGHT
+wählt eine der sieben Spalten, CENTER wirft den Stein ein. Vier Steine waagerecht,
+senkrecht oder diagonal gewinnen; ein volles Feld ohne Gewinner ist unentschieden.
+Volle Spalten verbrauchen keinen Zug. Während des Gegnerzugs werden Spieleingaben
+ignoriert. Nach Spielende öffnet rechts CENTER wieder die Schwierigkeitswahl.
+Links CENTER verlässt das Spiel; Seitenwechsel und Sperren beenden die Runde.
+Leicht spielt zufällig, Mittel gewinnt/blockiert direkte Vierer und plant zwei
+Halbzüge, Schwer sucht bis zu sechs Halbzüge mit Alpha-Beta und begrenztem Aufwand.
+Das Spiel benötigt weder WLAN noch Assets. Auch den Homeserver aktualisieren,
+damit die neue ID beim nächsten Sync in `config.games` angeboten wird.
 
 **Spiele:** `hot_potato` = 15-Sekunden-Weitergabe-/Tastenspiel,
 `simon_motion` = Richtungsfolge merken und durch Kippen/Schalter nachspielen,

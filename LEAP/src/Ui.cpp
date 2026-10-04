@@ -30,6 +30,8 @@ static String displayText(String s) {
   return out;
 }
 static String gameTitle(const String &id) {
+  if (id == "connect_four")
+    return "Vier Gewinnt";
   if (id == "tamagotchi")
     return "Mein Haustier";
   if (id == "snake")
@@ -727,7 +729,7 @@ void Ui::render() {
     // Current page title lives below the sidebar navigation.
     drawPage(pages[page].id);
   }
-  if (!locked && !menu && gameOpen && game.isPet()) {
+  if (!locked && !menu && gameOpen && (game.isPet() || game.isConnectFour())) {
     canvas->flush();
     return;
   }
@@ -845,7 +847,7 @@ void Ui::action(const InputEvent &e) {
     }
   } else if (id == "games") {
     if (gameOpen) {
-      if (e.key == Key::Center && !game.active()) {
+      if (e.key == Key::Center && !game.active() && !game.isConnectFour()) {
         if (game.isSnake())
           game.start("snake");
         else {
