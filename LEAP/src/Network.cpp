@@ -44,8 +44,8 @@ static void imageCache(JsonDocument &state, JsonVariantConst value, Transport &n
 static void pruneRadar() {
   // Keep both persistent snapshots usable; radar never shares the asset blob directory.
   JsonDocument a(&jsonRam), b(&jsonRam);
-  storage.readJson("/state0.json", a);
-  storage.readJson("/state1.json", b);
+  storage.readJson("/state0.json", a, SnapshotJsonLimit);
+  storage.readJson("/state1.json", b, SnapshotJsonLimit);
   String first = a["content"]["weatherRadar"]["hash"] | "";
   String second = b["content"]["weatherRadar"]["hash"] | "";
   File dir = LittleFS.open("/radar");
@@ -121,7 +121,14 @@ void Network::content(JsonDocument &state) {
         state["contentConfig"] == state["config"]["configVersion"])
       continue;
     JsonDocument value(&jsonRam);
-    if (net.json(base + "/" + key, value)) {
+    String endpoint = base + "/" + key;
+    if (String(key) == "quiz") {
+      bool packaged = false;
+      for (JsonPair entry : state["assets"].as<JsonObject>())
+        packaged |= String(entry.key().c_str()).startsWith("quiz-");
+      endpoint += packaged ? "?metadataOnly=true" : "?limitPerCatalog=200";
+    }
+    if (net.json(endpoint, value)) {
       bool shape = String(key) == "news"       ? value["articles"].is<JsonArray>()
                    : String(key) == "quiz"     ? value["questions"].is<JsonArray>()
                    : String(key) == "aircraft" ? value["aircraft"].is<JsonArray>()
@@ -202,12 +209,18 @@ bool Network::sync() {
   state["config"] = config;
   // Server flags (especially disabling communication) take effect even when a
   // later optional download fails. Prior assets and cached contents stay intact.
-  if (!storage.commit(state))
+  if (!storage.commit(state)) {
+    log("SYNC", "Cannot save config/content snapshot; see STORE size or validation error");
+    event(syncId, "update_failed", state, reply, "", 0, "Cannot save config/content snapshot; check serial STORE diagnostics");
     return false;
+  }
   checkin(state);
   content(state);
-  if (!storage.commit(state))
+  if (!storage.commit(state)) {
+    log("SYNC", "Cannot save config/content snapshot; see STORE size or validation error");
+    event(syncId, "update_failed", state, reply, "", 0, "Cannot save config/content snapshot; check serial STORE diagnostics");
     return false;
+  }
   if (!plan["firmware"].isNull()) {
     event(syncId, "download_started", state, reply);
     if (!ota.offered(plan["firmware"], syncId, net)) {

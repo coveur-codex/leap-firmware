@@ -5,8 +5,6 @@
 #include "Protocol.h"
 #include <time.h>
 namespace leap {
-static const uint8_t maze[7] = {0b0000010, 0b0111010, 0b0001000, 0b1101110,
-                                0b0000000, 0b0111110, 0b0000000};
 void Games::begin() {
   gamePrefs.begin("leap-games", false);
   PetState saved;
@@ -45,8 +43,12 @@ void Games::start(const String &id) {
   opened = true;
   petSelection = 0;
   petAction = -1;
-  if (isSnake())
-    snake.start(esp_random());
+  if (isSnake()) {
+    snakeSetup = true;
+    snakeSpeed = 0;
+  }
+  if (id == "tilt_maze")
+    maze.start(esp_random());
   if (isConnectFour()) {
     four = ConnectFour{};
     fourDifficulty = 0;
@@ -58,7 +60,6 @@ void Games::start(const String &id) {
   score = 0;
   length = 1;
   step = show = 0;
-  x = y = 0;
   won = false;
   running = true;
   showing = id == "simon_motion";
@@ -107,6 +108,15 @@ void Games::input(Key key) {
     return;
   }
   if (isSnake()) {
+    if (snakeSetup) {
+      snakeSpeed = constrain(snakeSpeed + (key == Key::Down) - (key == Key::Up), 0, 2);
+      if (key == Key::Center) {
+        snake.start(esp_random());
+        snakeSetup = false;
+        last = millis();
+      }
+      return;
+    }
     snake.turn(int(key));
     return;
   }
@@ -141,13 +151,8 @@ void Games::input(Key key) {
     return;
   }
   if (kind == "tilt_maze") {
-    int nx = x + (key == Key::Right) - (key == Key::Left),
-        ny = y + (key == Key::Down) - (key == Key::Up);
-    if (nx >= 0 && nx < 7 && ny >= 0 && ny < 7 && !(maze[ny] & (1 << nx))) {
-      x = nx;
-      y = ny;
-    }
-    if (x == 6 && y == 6) {
+    maze.move(int(key));
+    if (maze.won) {
       won = true;
       running = false;
       audio.tone(880, 300);
@@ -170,7 +175,7 @@ void Games::tick() {
     savePet();
   if (petAction >= 0 && elapsed(now, actionAt, 3000))
     petAction = -1;
-  if (isSnake() && opened && running && elapsed(now, last, 220)) {
+  if (isSnake() && opened && running && !snakeSetup && elapsed(now, last, snakeIntervals[snakeSpeed])) {
     last = now;
     if (snake.move(esp_random())) {
       audio.tone(880, 40);
@@ -227,6 +232,25 @@ void Games::draw(Arduino_GFX &gfx, int left, int top) {
     return;
   }
   if (isSnake()) {
+    if (snakeSetup) {
+      const char *speeds[] = {"Langsam", "Mittel", "Schnell"};
+      gfx.setTextSize(1);
+      gfx.setTextColor(0xffff);
+      gfx.setCursor(left, top);
+      gfx.print("Snake: Geschwindigkeit waehlen");
+      for (int i = 0; i < 3; ++i) {
+        int yy = top + 28 + i * 23;
+        if (i == snakeSpeed)
+          gfx.fillRoundRect(left, yy - 4, 150, 19, 4, 0x06b8);
+        gfx.setTextColor(i == snakeSpeed ? 0x10e5 : 0xffff);
+        gfx.setCursor(left + 6, yy);
+        gfx.print(speeds[i]);
+      }
+      gfx.setTextColor(0xffff);
+      gfx.setCursor(left, top + 105);
+      gfx.print("R Oben/Unten: Wahl  R Mitte: Start");
+      return;
+    }
     gfx.setTextColor(0xffff);
     gfx.setTextSize(1);
     gfx.setCursor(left, top);
@@ -237,8 +261,8 @@ void Games::draw(Arduino_GFX &gfx, int left, int top) {
     for (int i = 0; i < snake.length; ++i)
       gfx.fillRect(left + snake.body[i].x * 8, boardY + snake.body[i].y * 8, 7, 7,
                    i == 0 ? 0x07ff : 0x06b8);
-    if (!snake.won)
-      gfx.fillCircle(left + snake.food.x * 8 + 3, boardY + snake.food.y * 8 + 3, 3, 0xf800);
+    for (int i = 0; i < snake.foodCount; ++i)
+      gfx.fillCircle(left + snake.foods[i].x * 8 + 3, boardY + snake.foods[i].y * 8 + 3, 3, 0xf800);
     if (!running) {
       gfx.fillRoundRect(left + 42, boardY + 30, 236, 43, 5, 0x10e5);
       gfx.setCursor(left + 55, boardY + 38);
@@ -274,17 +298,17 @@ void Games::draw(Arduino_GFX &gfx, int left, int top) {
       gfx.print(won ? "Geschafft!" : "Noch einmal?");
     }
   } else {
-    for (int row = 0; row < 7; row++)
-      for (int col = 0; col < 7; col++) {
+    for (int row = 0; row < MazeState::Size; row++)
+      for (int col = 0; col < MazeState::Size; col++) {
         int xx = left + col * 12, yy = top + row * 12;
-        gfx.fillRect(xx, yy, 11, 11, maze[row] & (1 << col) ? 0x4a69 : 0x18c3);
+        gfx.fillRect(xx, yy, 11, 11, maze.open[row][col] ? 0x18c3 : 0x4a69);
       }
-    gfx.fillCircle(left + x * 12 + 5, top + y * 12 + 5, 4, 0x07ff);
-    gfx.drawRect(left + 72, top + 72, 11, 11, 0xffe0);
+    gfx.fillCircle(left + maze.x * 12 + 5, top + maze.y * 12 + 5, 4, 0x07ff);
+    gfx.drawRect(left + 96, top + 96, 11, 11, 0xffe0);
     gfx.setTextSize(1);
-    gfx.setCursor(left + 100, top + 15);
+    gfx.setCursor(left + 124, top + 15);
     gfx.print(won ? "Ziel erreicht!" : "Finde den Weg");
-    gfx.setCursor(left + 100, top + 35);
+    gfx.setCursor(left + 124, top + 35);
     gfx.print(motion.available ? "Kippen / Schalter" : "Rechter Schalter");
   }
 }

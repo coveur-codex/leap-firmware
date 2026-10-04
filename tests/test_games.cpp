@@ -46,8 +46,30 @@ int main() {
   SnakeState snake;
   snake.start(0);
   assert(snake.alive && snake.length == 3 && snake.score == 0);
+  auto checkFood = [&] {
+    assert(snake.foodCount == std::min(3, SnakeState::Capacity - snake.length));
+    for (int f = 0; f < snake.foodCount; ++f) {
+      for (int i = 0; i < snake.length; ++i) assert(!(snake.foods[f] == snake.body[i]));
+      for (int i = 0; i < f; ++i) assert(!(snake.foods[f] == snake.foods[i]));
+    }
+  };
+  checkFood();
+  for (int f = 0; f < 3; ++f) {
+    snake.start(12 + f);
+    snake.foods[f] = {snake.body[0].x + 1, snake.body[0].y};
+    // Other food positions must stay put when this one is eaten.
+    auto a = snake.foods[(f + 1) % 3], b = snake.foods[(f + 2) % 3];
+    assert(snake.move(987) && snake.score == 1 && snake.length == 4);
+    bool keptA = false, keptB = false;
+    for (int i = 0; i < 3; ++i) {
+      keptA |= snake.foods[i] == a; keptB |= snake.foods[i] == b;
+    }
+    assert(keptA && keptB);
+    checkFood();
+  }
+  snake.start(0);
   for (int i = 0; i < snake.length; ++i)
-    assert(!(snake.food == snake.body[i]));
+    assert(!(snake.foods[0] == snake.body[i]));
   snake.turn(2);
   assert(!snake.turned); // reverse ignored
   snake.turn(0);
@@ -56,10 +78,10 @@ int main() {
   snake.move(1);
   assert(snake.body[0].y == SnakeState::Rows / 2 - 1);
   snake.start(0);
-  snake.food = {snake.body[0].x + 1, snake.body[0].y};
+  snake.foods[0] = {snake.body[0].x + 1, snake.body[0].y};
   assert(snake.move(123) && snake.length == 4 && snake.score == 1);
   for (int i = 0; i < snake.length; ++i)
-    assert(!(snake.food == snake.body[i]));
+    assert(!(snake.foods[0] == snake.body[i]));
   snake.body[0] = {SnakeState::Columns - 1, 0};
   snake.move(0);
   assert(!snake.alive);
@@ -71,7 +93,7 @@ int main() {
   snake.body[2] = {3, 3};
   snake.body[3] = {3, 2};
   snake.body[4] = {4, 2};
-  snake.food = {0, 0};
+  snake.foods[0] = {0, 0};
   snake.move(0);
   assert(!snake.alive); // own body
   snake.start(0);
@@ -80,7 +102,7 @@ int main() {
   snake.body[1] = {2, 3};
   snake.body[2] = {3, 3};
   snake.body[3] = {3, 2};
-  snake.food = {0, 0};
+  snake.foods[0] = {0, 0};
   snake.move(0);
   assert(snake.alive); // departing tail
   snake.length = SnakeState::Capacity;
@@ -88,6 +110,13 @@ int main() {
     snake.body[i] = {i % SnakeState::Columns, i / SnakeState::Columns};
   snake.placeFood(0);
   assert(!snake.alive && snake.won);
+  snake.start(1);
+  snake.length = SnakeState::Capacity - 2;
+  for (int i = 0; i < snake.length; ++i)
+    snake.body[i] = {i % SnakeState::Columns, i / SnakeState::Columns};
+  snake.foodCount = 0;
+  snake.placeFood(22);
+  checkFood(); // Two remaining free squares, no endless spawning loop.
   std::cout
       << "PASS: pet needs, persistence data, day/night, Snake movement, food and collisions\n";
 }

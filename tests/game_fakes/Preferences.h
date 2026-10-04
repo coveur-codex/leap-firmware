@@ -28,6 +28,13 @@ public:
     bytes[space + key] = {p, p + n};
     return n;
   }
+  unsigned char getUChar(const char *key, unsigned char fallback) {
+    return static_cast<unsigned char>(getInt(key, fallback));
+  }
+  size_t putUChar(const char *key, unsigned char value) {
+    ints[space + key] = value;
+    return 1;
+  }
   int getInt(const char *key, int fallback) {
     auto p = ints.find(space + key);
     return p == ints.end() ? fallback : p->second;

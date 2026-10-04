@@ -46,7 +46,7 @@ String Assets::resolve(const String &id, int version, const String &path) {
   if (!identifier(id.c_str()) || !safePath(path.c_str()))
     return "";
   JsonDocument m(&jsonRam);
-  if (!storage.readJson(storage.package(id, version), m))
+  if (!storage.manifest(id, version, m))
     return "";
   for (JsonObject f : m["files"].as<JsonArray>())
     if (f["path"] == path)
@@ -55,7 +55,7 @@ String Assets::resolve(const String &id, int version, const String &path) {
 }
 bool Assets::definition(const String &id, int version, JsonDocument &out) {
   JsonDocument m(&jsonRam);
-  if (!storage.readJson(storage.package(id, version), m))
+  if (!storage.manifest(id, version, m))
     return false;
   out.set(m["definition"]);
   return !out.overflowed();
@@ -117,7 +117,7 @@ bool Assets::validDefinition(JsonDocument &m) {
       if (f["path"] == def[key])
         path = storage.blob(f["sha256"].as<String>());
     JsonDocument content(&jsonRam);
-    if (!storage.readJson(path, content))
+    if (!storage.readJson(path, content, kind == "quiz" ? CatalogJsonLimit : JsonLimit))
       return fail(m, "Catalog JSON unreadable or invalid", def[key].as<String>());
     if (kind == "quiz") {
       if (!content["questions"].is<JsonArray>())
@@ -185,7 +185,7 @@ bool Assets::verify(JsonDocument &m, bool hashes) {
           return fail(m, "Unsupported or invalid PCM WAV", path);
       } else if (ext.endsWith(".json")) {
         JsonDocument d(&jsonRam);
-        if (!storage.readJson(storage.blob(hash), d))
+        if (!storage.readJson(storage.blob(hash), d, m["type"] == "quiz" ? CatalogJsonLimit : JsonLimit))
           return fail(m, "Invalid JSON file", path);
       } else {
         log("ASSETS", "Unsupported media format; keeping previous package");
@@ -261,6 +261,7 @@ bool Assets::install(JsonObjectConst update, Transport &net) {
                         [&](const uint8_t *p, size_t n) { return file.write(p, n) == n; });
     file.flush();
     file.close();
+    storage.refreshSpace();
     if (!ok) {
       LittleFS.remove(temp);
       return fail(m, "Download failed: " + net.error, f["path"] | "");
@@ -315,7 +316,7 @@ void Assets::cleanup(JsonArrayConst removals, JsonObjectConst active) {
   // News/knowledge image caches are also live references in both snapshots.
   for (const char *path : {"/state0.json", "/state1.json"}) {
     JsonDocument s(&jsonRam);
-    if (storage.readJson(path, s))
+    if (storage.readJson(path, s, SnapshotJsonLimit))
       for (JsonPair p : s["images"].as<JsonObject>())
         retained.insert(p.value().as<std::string>());
   }
@@ -332,5 +333,6 @@ void Assets::cleanup(JsonArrayConst removals, JsonObjectConst active) {
   directory.close();
   for (const String &path : remove)
     LittleFS.remove(path);
+  storage.refreshSpace();
 }
 } // namespace leap

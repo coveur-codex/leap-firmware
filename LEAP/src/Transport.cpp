@@ -70,11 +70,15 @@ bool Transport::read(HTTPClient &http, size_t size,
   return true;
 }
 bool Transport::json(const String &path, JsonDocument &response, JsonDocument *body) {
+  error = "";
   WiFiClient plain;
   WiFiClientSecure tls;
   HTTPClient http;
-  if (!open(http, plain, tls, path))
+  if (!open(http, plain, tls, path)) {
+    error = "HTTP setup failed";
+    log("HTTP", error.c_str());
     return false;
+  }
   if (body) {
     String raw;
     serializeJson(*body, raw);
@@ -84,9 +88,13 @@ bool Transport::json(const String &path, JsonDocument &response, JsonDocument *b
     status = http.GET();
   int size = http.getSize();
   bool ok = status == 200 && size > 0 && size <= int(JsonLimit);
+  if (!ok)
+    error = "HTTP=" + String(status) + " bytes=" + String(size) + " JSON limit=" + String(JsonLimit);
   char *data = ok ? static_cast<char *>(jsonRam.allocate(size + 1)) : nullptr;
-  if (!data)
+  if (!data) {
+    if (ok) error = "Cannot allocate HTTP JSON buffer";
     ok = false;
+  }
   size_t pos = 0;
   if (ok)
     ok = read(http, size, [&](const uint8_t *p, size_t n) {
@@ -96,14 +104,17 @@ bool Transport::json(const String &path, JsonDocument &response, JsonDocument *b
     });
   if (ok) {
     data[size] = 0;
-    ok =
-        !deserializeJson(response, static_cast<const char *>(data), size) && !response.overflowed();
+    auto parsed = deserializeJson(response, static_cast<const char *>(data), size);
+    ok = !parsed && !response.overflowed();
+    if (!ok) error = "JSON parse failed: " + String(parsed.c_str());
   }
   if (data)
     jsonRam.deallocate(data);
   http.end();
   Serial.printf("[%10lu] [HTTP    ] %s status=%d bytes=%d ok=%d\n", millis(), body ? "POST" : "GET",
                 status, size, ok);
+  if (!ok)
+    Serial.printf("[HTTP] path=%s reason=%s\n", path.c_str(), error.c_str());
   return ok;
 }
 bool Transport::download(const String &path, size_t size, const String &hash,
@@ -179,6 +190,7 @@ String Transport::cacheImage(const String &path, bool radar) {
   http.end();
   file.flush();
   file.close();
+  storage.refreshSpace();
   char hash[65];
   for (int i = 0; i < 32; i++)
     snprintf(hash + 2 * i, 3, "%02x", digest[i]);

@@ -149,10 +149,14 @@ int main() {
   assert(savedPet().food == 83);
   recovered.start("snake");
   assert(recovered.active());
+  gfx.text.clear();
+  recovered.draw(gfx, 94, 10);
+  assert(gfx.text.find("Geschwindigkeit") != std::string::npos);
   // Food index 258 corresponds to the square directly ahead of the initial head.
-  fakeRandom = 258;
   recovered.start("snake");
-  fakeNow += 220;
+  fakeRandom = 258;
+  recovered.input(Key::Center);
+  fakeNow += 450;
   recovered.tick();
   assert(Preferences::ints["leap-gamessnake-best"] == 1);
   recovered.close();
@@ -162,11 +166,12 @@ int main() {
   Games newSession;
   newSession.begin();
   newSession.start("snake");
+  newSession.input(Key::Center);
   gfx.text.clear();
   newSession.draw(gfx, 94, 10);
   assert(gfx.text.find("Rekord 1") != std::string::npos);
   for (int i = 0; i < 40; ++i) {
-    fakeNow += 220;
+    fakeNow += 450;
     newSession.tick();
   }
   assert(!newSession.active());
@@ -174,6 +179,36 @@ int main() {
   assert(newSession.active());
   newSession.close();
   assert(!newSession.active());
+  for (int speed = 0; speed < 3; ++speed) {
+    Games paced;
+    paced.begin();
+    paced.start("snake");
+    fakeNow += 5000;
+    paced.tick();
+    gfx.text.clear();
+    paced.draw(gfx, 94, 10);
+    assert(gfx.text.find("Geschwindigkeit") != std::string::npos);
+    for (int i = 0; i < speed; ++i) paced.input(Key::Down);
+    paced.input(Key::Center);
+    auto headX = [&] {
+      gfx.rects.clear();
+      paced.draw(gfx, 94, 10);
+      for (auto r : gfx.rects) if (r.color == 0x07ff && r.w == 7) return r.x;
+      return -1;
+    };
+    int before = headX();
+    const int intervals[] = {450, 300, 220};
+    fakeNow += intervals[speed] - 1;
+    paced.tick();
+    assert(headX() == before);
+    ++fakeNow;
+    paced.tick();
+    assert(headX() == before + 8);
+    paced.close();
+    fakeNow += 2000;
+    paced.tick();
+    assert(!paced.active());
+  }
   // Exact v6 path layout and all nine states supplied by the dragon manifest.
   JsonDocument dragon;
   dragon["definition"]["tamagotchi"]["backgrounds"]["day"] = "data/background/background_day.png";

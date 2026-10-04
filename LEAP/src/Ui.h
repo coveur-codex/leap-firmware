@@ -50,6 +50,7 @@ class Ui {
                  bool animate = false);
 
 public:
+  bool beginDisplay();
   bool begin();
   void input(const InputEvent &event);
   void tick();

@@ -49,10 +49,15 @@ bool Storage::begin(bool formatRequested) {
   }
   log("STORE", ready ? "LittleFS ready; existing data protected"
                      : "LittleFS unavailable; data retained. Hold BOTH centres at boot for 3s to erase");
+  refreshSpace();
   return ready;
 }
 size_t Storage::freeBytes() const {
-  return ready ? LittleFS.totalBytes() - LittleFS.usedBytes() : 0;
+  return freeSpace.load();
+}
+void Storage::refreshSpace() {
+  // usedBytes() scans LittleFS; never perform that scan in the UI/health loop.
+  freeSpace = ready ? LittleFS.totalBytes() - LittleFS.usedBytes() : 0;
 }
 String Storage::package(const String &id, int version) const {
   // Hash of ID is not needed: server IDs fit one path component, checked before use.
@@ -67,11 +72,13 @@ bool Storage::parents(const String &path) {
     }
   return true;
 }
-bool Storage::readJson(const String &path, JsonDocument &out) {
+bool Storage::readJson(const String &path, JsonDocument &out, size_t limit) {
   if (!ready)
     return false;
   File f = LittleFS.open(path, "r");
-  if (!f || f.size() > JsonLimit) {
+  if (!f || f.size() > limit) {
+    Serial.printf("[STORE] JSON read rejected path=%s bytes=%u limit=%u\n", path.c_str(),
+                  unsigned(f ? f.size() : 0), unsigned(limit));
     f.close();
     return false;
   }
@@ -82,21 +89,35 @@ bool Storage::readJson(const String &path, JsonDocument &out) {
     f.close();
     return false;
   }
-  size_t read = f.read(reinterpret_cast<uint8_t *>(buffer), size);
+  size_t read = 0;
+  while (read < size) {
+    size_t n = f.read(reinterpret_cast<uint8_t *>(buffer) + read,
+                      std::min(StorageBlockSize, size - read));
+    if (!n) break;
+    read += n;
+    vTaskDelay(1);
+  }
   f.close();
   // Const input makes ArduinoJson own its strings after the buffer is freed.
   auto error = deserializeJson(out, static_cast<const char *>(buffer), read);
   jsonRam.deallocate(buffer);
-  return read == size && !error && !out.overflowed();
+  bool ok = read == size && !error && !out.overflowed();
+  if (!ok)
+    Serial.printf("[STORE] JSON parse/read failed path=%s read=%u/%u error=%s overflow=%d\n",
+                  path.c_str(), unsigned(read), unsigned(size), error.c_str(), out.overflowed());
+  return ok;
 }
-bool Storage::writeJson(const String &path, JsonDocument &doc) {
-  if (!ready || doc.overflowed() || measureJson(doc) > JsonLimit || !parents(path))
+bool Storage::writeJson(const String &path, JsonDocument &doc, size_t limit) {
+  size_t size = measureJson(doc);
+  if (!ready || doc.overflowed() || size > limit || !parents(path)) {
+    Serial.printf("[STORE] JSON write rejected path=%s bytes=%u limit=%u ready=%d overflow=%d\n",
+                  path.c_str(), unsigned(size), unsigned(limit), ready, doc.overflowed());
     return false;
+  }
   String tmp = path + ".tmp";
   File f = LittleFS.open(tmp, "w");
   if (!f)
     return false;
-  size_t size = measureJson(doc);
   char *buffer = static_cast<char *>(jsonRam.allocate(size + 1));
   if (!buffer) {
     f.close();
@@ -104,7 +125,14 @@ bool Storage::writeJson(const String &path, JsonDocument &doc) {
     return false;
   }
   size_t encoded = serializeJson(doc, buffer, size + 1);
-  size_t n = encoded == size ? f.write(reinterpret_cast<const uint8_t *>(buffer), size) : 0;
+  size_t n = 0;
+  while (encoded == size && n < size) {
+    size_t written = f.write(reinterpret_cast<const uint8_t *>(buffer) + n,
+                             std::min(StorageBlockSize, size - n));
+    if (!written) break;
+    n += written;
+    vTaskDelay(1);
+  }
   jsonRam.deallocate(buffer);
   f.flush();
   f.close();
@@ -113,9 +141,11 @@ bool Storage::writeJson(const String &path, JsonDocument &doc) {
     return false;
   }
   // LittleFS rename atomically replaces a destination; never remove it first.
-  return LittleFS.rename(tmp, path);
+  bool ok = LittleFS.rename(tmp, path);
+  refreshSpace();
+  return ok;
 }
-bool Storage::validState(JsonDocument &d) {
+bool Storage::validState(JsonDocument &d, JsonDocument &inventory) {
   if (d["schema"] != 1 || !d["config"].is<JsonObject>() || !d["assets"].is<JsonObject>())
     return false;
   for (JsonPair p : d["assets"].as<JsonObject>()) {
@@ -134,10 +164,20 @@ bool Storage::validState(JsonDocument &d) {
       if (!file || file.size() != f["size"].as<size_t>())
         return false;
     }
+    inventory[p.key().c_str()] = m;
   }
-  return true;
+  return !inventory.overflowed();
 }
-bool Storage::load(JsonDocument &out, TickType_t wait, bool *busy) {
+bool Storage::manifest(const String &id, int version, JsonDocument &out) {
+  if (mutex && xSemaphoreTake(mutex, portMAX_DELAY) == pdTRUE) {
+    bool found = cachedLoaded && cachedManifests[id]["version"] == version;
+    if (found) out.set(cachedManifests[id]);
+    xSemaphoreGive(mutex);
+    if (found) return !out.overflowed();
+  }
+  return readJson(package(id, version), out);
+}
+bool Storage::load(JsonDocument &out, TickType_t wait, bool *busy, JsonDocument *inventory) {
   if (busy) *busy = false;
   if (!ready)
     return false;
@@ -145,36 +185,65 @@ bool Storage::load(JsonDocument &out, TickType_t wait, bool *busy) {
     if (busy) *busy = true;
     return false;
   }
+  if (cachedLoaded) {
+    out.set(cached);
+    if (inventory) inventory->set(cachedManifests);
+    xSemaphoreGive(mutex);
+    return !out.overflowed() && (!inventory || !inventory->overflowed());
+  }
+  JsonDocument manifests(&jsonRam);
   int active = prefs.getUChar("active", 0);
-  bool ok = readJson(active ? "/state1.json" : "/state0.json", out) && validState(out);
+  bool ok = readJson(active ? "/state1.json" : "/state0.json", out, SnapshotJsonLimit) &&
+            validState(out, manifests);
   if (!ok) {
     out.clear();
-    ok = readJson(active ? "/state0.json" : "/state1.json", out) && validState(out);
+    manifests.clear();
+    ok = readJson(active ? "/state0.json" : "/state1.json", out, SnapshotJsonLimit) &&
+         validState(out, manifests);
     if (ok) {
       prefs.putUChar("active", 1 - active);
       log("STORE", "Recovered previous snapshot");
     }
   }
   if (!ok) {
+    manifests.clear();
     out.clear();
     out["schema"] = 1;
     out["config"].to<JsonObject>();
     out["assets"].to<JsonObject>();
   }
+  cached.set(out);
+  cachedManifests = std::move(manifests);
+  cachedLoaded = !cached.overflowed();
+  if (inventory) inventory->set(cachedManifests);
   xSemaphoreGive(mutex);
   return ok;
 }
 bool Storage::commit(JsonDocument &doc) {
-  if (!ready || !validState(doc))
+  JsonDocument manifests(&jsonRam), published(&jsonRam);
+  if (!ready || doc.overflowed() || measureJson(doc) > SnapshotJsonLimit ||
+      !validState(doc, manifests)) {
+    Serial.printf("[STORE] Snapshot rejected bytes=%u limit=%u overflow=%d; previous retained\n",
+                  unsigned(measureJson(doc)), unsigned(SnapshotJsonLimit), doc.overflowed());
     return false;
-  xSemaphoreTake(mutex, portMAX_DELAY);
+  }
+  published.set(doc);
+  if (published.overflowed()) return false;
+  // Network task is the sole writer. Flash work stays outside the publication
+  // mutex so the UI can keep copying the previous RAM snapshot while it is saved.
   int next = 1 - prefs.getUChar("active", 0);
-  bool ok = writeJson(next ? "/state1.json" : "/state0.json", doc);
+  bool ok = writeJson(next ? "/state1.json" : "/state0.json", doc, SnapshotJsonLimit);
   if (ok)
     ok = prefs.putUChar("active", next) == 1;
-  if (ok)
+  if (ok) {
+    xSemaphoreTake(mutex, portMAX_DELAY);
+    cached = std::move(published);
+    cachedManifests = std::move(manifests);
+    cachedLoaded = true;
     generation.fetch_add(1);
-  xSemaphoreGive(mutex);
+    xSemaphoreGive(mutex);
+  } else
+    log("STORE", "Snapshot write/activation failed; previous RAM snapshot retained");
   return ok;
 }
 } // namespace leap
