@@ -77,13 +77,14 @@ bool Ui::beginDisplay() {
   log("DISPLAY", "Early LEAP screen visible before storage and radio initialization");
   return true;
 }
-bool Ui::begin() {
+bool Ui::begin(JsonDocument *bootState) {
   if (!healthy && !beginDisplay()) return false;
   prefs.begin("leap-ui", false);
   game.begin();
   brightness = constrain(prefs.getInt("brightness", 170), 20, 255);
   audio.volume = prefs.getUChar("volume", 35);
-  storage.load(state);
+  if (bootState) state = std::move(*bootState);
+  else storage.load(state);
   lastInput = millis();
   // Resolve only the active, locally installed common asset; no network at boot.
   int systemVersion = state["assets"]["system"] | 0;
@@ -96,26 +97,31 @@ bool Ui::begin() {
     bootLogoVisible = bootImage.draw(*canvas, assets.resolve("system", systemVersion, logo),
                                      logo, 0, 0, hw::Width, hw::Height, true, 0x0000, false);
   }
-  reload();
-  if (bootLogoVisible)
+  if (bootLogoVisible) {
     canvas->flush();
-  else
-    render();
+    ledcWrite(hw::Backlight, brightness);
+    bootLogoAt = millis();
+    log("DISPLAY", "System boot logo visible for at least 2000 ms; preparing UI");
+  }
+  reload(true);
+  if (!bootLogoVisible) render();
   ledcWrite(hw::Backlight, brightness);
-  // Count two visible seconds, after decoding, transfer and backlight activation.
-  bootLogoAt = millis();
-  log("DISPLAY", bootLogoVisible ? "System boot logo visible for 2000 ms"
-                                  : "System boot logo unavailable; starting normal UI");
+  if (!bootLogoVisible)
+    log("DISPLAY", "System boot logo unavailable; starting normal UI");
   log("DISPLAY", "428x142 landscape ready");
   return true;
 }
-bool Ui::reload() {
+bool Ui::reload(bool initial) {
   uint32_t loadedGeneration = storage.generation.load();
   JsonDocument next(&jsonRam);
   bool busy = false;
-  JsonDocument nextManifests(&jsonRam);
-  storage.load(next, 0, &busy, &nextManifests);
-  if (busy || next.overflowed() || nextManifests.overflowed())
+  std::shared_ptr<const JsonDocument> nextManifests;
+  if (initial) {
+    next = std::move(state);
+    nextManifests = storage.manifestView();
+  } else
+    storage.load(next, 0, &busy, nullptr, &nextManifests);
+  if (busy || next.overflowed())
     return false; // Keep current UI and retry next loop instead of waiting on flash writes.
   int oldPage = page, oldSelection = selection, oldItem = item, oldScroll = scroll,
       oldKnowledge = knowledgeMode;
@@ -123,22 +129,18 @@ bool Ui::reload() {
   int oldOrder[4];
   for (int i = 0; i < 4; i++)
     oldOrder[i] = answerOrder[i];
-  JsonDocument previous(&jsonRam);
-  previous["config"] = state["config"];
-  previous["assets"] = state["assets"];
-  previous["quiz"] = state["content"]["quiz"];
+  bool same = !initial &&
+      state["config"].as<JsonVariantConst>() == next["config"].as<JsonVariantConst>() &&
+      state["assets"].as<JsonVariantConst>() == next["assets"].as<JsonVariantConst>() &&
+      state["content"]["quiz"].as<JsonVariantConst>() == next["content"]["quiz"].as<JsonVariantConst>();
   state = std::move(next);
   aircraftFrame.clear();
-  bool same =
-      previous["config"].as<JsonVariantConst>() == state["config"].as<JsonVariantConst>() &&
-      previous["assets"].as<JsonVariantConst>() == state["assets"].as<JsonVariantConst>() &&
-      previous["quiz"].as<JsonVariantConst>() == state["content"]["quiz"].as<JsonVariantConst>();
   generation = loadedGeneration;
   manifests = std::move(nextManifests);
   String avatarId = state["config"]["avatar"] | "dragon";
   if (!avatarId.startsWith("avatar-"))
     avatarId = "avatar-" + avatarId;
-  game.avatarPackage(avatarId, state["assets"][avatarId] | 0, manifests[avatarId]);
+  game.avatarPackage(avatarId, state["assets"][avatarId] | 0, manifestFor(avatarId));
   if (!same || generation == 0)
     radio.configure(state);
   pages.clear();
@@ -170,7 +172,7 @@ bool Ui::reload() {
     auto catalogs = quiz["catalogs"].to<JsonArray>();
     // Keep metadata here; load at most 200 questions from the chosen catalog.
     for (JsonPair p : state["assets"].as<JsonObject>()) {
-      JsonObjectConst manifest = manifests[p.key().c_str()].as<JsonObjectConst>();
+      JsonObjectConst manifest = manifestFor(p.key().c_str()).as<JsonObjectConst>();
       if (manifest["definition"]["type"] != "quiz")
         continue;
       auto entry = catalogs.add<JsonObject>();
@@ -260,7 +262,8 @@ void Ui::list(const std::vector<String> &labels, int x, int y, int width) {
   }
 }
 String Ui::assetOfType(const char *type) {
-  for (JsonPair p : manifests.as<JsonObject>()) {
+  if (!manifests) return "";
+  for (JsonPairConst p : manifests->as<JsonObjectConst>()) {
     if (p.value()["definition"]["type"] == type)
       return p.key().c_str();
   }
@@ -273,7 +276,7 @@ bool Ui::drawAsset(const String &id, Media &media, int x, int y, int width, int 
   int version = state["assets"][id] | 0;
   if (!version)
     return false;
-  JsonVariantConst manifest = manifests[id];
+  JsonVariantConst manifest = manifestFor(id);
   JsonObjectConst def = manifest["definition"];
   if (def.isNull())
     return false;
@@ -393,7 +396,7 @@ void Ui::chooseQuizCatalog(int index) {
     String package = chosen["package"] | "";
     JsonArrayConst rows;
     if (package.length()) {
-      JsonObjectConst def = manifests[package]["definition"];
+      JsonObjectConst def = manifestFor(package)["definition"];
       storage.readJson(assets.resolve(package, state["assets"][package],
                                      def["questionsFile"] | "questions.json"), catalog, CatalogJsonLimit);
       rows = catalog["questions"].as<JsonArrayConst>();

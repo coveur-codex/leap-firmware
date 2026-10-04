@@ -34,6 +34,18 @@ int main(int argc, char **argv) {
   assert(animal.draw(gfx, root + "/80-3.png", "idle2.png", 174, 40, 80, 80, false, 0x10e5, true,
                      true, true));
   assert(gfx.pixels[40 * 428 + 176] != 0);
+  // Actual user background dimensions: fit 264x142 into the 256x142 scene.
+  Media wideBackground;
+  assert(Media::validate(root + "/264-4.png", "background_day.png"));
+  assert(!wideBackground.draw(gfx, root + "/264-4.png", "background_day.png", 86, 0, 256, 142, true));
+  runWorker();
+  auto beforeWide = gfx.pixels;
+  assert(wideBackground.draw(gfx, root + "/264-4.png", "background_day.png", 86, 0, 256, 142, true));
+  assert(gfx.pixels[2 * 428 + 86] == 0); // Fitted image starts at (86,2), source pixel (0,0).
+  assert(gfx.pixels[200] == beforeWide[200]); // Proportional fit leaves the scene's top margin.
+  assert(gfx.pixels[139 * 428 + 200] == beforeWide[139 * 428 + 200]);
+  assert(gfx.pixels[2 * 428 + 342] == beforeWide[2 * 428 + 342]); // Never draws into action strip.
+
   // A missing background can arrive on sync without changing its content-hash path.
   Media lateBackground;
   String late = root + "/late-background.dat";

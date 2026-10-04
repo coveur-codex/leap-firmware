@@ -27,10 +27,16 @@ int main() {
   serializeJson(manifest, after);
   assert(after == before); // No mutation of hashed definitions.
   assert(avatarImageSize(manifest["definition"], "Example/background_day/day.png", 256, 142));
-  assert(!avatarImageSize(manifest["definition"], "Example/background_day/day.png", 80, 80));
+  assert(avatarImageSize(manifest["definition"], "Example/background_day/day.png", 264, 142));
+  assert(avatarImageSize(manifest["definition"], "Example/background_night.png", 428, 142));
+  assert(!avatarImageSize(manifest["definition"], "Example/background_day/day.png", 1025, 142));
+  assert(!avatarImageSize(manifest["definition"], "Example/background_day/day.png", 264, 0));
+  assert(!avatarImageSize(manifest["definition"], "preview.png", 264, 142));
+  assert(avatarImageSize(manifest["definition"], "preview.png", 80, 80));
   manifest["definition"]["tamagotchi"]["backgrounds"]["day"] = "custom.png";
   manifest["definition"]["tamagotchi"]["animations"]["idle"]["frames"].to<JsonArray>().add(
       "custom-idle.png");
+  assert(avatarImageSize(manifest["definition"], "custom.png", 264, 142));
   petPresentation(manifest, presentation);
   assert(presentation["backgrounds"]["day"] == "custom.png");
   assert(presentation["animations"]["idle"]["frames"][0] == "custom-idle.png");

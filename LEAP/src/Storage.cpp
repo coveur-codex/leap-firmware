@@ -73,6 +73,7 @@ bool Storage::parents(const String &path) {
   return true;
 }
 bool Storage::readJson(const String &path, JsonDocument &out, size_t limit) {
+  uint32_t started = millis();
   if (!ready)
     return false;
   File f = LittleFS.open(path, "r");
@@ -98,9 +99,13 @@ bool Storage::readJson(const String &path, JsonDocument &out, size_t limit) {
     vTaskDelay(1);
   }
   f.close();
+  uint32_t readAt = millis();
   // Const input makes ArduinoJson own its strings after the buffer is freed.
   auto error = deserializeJson(out, static_cast<const char *>(buffer), read);
   jsonRam.deallocate(buffer);
+  if (millis() - started >= 200)
+    Serial.printf("[STORE] JSON timing path=%s bytes=%u IO=%lu ms parse=%lu ms\n",
+                  path.c_str(), unsigned(size), readAt - started, millis() - readAt);
   bool ok = read == size && !error && !out.overflowed();
   if (!ok)
     Serial.printf("[STORE] JSON parse/read failed path=%s read=%u/%u error=%s overflow=%d\n",
@@ -170,14 +175,21 @@ bool Storage::validState(JsonDocument &d, JsonDocument &inventory) {
 }
 bool Storage::manifest(const String &id, int version, JsonDocument &out) {
   if (mutex && xSemaphoreTake(mutex, portMAX_DELAY) == pdTRUE) {
-    bool found = cachedLoaded && cachedManifests[id]["version"] == version;
-    if (found) out.set(cachedManifests[id]);
+    bool found = cachedLoaded && cachedManifests && (*cachedManifests)[id]["version"] == version;
+    if (found) out.set((*cachedManifests)[id]);
     xSemaphoreGive(mutex);
     if (found) return !out.overflowed();
   }
   return readJson(package(id, version), out);
 }
-bool Storage::load(JsonDocument &out, TickType_t wait, bool *busy, JsonDocument *inventory) {
+std::shared_ptr<const JsonDocument> Storage::manifestView() {
+  if (!mutex || xSemaphoreTake(mutex, 0) != pdTRUE) return {};
+  auto view = cachedManifests;
+  xSemaphoreGive(mutex);
+  return view;
+}
+bool Storage::load(JsonDocument &out, TickType_t wait, bool *busy, JsonDocument *inventory,
+                   std::shared_ptr<const JsonDocument> *view) {
   if (busy) *busy = false;
   if (!ready)
     return false;
@@ -186,15 +198,23 @@ bool Storage::load(JsonDocument &out, TickType_t wait, bool *busy, JsonDocument 
     return false;
   }
   if (cachedLoaded) {
+    uint32_t copyAt = millis();
     out.set(cached);
-    if (inventory) inventory->set(cachedManifests);
+    if (inventory && cachedManifests) inventory->set(*cachedManifests);
+    if (view) *view = cachedManifests;
     xSemaphoreGive(mutex);
+    if (millis() - copyAt >= 200)
+      Serial.printf("[STORE] RAM snapshot copy %lu ms\n", millis() - copyAt);
     return !out.overflowed() && (!inventory || !inventory->overflowed());
   }
   JsonDocument manifests(&jsonRam);
   int active = prefs.getUChar("active", 0);
-  bool ok = readJson(active ? "/state1.json" : "/state0.json", out, SnapshotJsonLimit) &&
-            validState(out, manifests);
+  uint32_t started = millis();
+  bool parsed = readJson(active ? "/state1.json" : "/state0.json", out, SnapshotJsonLimit);
+  uint32_t parsedAt = millis();
+  bool ok = parsed && validState(out, manifests);
+  Serial.printf("[STORE] Boot snapshot read/parse=%lu ms inventory validation=%lu ms\n",
+                parsedAt - started, millis() - parsedAt);
   if (!ok) {
     out.clear();
     manifests.clear();
@@ -212,10 +232,13 @@ bool Storage::load(JsonDocument &out, TickType_t wait, bool *busy, JsonDocument 
     out["config"].to<JsonObject>();
     out["assets"].to<JsonObject>();
   }
+  uint32_t copyAt = millis();
   cached.set(out);
-  cachedManifests = std::move(manifests);
+  Serial.printf("[STORE] Boot RAM snapshot copy %lu ms\n", millis() - copyAt);
+  cachedManifests = std::make_shared<JsonDocument>(std::move(manifests));
   cachedLoaded = !cached.overflowed();
-  if (inventory) inventory->set(cachedManifests);
+  if (inventory) inventory->set(*cachedManifests);
+  if (view) *view = cachedManifests;
   xSemaphoreGive(mutex);
   return ok;
 }
@@ -238,7 +261,7 @@ bool Storage::commit(JsonDocument &doc) {
   if (ok) {
     xSemaphoreTake(mutex, portMAX_DELAY);
     cached = std::move(published);
-    cachedManifests = std::move(manifests);
+    cachedManifests = std::make_shared<JsonDocument>(std::move(manifests));
     cachedLoaded = true;
     generation.fetch_add(1);
     xSemaphoreGive(mutex);

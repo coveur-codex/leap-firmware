@@ -62,7 +62,8 @@ int main(int argc, char **argv) {
   JsonDocument petDefinition;
   petDefinition["tamagotchi"]["backgrounds"]["day"] = "outer/background_day/day.png";
   assert(avatarImageSize(petDefinition, "outer/background_day/day.png", 256, 142));
-  assert(!avatarImageSize(petDefinition, "outer/background_day/day.png", 80, 80));
+  assert(avatarImageSize(petDefinition, "outer/background_day/day.png", 264, 142));
+  assert(!avatarImageSize(petDefinition, "outer/background_day/day.png", 1025, 142));
   assert(avatarImageSize(petDefinition, "idle/frame_01.png", 80, 80));
   assert(!avatarImageSize(petDefinition, "unreferenced.png", 256, 142));
   JsonDocument avatar;
