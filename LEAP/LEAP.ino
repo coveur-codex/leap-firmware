@@ -48,7 +48,7 @@ void setup() {
     log("CLOCK", "Restored last known time; power-off duration unknown");
   }
   phaseAt = millis();
-  bool displayReady = ui.begin();
+  bool displayReady = ui.begin(&state);
   Serial.printf("[BOOT] UI ready %lu ms\n", millis() - phaseAt);
   bool radioReady = radio.begin();
   bool soundReady = audio.begin();

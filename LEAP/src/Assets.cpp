@@ -174,7 +174,9 @@ bool Assets::verify(JsonDocument &m, bool hashes) {
           Media::avatarPng(storage.blob(hash), &width, &height);
           if (!avatarImageSize(m["definition"], path.c_str(), width, height))
             return fail(m,
-                        "Avatar must be 80x80, pet background 256x142; header=" + String(width) +
+                        String(petBackgroundFile(m["definition"], path.c_str())
+                                   ? "Pet background PNG must be 1..1024 pixels per dimension; header="
+                                   : "Avatar/pet frame must be 80x80; header=") + String(width) +
                             "x" + String(height),
                         path);
         }

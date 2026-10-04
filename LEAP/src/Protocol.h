@@ -51,15 +51,20 @@ inline std::string avatarFrame(JsonVariantConst manifest, uint32_t now = 0) {
     return frames[(now / 400) % frames.size()].as<std::string>();
   return ""; // Only canonical idle folders are discovered; other expressions are not avatars.
 }
-// Explicit references and canonical pet background names use the scene dimensions.
-inline bool avatarImageSize(JsonVariantConst definition, const std::string &path, uint32_t w,
-                            uint32_t h) {
+inline bool petBackgroundFile(JsonVariantConst definition, const std::string &path) {
   bool background = *petBackgroundPeriod(path);
   for (const char *key : {"day", "night"})
     if (definition["tamagotchi"]["backgrounds"][key].is<const char *>() &&
         definition["tamagotchi"]["backgrounds"][key].as<std::string>() == path)
       background = true;
-  return background ? w == 256 && h == 142 : w == 80 && h == 80;
+  return background;
+}
+// Background source dimensions are independent of the destination scene size.
+// Every supported image is still decoded and integrity checked before activation.
+inline bool avatarImageSize(JsonVariantConst definition, const std::string &path, uint32_t w,
+                            uint32_t h) {
+  return petBackgroundFile(definition, path) ? w > 0 && h > 0 && w <= 1024 && h <= 1024
+                                           : w == 80 && h == 80;
 }
 // Pure validation shared by target code and host-side protocol tests.
 inline bool manifestMetadata(JsonVariantConst m, size_t maxBytes, size_t maxFiles = 256) {

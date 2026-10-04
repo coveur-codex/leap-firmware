@@ -4,6 +4,7 @@
 #include <LittleFS.h>
 #include <Preferences.h>
 #include <atomic>
+#include <memory>
 namespace leap {
 // ArduinoJson uses PSRAM for large documents, falling back to internal RAM.
 class RamAllocator : public ArduinoJson::Allocator {
@@ -16,7 +17,8 @@ extern RamAllocator jsonRam;
 class Storage {
   Preferences prefs;
   SemaphoreHandle_t mutex = nullptr;
-  JsonDocument cached{&jsonRam}, cachedManifests{&jsonRam};
+  JsonDocument cached{&jsonRam};
+  std::shared_ptr<const JsonDocument> cachedManifests;
   bool cachedLoaded = false;
   bool validState(JsonDocument &doc, JsonDocument &inventory);
 
@@ -26,7 +28,9 @@ public:
   std::atomic<size_t> freeSpace{0};
   bool begin(bool formatRequested = false);
   bool load(JsonDocument &out, TickType_t wait = portMAX_DELAY, bool *busy = nullptr,
-            JsonDocument *inventory = nullptr);
+            JsonDocument *inventory = nullptr,
+            std::shared_ptr<const JsonDocument> *view = nullptr);
+  std::shared_ptr<const JsonDocument> manifestView();
   bool commit(JsonDocument &doc);
   bool readJson(const String &path, JsonDocument &out, size_t limit = JsonLimit);
   bool writeJson(const String &path, JsonDocument &doc, size_t limit = JsonLimit);

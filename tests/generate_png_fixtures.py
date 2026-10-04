@@ -5,7 +5,7 @@ root = Path(sys.argv[1])
 root.mkdir(parents=True, exist_ok=True)
 def chunk(tag,data):
  return struct.pack('>I',len(data))+tag+data+struct.pack('>I',zlib.crc32(tag+data))
-for width,height in [(80,80),(256,142),(428,142),(1024,8)]:
+for width,height in [(80,80),(256,142),(264,142),(428,142),(1024,8)]:
  for mode,channels in [(2,3),(6,4)]:
   rows=[]
   for y in range(height):

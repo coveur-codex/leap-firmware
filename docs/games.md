@@ -87,8 +87,11 @@ Pfad-, Speicher- und Aktivierungsprüfungen.
 Weitere Zustände: `happy`, `sad`, `hungry`, `tired`, `dirty`, `playing`, `sleeping`.
 Üblich sind je vier 80×80-Frames; variable Frameanzahlen funktionieren ebenfalls.
 Waschen nutzt `happy`. Fehlende Zustandsanimationen fallen auf Pet-Idle, dann
-Sidebar-Idle/Preview bzw. eine Zeichnung zurück. Hintergrund-PNGs müssen exakt
-256×142 sein; alle anderen Avatar-PNGs weiterhin 80×80. Hintergründe werden über explizite Referenzen oder die eindeutigen Namen
+Sidebar-Idle/Preview bzw. eine Zeichnung zurück. Ab beta.17 dürfen Hintergrund-PNGs beliebige Maße zwischen 1 und 1024 Pixeln
+je Achse besitzen, etwa 264×142. Die Darstellung passt sie mit erhaltenem
+Seitenverhältnis in die 256×142-Spielfläche ein. Alle anderen Avatar-PNGs bleiben
+80×80. Größe/SHA-256 im Manifest und vollständige PNG-Decoderprüfung bleiben
+unverändert; bestehende Pakete benötigen keinen erneuten Upload. Hintergründe werden über explizite Referenzen oder die eindeutigen Namen
 `background_day`/`background_night` erkannt. Andere Avatar-PNGs bleiben auf
 80×80 beschränkt. Bereits hochgeladene Pakete benötigen keine neue Definition:
 Die Firmware erkennt Zustandsordner und die bisherigen `animations`-Einträge
@@ -124,7 +127,7 @@ Preferences, Zeichnen und Zeit. Dabei: vier Aktionsframes, Rückkehr zum Gemüt 
 3 s, alle Aktionen, persistenter Zustand nach neuer Games-Instanz, korrupter
 Speicher, Snake-Runde/Beenden/Neustart und persistenter Rekord bereits beim Fressen.
 Dies ist kein Beleg für physische NVS-Power-Cut-Eigenschaften.
-`tools/test_png.sh` nutzt PNGdec 1.1.6 mit echten 80×80- und 256×142-Fixtures,
+`tools/test_png.sh` nutzt PNGdec 1.1.6 mit echten 80×80-, 256×142- und 264×142-Fixtures,
 Alpha-Masken und Decoderfehlern. `tests/server_contract.py` erzeugt reale
 Homeserver-Manifeste mit Pet-Hintergründen für `tests/test_core.cpp`.
 Homeserver-Tests prüfen Import, Sync, Versionsschutz, Frame-Erweiterung, Löschen,

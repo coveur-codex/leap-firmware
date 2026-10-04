@@ -378,7 +378,7 @@ void Games::drawPet(Arduino_GFX &gfx) {
   // A complete local scene also covers missing packages and asynchronous decoding.
   bool backgroundShown =
       background.length() && petBackground.draw(gfx, petBlob(background), background, 86, 0, 256,
-                                                142, false, night ? 0x1086 : 0xb6ff);
+                                                142, true, night ? 0x1086 : 0xb6ff);
   if (!backgroundShown) {
     gfx.fillCircle(310, 36, 12, night ? 0xffde : 0xffe0);
     if (night) {

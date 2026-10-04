@@ -46,6 +46,11 @@ int main() {
   assert(inventory["quiz-test"]["version"] == 1);
   JsonDocument cachedManifest(&jsonRam);
   assert(store.manifest("quiz-test", 1, cachedManifest) && fakeOpens == opens);
+  auto heldView = store.manifestView();
+  assert(heldView && (*heldView)["quiz-test"]["version"] == 1);
+  std::shared_ptr<const JsonDocument> loadedView;
+  assert(store.load(visible, 0, nullptr, nullptr, &loadedView));
+  assert(heldView == loadedView && fakeOpens == opens); // Share, no inventory clone.
   assert(visible.as<JsonVariantConst>() == state.as<JsonVariantConst>());
   size_t scans = fakeUsedCalls;
   store.freeBytes(); store.freeBytes();
@@ -86,6 +91,8 @@ int main() {
   serializeJson(visible, *fakeFiles["/state1.json"]);
   state["config"]["deviceId"] = "leap-test";
   assert(store.commit(state)); // Writes state0; state1 remains a valid older fallback.
+  assert(store.manifestView() != heldView);
+  assert((*heldView)["quiz-test"]["version"] == 1); // Old UI view survives publication.
   fakeFiles["/state0.json"] = std::make_shared<std::string>("broken");
   Storage recovered;
   assert(recovered.begin() && recovered.load(visible));

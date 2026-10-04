@@ -16,7 +16,10 @@ class Ui {
   Arduino_NV3007 *panel = nullptr;
   Arduino_Canvas *canvas = nullptr;
   JsonDocument state{&jsonRam}, quiz{&jsonRam};
-  JsonDocument manifests{&jsonRam};
+  std::shared_ptr<const JsonDocument> manifests;
+  JsonVariantConst manifestFor(const String &id) const {
+    return manifests ? (*manifests)[id].as<JsonVariantConst>() : JsonVariantConst();
+  }
   std::vector<Page> pages;
   std::vector<uint16_t> questionOrder;
   bool quizLoaded = false;
@@ -35,7 +38,7 @@ class Ui {
   bool locked = true, menu = false, answered = false, gameOpen = false, dirtySettings = false;
   int brightness = 170;
   String query, notice;
-  bool reload();
+  bool reload(bool initial = false);
   void render();
   void sidebar();
   void body(const String &text, int x = 94, int y = 12, int width = 326, int height = 110);
@@ -51,7 +54,7 @@ class Ui {
 
 public:
   bool beginDisplay();
-  bool begin();
+  bool begin(JsonDocument *bootState = nullptr);
   void input(const InputEvent &event);
   void tick();
   bool healthy = false;

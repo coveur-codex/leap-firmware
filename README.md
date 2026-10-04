@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.0-beta.16`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.0-beta.17`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -104,6 +104,12 @@ LEAP-Schriftzug mit „Startet…“, bevor LittleFS, gespeicherte Inhalte und F
 initialisiert werden. Das reduziert die schwarze Wartephase; es macht die
 anschließende Speicherprüfung nicht überflüssig. `BOOT` protokolliert die Dauer
 von Speicherinitialisierung, erstem Snapshot-Laden und UI-Start für die Abnahme.
+Ab beta.17 wird der beim Setup geladene Zustand in die UI verschoben, statt ihn
+noch zweimal zu kopieren. Die UI hält eine unveränderliche, gemeinsam besessene
+Manifestansicht, die auch nach einem neuen Sync gültig bleibt. Das Paketlogo wird
+vor der restlichen UI-Vorbereitung übertragen. Neue `STORE`-Zeitmessungen trennen
+Dateilesen, JSON-Parsing, Inventarprüfung und RAM-Kopieren; reale Zeiten am Gerät
+sind damit prüfbar, ohne die Integritätsprüfungen abzuschalten.
 
 
 Ab beta.8 zeigt das Gerät beim Start **zwei Sekunden** lang
@@ -282,7 +288,9 @@ verwendet wird ausschließlich LittleFS.
 - **Avatar-Tiere ausschließlich PNG mit 80 × 80 Pixeln**, ohne Skalierung in der
   Sidebar. Explizit unter `tamagotchi.backgrounds.day/night` referenzierte oder eindeutig
   als `background_day`/`background_night` benannte
-  Hintergründe dürfen 256×142 groß sein. Tier-PNGs werden mit einer Alpha-Maske
+  Erkannte Haustier-Hintergründe dürfen ab beta.17 beliebige PNG-Maße von
+  1 bis 1024 Pixeln je Achse haben (z. B. 264×142); sie werden proportional
+  in die 256×142-Spielfläche eingepasst. Tier-PNGs werden mit einer Alpha-Maske
   über den Hintergrund gezeichnet (Schwellwert 128). Animationen über `animations.idle`; anschließend `preview`, sofern
   PNG, oder der bestätigte Pfad `data/pet/idle/frame_01.png` (auch mit tatsächlichem
   `files/`-Präfix im Manifest unterstützt). Die Download-URL lautet normalerweise
