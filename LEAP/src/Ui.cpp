@@ -1,5 +1,6 @@
 #include "Ui.h"
 #include "AircraftMap.h"
+#include "WeatherIcon.h"
 #include "Audio.h"
 #include "Hardware.h"
 #include "Motion.h"
@@ -460,16 +461,41 @@ void Ui::drawPage(const String &id) {
       body("Wetter wartet auf den ersten Sync.");
       return;
     }
-    text(String(w["current"]["temperature"].as<float>(), 0) + " Grad " + String(w["unit"] | "C"),
-         94, 12, 2, Accent);
-    String details =
-        String(w["location"] | "") + "\nMin " + String(w["today"]["min"].as<float>(), 0) +
-        " / Max " + String(w["today"]["max"].as<float>(), 0) + "\nRegen " +
-        String(w["today"]["precipitationProbability"].as<int>()) + "% | Wind " +
-        String(w["current"]["windSpeed"].as<float>(), 0) + "\nStand: " + String(w["updated"] | "");
-    if (w["stale"] == true)
-      details += " (Cache)";
-    body(details, 94, 38, 204, 68);
+    auto current = w["current"];
+    int code = current["weatherCode"] | -1;
+    bool day = current["isDay"] | true;
+    String unit = w["unit"] | "C";
+    auto number = [](JsonVariantConst value) -> String {
+      return value.is<double>() && std::isfinite(value.as<double>()) ? String(value.as<double>(), 0) : String("?");
+    };
+    text("JETZT | " + displayText(String(w["location"] | "")).substring(0, 25), 94, 8, 1, Accent);
+    drawWeatherIcon(*canvas, code, day, 94, 20, 48, Background);
+    String temperature = number(current["temperature"]);
+    text(temperature, 150, 25, 2);
+    int degreeX = 150 + temperature.length() * 12 + 4;
+    canvas->drawCircle(degreeX, 29, 2, 0xffff);
+    text(unit, degreeX + 8, 25, 2);
+    text(weatherLabel(code, day), 150, 47, 1, Muted);
+    text("Wind " + number(current["windSpeed"]) + " km/h", 94, 67, 1, Muted);
+    text("Regen " + number(w["today"]["precipitationProbability"]) + "%", 210, 67, 1, Muted);
+    canvas->fillRoundRect(94, 79, 204, 43, 5, Panel);
+    auto tomorrow = w["tomorrow"];
+    String forecastDate = tomorrow["date"] | "";
+    text("MORGEN" + (forecastDate.length() == 10 ? " " + forecastDate.substring(8, 10) + "." + forecastDate.substring(5, 7) + "." : ""),
+         139, 82, 1, Accent);
+    if (!tomorrow.isNull()) {
+      int tomorrowCode = tomorrow["weatherCode"] | -1;
+      drawWeatherIcon(*canvas, tomorrowCode, true, 98, 84, 35, Panel);
+      text(weatherLabel(tomorrowCode), 139, 92, 1);
+      text(number(tomorrow["min"]) + " bis " + number(tomorrow["max"]) + " " + unit, 139, 102, 1);
+      text("Regen " + number(tomorrow["precipitationProbability"]) + "%", 139, 112, 1, Muted);
+    } else {
+      drawWeatherIcon(*canvas, -1, true, 98, 84, 35, Panel);
+      text("Vorhersage fehlt", 139, 101, 1, Muted);
+    }
+    String weatherUpdated = w["updated"] | "";
+    text((w["stale"] == true || !network.connected ? "Wetter alt | " : "Stand ") + weatherUpdated.substring(11, 16) + " UTC",
+         94, 124, 1, Muted);
     auto radar = content["weatherRadar"];
     String hash = radar["hash"] | "";
     bool shown = digestValid(hash.c_str()) &&
