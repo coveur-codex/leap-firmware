@@ -58,28 +58,38 @@ public:
       return x == b.x && y == b.y;
     }
   };
-  Cell body[Capacity]{}, food;
+  static constexpr int FoodSlots = 3;
+  Cell body[Capacity]{}, foods[FoodSlots]{};
+  int foodCount = 0;
   int length = 3, direction = 3, queued = 3, score = 0;
   bool alive = true, won = false, turned = false;
   void placeFood(uint32_t random) {
-    int free = Capacity - length;
-    if (!free) {
+    foodCount = std::min(foodCount, Capacity - length);
+    if (length == Capacity) {
       alive = false;
       won = true;
+      foodCount = 0;
       return;
     }
-    int choice = random % free;
-    for (int y = 0; y < Rows; ++y)
-      for (int x = 0; x < Columns; ++x) {
-        Cell cell{x, y};
-        bool occupied = false;
-        for (int i = 0; i < length; ++i)
-          occupied |= body[i] == cell;
-        if (!occupied && choice-- == 0) {
-          food = cell;
-          return;
+    int target = std::min(FoodSlots, Capacity - length);
+    while (foodCount < target) {
+      int choice = random % (Capacity - length - foodCount);
+      bool placed = false;
+      for (int y = 0; y < Rows && !placed; ++y)
+        for (int x = 0; x < Columns && !placed; ++x) {
+          Cell cell{x, y};
+          bool occupied = false;
+          for (int i = 0; i < length; ++i)
+            occupied |= body[i] == cell;
+          for (int i = 0; i < foodCount; ++i)
+            occupied |= foods[i] == cell;
+          if (!occupied && choice-- == 0) {
+            foods[foodCount++] = cell;
+            placed = true;
+          }
         }
-      }
+      random = random * 1664525u + 1013904223u;
+    }
   }
   void start(uint32_t random) {
     length = 3;
@@ -89,6 +99,7 @@ public:
     won = turned = false;
     for (int i = 0; i < length; ++i)
       body[i] = {Columns / 2 - i, Rows / 2};
+    foodCount = 0;
     placeFood(random);
   }
   void turn(int next) {
@@ -106,7 +117,10 @@ public:
     Cell head = body[0];
     head.x += (direction == 3) - (direction == 2);
     head.y += (direction == 1) - (direction == 0);
-    bool eat = head == food;
+    int eaten = -1;
+    for (int i = 0; i < foodCount; ++i)
+      if (head == foods[i]) eaten = i;
+    bool eat = eaten >= 0;
     if (head.x < 0 || head.x >= Columns || head.y < 0 || head.y >= Rows) {
       alive = false;
       return false;
@@ -120,6 +134,7 @@ public:
     if (eat) {
       ++length;
       ++score;
+      foods[eaten] = foods[--foodCount];
     }
     for (int i = length - 1; i > 0; --i)
       body[i] = body[i - 1];

@@ -11,6 +11,9 @@ public:
   using std::string::string;
   String(const std::string &s) : std::string(s) {}
   String(int n) : std::string(std::to_string(n)) {}
+  String substring(size_t begin, size_t end) const {
+    return substr(begin, end - begin);
+  }
   void toLowerCase() {
     for (char &c : *this)
       if (c >= 'A' && c <= 'Z')

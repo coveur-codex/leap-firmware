@@ -18,6 +18,7 @@ void setup() {
   Serial.printf("\n[BOOT] LEAP %s reset=%d flash=%u psram=%u\n", FirmwareVersion,
                 esp_reset_reason(), unsigned(ESP.getFlashChipSize()), unsigned(ESP.getPsramSize()));
   input.begin();
+  ui.beginDisplay(); // Show LEAP before filesystem validation or WiFi/radio setup.
   ota.begin();
   // Explicit destructive recovery requires BOTH centres held throughout 3s.
   bool format = digitalRead(hw::LeftKeys[4]) == LOW && digitalRead(hw::RightKeys[4]) == LOW;
@@ -31,21 +32,27 @@ void setup() {
       delay(10);
     }
   }
+  uint32_t phaseAt = millis();
   bool mounted = storage.begin(format);
+  Serial.printf("[BOOT] storage init %lu ms\n", millis() - phaseAt);
   setenv("TZ", LEAP_TIMEZONE, 1);
   tzset();
   JsonDocument state(&jsonRam);
+  phaseAt = millis();
   storage.load(state);
+  Serial.printf("[BOOT] snapshot load %lu ms\n", millis() - phaseAt);
   time_t saved = state["lastTime"] | int64_t(0);
   if (saved > 1700000000) {
     timeval tv{saved, 0};
     settimeofday(&tv, nullptr);
     log("CLOCK", "Restored last known time; power-off duration unknown");
   }
+  phaseAt = millis();
+  bool displayReady = ui.begin();
+  Serial.printf("[BOOT] UI ready %lu ms\n", millis() - phaseAt);
   bool radioReady = radio.begin();
   bool soundReady = audio.begin();
   motion.begin();
-  bool displayReady = ui.begin();
   bool inputReady = input.start();
   if (!inputReady)
     log("INPUT", "Sampler initialization failed; using loop polling");

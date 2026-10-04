@@ -1,6 +1,7 @@
 #pragma once
 #include "GameRules.h"
 #include "ConnectFour.h"
+#include "Maze.h"
 #include "Input.h"
 #include "Media.h"
 #include <Arduino_GFX_Library.h>
@@ -13,6 +14,10 @@ class Games {
   Media petImage, petBackground;
   PetState pet;
   SnakeState snake;
+  MazeState maze;
+  int snakeSpeed = 0;
+  bool snakeSetup = true;
+  inline static constexpr uint32_t snakeIntervals[] = {450, 300, 220};
   ConnectFour four;
   int fourDifficulty = 0, fourColumn = 3;
   bool fourSetup = true, fourThinking = false, fourFull = false;
@@ -25,7 +30,7 @@ class Games {
   void savePet();
   void drawPet(Arduino_GFX &gfx);
   uint32_t started = 0, last = 0;
-  int score = 0, sequence[32]{}, length = 1, step = 0, show = 0, x = 0, y = 0;
+  int score = 0, sequence[32]{}, length = 1, step = 0, show = 0;
   bool running = false, showing = false, won = false;
 
 public:

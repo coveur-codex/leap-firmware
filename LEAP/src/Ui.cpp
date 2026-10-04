@@ -44,11 +44,7 @@ static String gameTitle(const String &id) {
     return "Kipp-Labyrinth";
   return "Unbekanntes Spiel";
 }
-bool Ui::begin() {
-  prefs.begin("leap-ui", false);
-  game.begin();
-  brightness = constrain(prefs.getInt("brightness", 170), 20, 255);
-  audio.volume = prefs.getUChar("volume", 35);
+bool Ui::beginDisplay() {
   ledcAttach(hw::Backlight, hw::BacklightHz, 8);
   ledcWrite(hw::Backlight, 0);
   bus = new Arduino_ESP32SPI(hw::Dc, hw::Cs, hw::Sck, hw::Mosi, GFX_NOT_DEFINED);
@@ -68,7 +64,26 @@ bool Ui::begin() {
     log("DISPLAY", "Media worker initialization failed");
     return false;
   }
-  reload();
+  canvas->fillScreen(0x0000);
+  canvas->setTextColor(0xffff);
+  canvas->setTextSize(4);
+  canvas->setCursor(166, 47);
+  canvas->print("LEAP");
+  canvas->setTextSize(1);
+  canvas->setCursor(184, 87);
+  canvas->print("Startet...");
+  canvas->flush();
+  ledcWrite(hw::Backlight, brightness);
+  log("DISPLAY", "Early LEAP screen visible before storage and radio initialization");
+  return true;
+}
+bool Ui::begin() {
+  if (!healthy && !beginDisplay()) return false;
+  prefs.begin("leap-ui", false);
+  game.begin();
+  brightness = constrain(prefs.getInt("brightness", 170), 20, 255);
+  audio.volume = prefs.getUChar("volume", 35);
+  storage.load(state);
   lastInput = millis();
   // Resolve only the active, locally installed common asset; no network at boot.
   int systemVersion = state["assets"]["system"] | 0;
@@ -81,6 +96,7 @@ bool Ui::begin() {
     bootLogoVisible = bootImage.draw(*canvas, assets.resolve("system", systemVersion, logo),
                                      logo, 0, 0, hw::Width, hw::Height, true, 0x0000, false);
   }
+  reload();
   if (bootLogoVisible)
     canvas->flush();
   else
@@ -97,8 +113,9 @@ bool Ui::reload() {
   uint32_t loadedGeneration = storage.generation.load();
   JsonDocument next(&jsonRam);
   bool busy = false;
-  storage.load(next, 0, &busy);
-  if (busy)
+  JsonDocument nextManifests(&jsonRam);
+  storage.load(next, 0, &busy, &nextManifests);
+  if (busy || next.overflowed() || nextManifests.overflowed())
     return false; // Keep current UI and retry next loop instead of waiting on flash writes.
   int oldPage = page, oldSelection = selection, oldItem = item, oldScroll = scroll,
       oldKnowledge = knowledgeMode;
@@ -117,17 +134,13 @@ bool Ui::reload() {
       previous["assets"].as<JsonVariantConst>() == state["assets"].as<JsonVariantConst>() &&
       previous["quiz"].as<JsonVariantConst>() == state["content"]["quiz"].as<JsonVariantConst>();
   generation = loadedGeneration;
-  manifests.clear();
-  for (JsonPair p : state["assets"].as<JsonObject>()) {
-    JsonDocument manifest(&jsonRam);
-    if (storage.readJson(storage.package(p.key().c_str(), p.value()), manifest))
-      manifests[p.key().c_str()] = manifest;
-  }
+  manifests = std::move(nextManifests);
   String avatarId = state["config"]["avatar"] | "dragon";
   if (!avatarId.startsWith("avatar-"))
     avatarId = "avatar-" + avatarId;
   game.avatarPackage(avatarId, state["assets"][avatarId] | 0, manifests[avatarId]);
-  radio.configure(state);
+  if (!same || generation == 0)
+    radio.configure(state);
   pages.clear();
   JsonArray configuredPages = state["config"]["pages"].as<JsonArray>();
   for (JsonObject p : configuredPages) {
@@ -382,7 +395,7 @@ void Ui::chooseQuizCatalog(int index) {
     if (package.length()) {
       JsonObjectConst def = manifests[package]["definition"];
       storage.readJson(assets.resolve(package, state["assets"][package],
-                                     def["questionsFile"] | "questions.json"), catalog);
+                                     def["questionsFile"] | "questions.json"), catalog, CatalogJsonLimit);
       rows = catalog["questions"].as<JsonArrayConst>();
     } else
       rows = state["content"]["quiz"]["questions"].as<JsonArrayConst>();

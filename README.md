@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.0-beta.15`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.0-beta.16`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -98,6 +98,13 @@ Bei anderer Panelvariante ausschließlich `Hardware.h`/Display-Konstruktor anpas
 SPI zunächst konservativ 20 MHz.
 
 ## Startlogo
+
+Ab beta.16 erscheint unmittelbar nach der Displayinitialisierung ein lokaler
+LEAP-Schriftzug mit „Startet…“, bevor LittleFS, gespeicherte Inhalte und Funk
+initialisiert werden. Das reduziert die schwarze Wartephase; es macht die
+anschließende Speicherprüfung nicht überflüssig. `BOOT` protokolliert die Dauer
+von Speicherinitialisierung, erstem Snapshot-Laden und UI-Start für die Abnahme.
+
 
 Ab beta.8 zeigt das Gerät beim Start **zwei Sekunden** lang
 `bootscreen/leap-boot.png` aus der aktiven, lokal installierten Version des
@@ -208,7 +215,11 @@ Tageshintergrund 07:00–19:59, Nachthintergrund 20:00–06:59 gemäß der beste
 Geräte-Zeitzone; ohne bekannte Uhrzeit Tag. Fehlende Grafiken verhindern das
 Spielen nicht; vorhandenes Avatarbild oder einfache Zeichnung dient als Ersatz.
 
-Snake: 40×13 Felder mit 8-Pixel-Zellen, Bewegung alle 220 ms. Rechter Schalter
+Snake: 40×13 Felder mit 8-Pixel-Zellen. Vor jeder Runde rechts UP/DOWN die
+Geschwindigkeit wählen: Langsam (450 ms), Mittel (300 ms), Schnell (220 ms);
+CENTER startet. Langsam ist vorausgewählt. Drei Futterpunkte liegen gleichzeitig
+auf verschiedenen freien Feldern; gefressenes Futter wird einzeln ersetzt. Bei
+weniger als drei freien Feldern sinkt die Futteranzahl entsprechend. Rechter Schalter
 steuert; unmittelbare Gegenrichtung und weitere Richtungswechsel vor dem nächsten
 Schritt werden ignoriert. Punkte und Rekord stehen oberhalb des Feldes.
 Wand/eigener Körper beendet die Runde; rechts CENTER startet neu.
@@ -231,7 +242,9 @@ damit die neue ID beim nächsten Sync in `config.games` angeboten wird.
 
 **Spiele:** `hot_potato` = 15-Sekunden-Weitergabe-/Tastenspiel,
 `simon_motion` = Richtungsfolge merken und durch Kippen/Schalter nachspielen,
-`tilt_maze` = Kipp-Labyrinth mit zusätzlicher Schaltersteuerung. Bei Hot Potato
+`tilt_maze` = zufällig erzeugtes, zusammenhängendes 9×9-Kipp-Labyrinth mit
+zusätzlicher Schaltersteuerung. Jede neue Runde generiert ein neues Layout;
+Start oben links, Ziel unten rechts, alle Gänge erreichbar. Bei Hot Potato
 zählt auch eine Schüttelbewegung. Die IMU wird mit 50 Hz gelesen, inklusive
 Neutralstellungserkennung für Simon. Bei I²C-Ausfall bleiben die Schalter nutzbar.
 Bewusste lokale Spielregeln für die Server-IDs; kein vernetzter Spielzustand.
@@ -248,6 +261,12 @@ verwendet wird ausschließlich LittleFS.
 
 - Zwei JSON-Snapshots mit atomarem NVS-Auswahlzeiger; bei ungültigem aktuellen
   Snapshot wird der andere geprüft. Schreiben überschreibt nie den aktiven Slot.
+  Ab beta.16 hält Storage den aktiven Zustand samt Manifesten zusätzlich im RAM.
+  Die UI kopiert diesen Zustand ohne Flash-Lesen oder erneute Paketprüfung.
+  Neue Daten werden nach erfolgreicher Speicherung und NVS-Aktivierung unter einem
+  kurzen Mutex veröffentlicht; Flash-Schreiben erfolgt außerhalb dieses Mutex
+  in 2-KiB-Blöcken mit Task-Yield. Auch der Health-Log nutzt den im Hintergrund
+  ermittelten freien Speicher statt einer LittleFS-Scan-Operation auf dem UI-Task.
 - Konfiguration wird vor optionalen Downloads übernommen. Vorhandene Assets bleiben
   bis zur vollständig validierten Aktivierung verfügbar.
 - Paketdateien werden unter ihrem SHA-256 gespeichert, Manifeste pro ID/Version.
@@ -278,7 +297,12 @@ verwendet wird ausschließlich LittleFS.
   SVG, GIF und WebP werden nicht unterstützt.
 - PCM-WAV, 16 Bit little-endian, mono/stereo, 8–48 kHz. MP3, GIF, WebP und beliebige
   Game-Engines werden nicht als unterstützt vorgetäuscht: Paket wird zurückgestellt.
-- JSON-Antworten und einzelne JSON-Dateien maximal 256 KiB, 64 Pakete, 256 Dateien
+- HTTP-/Kontroll-JSON und Manifeste maximal 256 KiB; vollständige Quiz-Katalogdateien
+  und kombinierte Offline-Snapshots jeweils maximal 1 MiB (beta.16). Der Homeserver
+  liefert für installierte Quiz-Pakete nur Katalogmetadaten am Legacy-Endpunkt,
+  sonst maximal 200 zufällig ausgewählte altersgerechte Fragen je Katalog. Die
+  versionierten Pakete behalten alle Fragen. Dafür auch den Homeserver aktualisieren.
+  Speicher-/HTTP-Fehler nennen Pfad, Größe, Limit und Prüfungsstufe. 64 Pakete, 256 Dateien
   pro Paket, 128 KiB Sicherheitsreserve. Server-Upload-Limits sind größer als das
   Gerät. Pakete entsprechend klein halten; alte aktive Inhalte werden bei
   Platzmangel nicht gelöscht.

@@ -16,22 +16,28 @@ extern RamAllocator jsonRam;
 class Storage {
   Preferences prefs;
   SemaphoreHandle_t mutex = nullptr;
-  bool validState(JsonDocument &doc);
+  JsonDocument cached{&jsonRam}, cachedManifests{&jsonRam};
+  bool cachedLoaded = false;
+  bool validState(JsonDocument &doc, JsonDocument &inventory);
 
 public:
   std::atomic<uint32_t> generation{0};
   bool ready = false;
+  std::atomic<size_t> freeSpace{0};
   bool begin(bool formatRequested = false);
-  bool load(JsonDocument &out, TickType_t wait = portMAX_DELAY, bool *busy = nullptr);
+  bool load(JsonDocument &out, TickType_t wait = portMAX_DELAY, bool *busy = nullptr,
+            JsonDocument *inventory = nullptr);
   bool commit(JsonDocument &doc);
-  bool readJson(const String &path, JsonDocument &out);
-  bool writeJson(const String &path, JsonDocument &doc);
+  bool readJson(const String &path, JsonDocument &out, size_t limit = JsonLimit);
+  bool writeJson(const String &path, JsonDocument &doc, size_t limit = JsonLimit);
+  bool manifest(const String &id, int version, JsonDocument &out);
   bool parents(const String &path);
   String blob(const String &hash) const {
     return "/blobs/" + hash;
   }
   String package(const String &id, int version) const;
   size_t freeBytes() const;
+  void refreshSpace();
 };
 extern Storage storage;
 } // namespace leap

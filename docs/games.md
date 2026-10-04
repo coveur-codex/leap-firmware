@@ -26,6 +26,30 @@ während eines ausstehenden Gegnerzugs.
 Am Gerät noch prüfen: Lesbarkeit der 18-Pixel-Zellen, Farben und Spaltenmarker,
 alle Stufen, Seitenwechsel/Sperren und Tastenreaktion während der schweren Suche.
 
+## Snake und Kipp-Labyrinth (beta.16)
+
+Snake startet mit der Auswahl Langsam/Mittel/Schnell über rechts UP/DOWN/CENTER.
+Schrittintervalle 450/300/220 ms, Standard Langsam. Während der Auswahl bewegt
+sich nichts; nach dem Start gilt das volle gewählte Intervall für den ersten
+Schritt. Drei Futterpunkte liegen auf verschiedenen Feldern außerhalb des Körpers;
+nur der gefressene wird ersetzt. Bei zwei/einem freien Feld gibt es entsprechend
+weniger Futter. Rekord und bisherige Gegenrichtungs-/Kollisionseigenschaften bleiben.
+
+Das Kipp-Labyrinth generiert beim Start per randomisiertem Tiefensuchverfahren
+ein zusammenhängendes 9×9-Labyrinth (25 Räume und 24 Verbindungsgänge). Start
+(0,0), Ziel (8,8), Kipp- und Schaltersteuerung. Die 12-Pixel-Zellen passen ins
+Display. Keine gespeicherten Runden, keine zusätzlichen Assets oder WLAN-Abhängigkeit.
+
+`test_games.cpp` prüft alle drei Futterplätze, Ersatz, überlappungsfreie Platzierung
+und beinahe volle Spielfelder. `test_game_lifecycle.cpp` prüft alle drei Intervalle
+mit der echten Games-Implementierung und Stillstand bei Auswahl/Verlassen.
+`test_maze.cpp` prüft 100 Seeds: unterschiedliche Layouts, alle Gänge verbunden,
+Ziel mit regulären Spielzügen erreichbar, Ränder und Neustart.
+
+Am Gerät prüfen: alle Geschwindigkeiten mit Kindern, Futterdarstellung, Rekord,
+Rundenende und neue Auswahl; zufällige Labyrinthe, Lesbarkeit, Kippsteuerung und
+Links-Mitte/Seitenwechsel/Sperren bei beiden Spielen.
+
 ## Haustier und Snake
 
 Firmware `1.0.0-beta.12` und zugehöriger Homeserver. Beide neuen IDs werden in
