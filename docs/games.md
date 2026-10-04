@@ -1,4 +1,32 @@
-# Haustier und Snake: Asset-Vertrag und Abnahme
+# Spiele: Regeln, Asset-Vertrag und Abnahme
+
+## Vier Gewinnt (beta.15)
+
+`connect_four` wird zusätzlich vom Homeserver in `config.games` angeboten.
+Offline-Spiel gegen das Gerät auf 7×6 Feldern, keine Assets und keine Speicherung
+laufender Runden. Vor jeder Runde die Stufe mit rechts UP/DOWN wählen, CENTER
+bestätigt. Gelb (Mensch) beginnt; Rot (LEAP) antwortet nach kurzer Denk-Anzeige.
+Rechts LEFT/RIGHT wählt die Spalte, CENTER setzt. Volle Spalten lassen den Zug
+beim Menschen. Vier waagerecht/senkrecht/diagonal gewinnen, 42 Steine ohne Vierer
+ergeben ein Unentschieden. CENTER nach dem Ende öffnet die Stufenwahl erneut.
+Links CENTER, Seitenwechsel und Sperren verlassen das Spiel wie bisher.
+
+Leicht wählt zufällig unter gültigen Zügen. Mittel nimmt direkte Gewinne,
+blockiert direkte gegnerische Gewinne und bewertet zwei Halbzüge. Schwer nutzt
+zusätzlich Alpha-Beta bis sechs Halbzüge; je Kandidat maximal 2000 Suchknoten,
+insgesamt maximal 14000. Kein Anspruch auf einen unbesiegbaren Gegner.
+
+`tests/test_connect_four.cpp` prüft Schwerkraft, volle Spalten, alle vier
+Gewinnrichtungen, Unentschieden, Priorität Gewinn vor Blockade, unveränderte
+Spielfelder bei der Suche und vollständige Partien auf allen Stufen.
+`test_game_lifecycle.cpp` prüft die echte Games-Implementierung mit Stufenwahl,
+Eingabesperre im Gegnerzug, Spielende, Neustart, voller Spalte und Verlassen
+während eines ausstehenden Gegnerzugs.
+
+Am Gerät noch prüfen: Lesbarkeit der 18-Pixel-Zellen, Farben und Spaltenmarker,
+alle Stufen, Seitenwechsel/Sperren und Tastenreaktion während der schweren Suche.
+
+## Haustier und Snake
 
 Firmware `1.0.0-beta.12` und zugehöriger Homeserver. Beide neuen IDs werden in
 `config.games` angeboten; bestehende Spiele bleiben erhalten. Kein neues Netzwerk-

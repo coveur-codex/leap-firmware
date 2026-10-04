@@ -47,6 +47,13 @@ void Games::start(const String &id) {
   petAction = -1;
   if (isSnake())
     snake.start(esp_random());
+  if (isConnectFour()) {
+    four = ConnectFour{};
+    fourDifficulty = 0;
+    fourColumn = 3;
+    fourSetup = true;
+    fourThinking = fourFull = false;
+  }
   started = last = millis();
   score = 0;
   length = 1;
@@ -59,6 +66,33 @@ void Games::start(const String &id) {
     s = esp_random() % 4;
 }
 void Games::input(Key key) {
+  if (isConnectFour() && opened) {
+    if (!running) {
+      if (key == Key::Center)
+        start("connect_four");
+      return;
+    }
+    if (fourSetup) {
+      fourDifficulty = constrain(fourDifficulty + (key == Key::Down) - (key == Key::Up), 0, 2);
+      if (key == Key::Center)
+        fourSetup = false;
+    } else if (!fourThinking) {
+      if (key == Key::Left || key == Key::Right) {
+        fourColumn = constrain(fourColumn + (key == Key::Right) - (key == Key::Left), 0, 6);
+        fourFull = false;
+      }
+      if (key == Key::Center) {
+        fourFull = !four.drop(fourColumn, ConnectFour::Human);
+        if (!fourFull) {
+          running = !four.finished;
+          fourThinking = running;
+          last = millis();
+          audio.tone(running ? 660 : 880, 80);
+        }
+      }
+    }
+    return;
+  }
   if (!running)
     return;
   if (isPet()) {
@@ -152,6 +186,14 @@ void Games::tick() {
   }
   if (!opened || !running)
     return;
+  if (isConnectFour() && fourThinking && elapsed(now, last, 300)) {
+    int column = four.choose(ConnectFour::Difficulty(fourDifficulty), esp_random());
+    if (column >= 0)
+      four.drop(column, ConnectFour::Device);
+    fourThinking = false;
+    running = !four.finished;
+    audio.tone(running ? 440 : 220, 80);
+  }
   if (kind == "tilt_maze" || (kind == "simon_motion" && !showing)) {
     int direction = motion.direction(kind == "simon_motion");
     if (direction >= 0)
@@ -176,6 +218,10 @@ void Games::tick() {
   }
 }
 void Games::draw(Arduino_GFX &gfx, int left, int top) {
+  if (isConnectFour()) {
+    drawFour(gfx, left, top);
+    return;
+  }
   if (isPet()) {
     drawPet(gfx);
     return;
@@ -241,6 +287,61 @@ void Games::draw(Arduino_GFX &gfx, int left, int top) {
     gfx.setCursor(left + 100, top + 35);
     gfx.print(motion.available ? "Kippen / Schalter" : "Rechter Schalter");
   }
+}
+void Games::drawFour(Arduino_GFX &gfx, int left, int top) {
+  const char *levels[] = {"Leicht", "Mittel", "Schwer"};
+  gfx.setTextSize(1);
+  gfx.setTextColor(0xffff);
+  gfx.setCursor(left, top);
+  gfx.print("Vier Gewinnt");
+  if (fourSetup) {
+    gfx.setCursor(left, top + 18);
+    gfx.print("Schwierigkeit waehlen:");
+    for (int i = 0; i < 3; ++i) {
+      int y = top + 36 + i * 21;
+      if (i == fourDifficulty)
+        gfx.fillRoundRect(left, y - 4, 150, 18, 4, 0x06b8);
+      gfx.setTextColor(i == fourDifficulty ? 0x10e5 : 0xffff);
+      gfx.setCursor(left + 6, y);
+      gfx.print(levels[i]);
+    }
+    gfx.setTextColor(0xffff);
+    gfx.setCursor(left, top + 105);
+    gfx.print("R Oben/Unten: Wahl  R Mitte: Start");
+    gfx.setCursor(left, top + 119);
+    gfx.print("Du beginnst. L Mitte: Zurueck");
+    return;
+  }
+  // 126 x 108 board fits the 142-pixel display below the selection marker.
+  int boardY = top + 23;
+  gfx.fillRect(left, boardY, 126, 108, 0x19f0);
+  for (int r = 0; r < 6; ++r)
+    for (int c = 0; c < 7; ++c)
+      gfx.fillCircle(left + c * 18 + 9, boardY + r * 18 + 9, 7,
+                     four.cells[r][c] == ConnectFour::Human ? 0xffe0 :
+                     four.cells[r][c] == ConnectFour::Device ? 0xf800 : 0x10e5);
+  if (running && !fourThinking)
+    gfx.fillRect(left + fourColumn * 18 + 3, top + 14, 12, 5, 0xffe0);
+  int infoX = left + 140;
+  gfx.setCursor(infoX, top + 18);
+  gfx.printf("Stufe: %s", levels[fourDifficulty]);
+  gfx.setCursor(infoX, top + 34);
+  gfx.setTextColor(0xffe0);
+  gfx.print("Du: Gelb");
+  gfx.setCursor(infoX, top + 48);
+  gfx.setTextColor(0xf800);
+  gfx.print("LEAP: Rot");
+  gfx.setTextColor(0xffff);
+  gfx.setCursor(infoX, top + 66);
+  gfx.print(four.finished ? (four.winner == ConnectFour::Human ? "Du gewinnst!" :
+                            four.winner == ConnectFour::Device ? "LEAP gewinnt!" : "Unentschieden!") :
+            fourThinking ? "LEAP denkt..." : fourFull ? "Spalte voll!" : "Du bist dran");
+  gfx.setCursor(infoX, top + 84);
+  gfx.print(running ? "R Links/Rechts: Spalte" : "R Mitte: Neue Runde");
+  gfx.setCursor(infoX, top + 98);
+  gfx.print(running ? "R Mitte: Einwerfen" : "Stufe neu waehlen");
+  gfx.setCursor(infoX, top + 118);
+  gfx.print("L Mitte: Zurueck");
 }
 void Games::drawPet(Arduino_GFX &gfx) {
   time_t now = time(nullptr);

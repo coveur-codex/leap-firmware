@@ -1,5 +1,6 @@
 #pragma once
 #include "GameRules.h"
+#include "ConnectFour.h"
 #include "Input.h"
 #include "Media.h"
 #include <Arduino_GFX_Library.h>
@@ -12,6 +13,10 @@ class Games {
   Media petImage, petBackground;
   PetState pet;
   SnakeState snake;
+  ConnectFour four;
+  int fourDifficulty = 0, fourColumn = 3;
+  bool fourSetup = true, fourThinking = false, fourFull = false;
+  void drawFour(Arduino_GFX &gfx, int left, int top);
   Preferences gamePrefs;
   uint32_t petLast = 0, petSavedAt = 0, actionAt = 0;
   bool petDirty = false;
@@ -33,6 +38,9 @@ public:
   }
   bool isSnake() const {
     return kind == "snake";
+  }
+  bool isConnectFour() const {
+    return kind == "connect_four";
   }
   void input(Key key);
   void tick();
