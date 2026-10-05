@@ -24,11 +24,14 @@ void Games::saveKitchen() {
   kitchenDirty = gamePrefs.putBytes("kitchen", bytes, sizeof(bytes)) != sizeof(bytes);
   kitchenSavedAt = millis();
 }
-void Games::kitchenInput(const InputEvent &event) {
-  if (opened && isKitchen() && kitchen.input(event)) {
+bool Games::kitchenInput(const InputEvent &event) {
+  if (!opened || !isKitchen())
+    return false;
+  if (kitchen.input(event)) {
     kitchenDirty = true;
     saveKitchen();
   }
+  return kitchen.wantsExit();
 }
 void Games::savePet() {
   petDirty = gamePrefs.putBytes("pet", &pet, sizeof(pet)) != sizeof(pet);

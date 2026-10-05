@@ -761,16 +761,14 @@ void Ui::input(const InputEvent &e) {
   frameRequested = true;
   notice = "";
   if (!locked && !menu && gameOpen && game.isKitchen()) {
-    if (e.longPress && !e.right && e.key == Key::Center) {
+    // Kitchen consumes both the regular hold and the two-second hold, so the
+    // global lock handler cannot swallow its exit or act on the first 900 ms.
+    if (game.kitchenInput(e)) {
       game.close();
       gameOpen = false;
       selection = scroll = 0;
-      return;
     }
-    if (!e.longPress) {
-      game.kitchenInput(e);
-      return;
-    }
+    return;
   }
   if (e.longPress) {
     if (!e.right && e.key == Key::Center) {

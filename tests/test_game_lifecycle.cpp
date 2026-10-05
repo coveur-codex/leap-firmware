@@ -89,6 +89,33 @@ int main() {
   assert(loadedKitchen.decode(savedKitchen.data(), savedKitchen.size()));
   assert(loadedKitchen.count == 2);
   kitchenReboot.close();
+  kitchenReboot.start("kitchen");
+  assert(!kitchenReboot.kitchenInput({false, Key::Center, false}));
+  assert(!kitchenReboot.kitchenInput({false, Key::Center, true, 900}));
+  assert(kitchenReboot.kitchenInput({false, Key::Center, true, 2000}));
+  kitchenReboot.close();
+  assert(Preferences::bytes["leap-gameskitchen"] == savedKitchen);
+  kitchenReboot.start("kitchen");
+  kitchenReboot.kitchenInput({true, Key::Left, false}); // Kueche leeren.
+  kitchenReboot.kitchenInput({true, Key::Center, false});
+  assert(Preferences::bytes["leap-gameskitchen"] == savedKitchen);
+  kitchenReboot.kitchenInput({true, Key::Down, false});
+  kitchenReboot.kitchenInput({true, Key::Center, false});
+  savedKitchen = Preferences::bytes["leap-gameskitchen"];
+  assert(loadedKitchen.decode(savedKitchen.data(), savedKitchen.size()));
+  assert(loadedKitchen.count == 0);
+  kitchenReboot.close();
+  Games emptyReboot;
+  emptyReboot.begin(); emptyReboot.start("kitchen");
+  emptyReboot.kitchenInput({true, Key::Left, false}); // Reset again.
+  emptyReboot.kitchenInput({true, Key::Center, false});
+  emptyReboot.kitchenInput({true, Key::Down, false});
+  emptyReboot.kitchenInput({true, Key::Center, false});
+  assert(Preferences::bytes["leap-gameskitchen"] == savedKitchen);
+  emptyReboot.kitchenInput({true, Key::Left, false});
+  emptyReboot.kitchenInput({true, Key::Left, false}); // Zurueck.
+  assert(emptyReboot.kitchenInput({true, Key::Center, false}));
+  emptyReboot.close();
   fakeNow = 0; // Preserve the existing pet timing regression below.
   Games game;
   game.begin();

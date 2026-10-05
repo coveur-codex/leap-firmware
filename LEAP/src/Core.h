@@ -103,9 +103,10 @@ inline bool meetsVersion(const std::string &installed, const std::string &minimu
 struct Debouncer {
   bool raw = false, stable = false;
   uint32_t changed = 0, pressed = 0, repeated = 0;
-  bool longSent = false;
-  // 1 press, 2 repeat (directions only), 3 long press; millis wrap safe.
-  int poll(bool down, uint32_t now, bool repeat) {
+  static constexpr uint32_t LongPressMs = 900;
+  bool longSent = false, extendedSent = false;
+  // 1 press, 2 repeat, 3 long press, 4 optional extended hold; millis wrap safe.
+  int poll(bool down, uint32_t now, bool repeat, uint32_t extendedHoldMs = 0) {
     if (raw != down) {
       raw = down;
       changed = now;
@@ -114,13 +115,17 @@ struct Debouncer {
       stable = raw;
       if (stable) {
         pressed = repeated = now;
-        longSent = false;
+        longSent = extendedSent = false;
         return 1;
       }
     }
-    if (stable && !longSent && elapsed(now, pressed, 900)) {
+    if (stable && raw && !longSent && elapsed(now, pressed, LongPressMs)) {
       longSent = true;
       return 3;
+    }
+    if (stable && raw && extendedHoldMs && !extendedSent && elapsed(now, pressed, extendedHoldMs)) {
+      extendedSent = true;
+      return 4;
     }
     if (stable && repeat && elapsed(now, pressed, 400) && elapsed(now, repeated, 150)) {
       repeated = now;

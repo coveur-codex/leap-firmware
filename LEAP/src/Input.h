@@ -10,6 +10,7 @@ struct InputEvent {
   bool right;
   Key key;
   bool longPress;
+  uint32_t heldMs = 0; // Zero for a short press or direction repeat.
 };
 class Input {
   Debouncer keys[10];
@@ -21,10 +22,13 @@ class Input {
     for (;;) {
       uint32_t now = millis();
       for (int i = 0; i < 10; i++) {
-        int result = input.keys[i].poll(digitalRead(input.pins[i]) == LOW, now, i % 5 != 4);
+        bool center = i % 5 == 4;
+        int result = input.keys[i].poll(digitalRead(input.pins[i]) == LOW, now, !center,
+                                      center ? ExtendedCenterHoldMs : 0);
         if (!result)
           continue;
-        InputEvent event{i >= 5, Key(i % 5), result == 3};
+        InputEvent event{i >= 5, Key(i % 5), result >= 3,
+                         result == 4 ? ExtendedCenterHoldMs : result == 3 ? Debouncer::LongPressMs : 0};
         // Preserve queued presses; drop new events if the consumer is stalled.
         xQueueSend(input.events, &event, 0);
       }
@@ -33,6 +37,7 @@ class Input {
   }
 
 public:
+  static constexpr uint32_t ExtendedCenterHoldMs = 2000;
   void begin() {
     for (int i = 0; i < 5; i++) {
       pins[i] = hw::LeftKeys[i];
@@ -58,9 +63,12 @@ public:
     if (events)
       return xQueueReceive(events, &e, 0) == pdTRUE;
     for (int i = 0; i < 10; i++) {
-      int result = keys[i].poll(digitalRead(pins[i]) == LOW, millis(), i % 5 != 4);
+      bool center = i % 5 == 4;
+      int result = keys[i].poll(digitalRead(pins[i]) == LOW, millis(), !center,
+                                center ? ExtendedCenterHoldMs : 0);
       if (result) {
-        e = {i >= 5, Key(i % 5), result == 3};
+        e = {i >= 5, Key(i % 5), result >= 3,
+             result == 4 ? ExtendedCenterHoldMs : result == 3 ? Debouncer::LongPressMs : 0};
         return true;
       }
     }

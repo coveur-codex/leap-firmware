@@ -127,16 +127,36 @@ void KitchenEditor::start() {
   position = choice = variant = 0;
   moving = -1;
   layer = KitchenLayer::Floor;
-  blocked = false;
+  blocked = leaveRequested = resetConfirm = confirmClear = false;
 }
 void KitchenEditor::browse(int direction) {
   moving = -1;
   do {
-    choice = (choice + int(KitchenType::Count) + 1 + direction) % (int(KitchenType::Count) + 1);
+    choice = (choice + ChoiceCount + direction) % ChoiceCount;
   } while (choice < int(KitchenType::Count) && KitchenCatalog[choice].layer != layer);
 }
 bool KitchenEditor::input(const InputEvent &e) {
-  if (e.longPress) return false;
+  if (e.longPress) {
+    if (!e.right && e.key == Key::Center && e.heldMs >= Input::ExtendedCenterHoldMs)
+      leaveRequested = true;
+    return false;
+  }
+  if (resetConfirm) {
+    if (e.key == Key::Center) {
+      bool clear = e.right && confirmClear;
+      resetConfirm = confirmClear = false;
+      if (clear) {
+        bool changed = state.count != 0;
+        state = KitchenState{};
+        start();
+        return changed;
+      }
+    } else if (e.right) {
+      if (e.key == Key::Right || e.key == Key::Down) confirmClear = true;
+      if (e.key == Key::Left || e.key == Key::Up) confirmClear = false;
+    }
+    return false;
+  }
   blocked = false;
   if (!e.right) {
     position = (position + KitchenState::Columns + (e.key == Key::Right) - (e.key == Key::Left)) %
@@ -160,9 +180,18 @@ bool KitchenEditor::input(const InputEvent &e) {
   if (e.key == Key::Up || e.key == Key::Down)
     variant = (variant + KitchenState::Variants + (e.key == Key::Up ? 1 : -1)) % KitchenState::Variants;
   if (e.key != Key::Center) return false;
+  if (choice == BackChoice) {
+    leaveRequested = true;
+    return false;
+  }
+  if (choice == ResetChoice) {
+    resetConfirm = true;
+    confirmClear = false;
+    return false;
+  }
   KitchenState before = state;
   bool changed;
-  if (choice == int(KitchenType::Count)) changed = state.remove(layer, position);
+  if (choice == RemoveChoice) changed = state.remove(layer, position);
   else {
     auto o = kitchenObject(KitchenType(choice), position, variant);
     changed = o.layer == layer && state.place(o, moving);
@@ -178,7 +207,9 @@ bool KitchenEditor::input(const InputEvent &e) {
 void KitchenEditor::draw(Arduino_GFX &g, int left, int top, bool savePending) {
   g.fillRect(left, top, 324, 132, 0xff9a);
   g.setTextSize(1); g.setTextColor(Ink); g.setCursor(left + 4, top + 2);
-  g.print(choice == int(KitchenType::Count) ? "Entfernen" : KitchenCatalog[choice].name);
+  const char *label = choice == RemoveChoice ? "Entfernen" : choice == BackChoice ? "Zurueck" :
+                      choice == ResetChoice ? "Kueche leeren" : KitchenCatalog[choice].name;
+  g.print(label);
   for (int i = 0; i < 4; ++i) {
     g.fillRect(left + 236 + i * 13, top + 1, 10, 9, Fronts[i]);
     if (variant == i) g.drawRect(left + 235 + i * 13, top, 12, 11, Ink);
@@ -194,7 +225,27 @@ void KitchenEditor::draw(Arduino_GFX &g, int left, int top, bool savePending) {
   for (int x = 4; x < 320; x += 39) g.drawLine(left + x, top + 98, left + x + 5, top + 105, 0xb34d);
   g.drawFastHLine(left + 4, top + 59, 316, 0xb596);
   for (int i = 0; i < state.count; ++i) object(g, state.objects[i], left, top);
-  bool deleting = choice == int(KitchenType::Count);
+  if (resetConfirm) {
+    g.fillRoundRect(left + 22, top + 30, 280, 65, 5, White);
+    g.drawRect(left + 22, top + 30, 280, 65, Ink);
+    g.setCursor(left + 38, top + 38); g.print("Kueche leeren?");
+    g.setCursor(left + 38, top + 50); g.print("Alle Gegenstaende entfernen.");
+    g.fillRoundRect(left + 36, top + 67, 118, 18, 3, confirmClear ? Steel : 0x05a8);
+    g.fillRoundRect(left + 169, top + 67, 118, 18, 3, confirmClear ? 0xfeb2 : Steel);
+    g.setCursor(left + 46, top + 72); g.print("Abbrechen");
+    g.setCursor(left + 185, top + 72); g.print("Leeren");
+    g.setCursor(left + 4, top + 108); g.print("R: waehlen + OK  L OK: abbrechen");
+    g.setCursor(left + 4, top + 128); g.print("L OK 2s halten: zur Spieleauswahl");
+    return;
+  }
+  if (choice == BackChoice || choice == ResetChoice) {
+    g.setCursor(left + 4, top + 108);
+    g.print(choice == BackChoice ? "R OK: zur Spieleauswahl" : "R OK: Kueche leeren?");
+    g.setCursor(left + 4, top + 118); g.print("R links/rechts: Objekt oder Aktion");
+    g.setCursor(left + 4, top + 128); g.print("L OK 2s halten: zur Spieleauswahl");
+    return;
+  }
+  bool deleting = choice == RemoveChoice;
   auto preview = kitchenObject(deleting ? KitchenType::Cabinet : KitchenType(choice), position, variant);
   if (deleting) {
     int target = state.at(layer, position);
@@ -215,6 +266,6 @@ void KitchenEditor::draw(Arduino_GFX &g, int left, int top, bool savePending) {
   g.printf("%s %d/12 %s", layers[int(layer)], position + 1,
            savePending ? "Speichern..." : blocked ? "Kein Platz!" : deleting ? "R OK: weg" : moving >= 0 ? "L OK: zurueck" : "L OK: nehmen");
   g.setCursor(left + 4, top + 118); g.print("L: Ort/Ebene  R: Objekt/Farbe/OK");
-  g.setCursor(left + 4, top + 128); g.print("L OK halten: zur Spieleauswahl");
+  g.setCursor(left + 4, top + 128); g.print("L OK 2s halten: zur Spieleauswahl");
 }
 } // namespace leap

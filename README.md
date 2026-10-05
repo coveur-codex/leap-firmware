@@ -468,5 +468,7 @@ gekennzeichnet. Ein älterer Homeserver ohne `tomorrow` zeigt „Vorhersage fehl
 
 „Meine Kueche“ steht als eingebautes Spiel in der Spieleauswahl zur Verfügung.
 15 programmatisch gezeichnete Objekte, drei Ebenen und vier Frontfarben lassen sich
-frei einrichten und werden automatisch lokal gespeichert. Bedienung, Platzierungsregeln
+frei einrichten und werden automatisch lokal gespeichert. Links-Mitte zwei Sekunden
+halten oder „Zurueck“ auswählen führt zur Spieleauswahl. „Kueche leeren“ setzt die
+Küche nach Bestätigung zurück. Bedienung, Platzierungsregeln
 und Hardware-Prüfung: [Kücheneditor](docs/kitchen.md).
