@@ -770,6 +770,9 @@ void Ui::input(const InputEvent &e) {
     }
     return;
   }
+  // Only the kitchen uses the additional hold; other pages keep one long action.
+  if (e.longPress && e.heldMs >= Input::ExtendedCenterHoldMs)
+    return;
   if (e.longPress) {
     if (!e.right && e.key == Key::Center) {
       locked = true;
