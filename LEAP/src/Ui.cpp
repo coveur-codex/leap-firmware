@@ -31,6 +31,8 @@ static String displayText(String s) {
   return out;
 }
 static String gameTitle(const String &id) {
+  if (id == "kitchen")
+    return "Meine Kueche";
   if (id == "connect_four")
     return "Vier Gewinnt";
   if (id == "tamagotchi")
@@ -654,8 +656,9 @@ void Ui::drawPage(const String &id) {
       std::vector<String> labels;
       JsonArray configuredGames = state["config"]["games"].as<JsonArray>();
       for (JsonObject g : configuredGames)
-        if (g["enabled"] == true)
+        if (g["enabled"] == true && g["id"] != "kitchen")
           labels.push_back(gameTitle(g["id"] | ""));
+      labels.push_back(gameTitle("kitchen"));
       list(labels);
     }
   } else if (id == "communication") {
@@ -741,7 +744,7 @@ void Ui::render() {
     // Current page title lives below the sidebar navigation.
     drawPage(pages[page].id);
   }
-  if (!locked && !menu && gameOpen && (game.isPet() || game.isConnectFour())) {
+  if (!locked && !menu && gameOpen && (game.isPet() || game.isConnectFour() || game.isKitchen())) {
     canvas->flush();
     return;
   }
@@ -757,6 +760,18 @@ void Ui::input(const InputEvent &e) {
   lastInput = millis();
   frameRequested = true;
   notice = "";
+  if (!locked && !menu && gameOpen && game.isKitchen()) {
+    if (e.longPress && !e.right && e.key == Key::Center) {
+      game.close();
+      gameOpen = false;
+      selection = scroll = 0;
+      return;
+    }
+    if (!e.longPress) {
+      game.kitchenInput(e);
+      return;
+    }
+  }
   if (e.longPress) {
     if (!e.right && e.key == Key::Center) {
       locked = true;
@@ -886,11 +901,15 @@ void Ui::action(const InputEvent &e) {
         int n = 0;
         JsonArray configuredGames = state["config"]["games"].as<JsonArray>();
         for (JsonObject g : configuredGames)
-          if (g["enabled"] == true && n++ == selection) {
+          if (g["enabled"] == true && g["id"] != "kitchen" && n++ == selection) {
             game.start(g["id"] | "");
             gameOpen = true;
             break;
           }
+        if (!gameOpen && selection == n) {
+          game.start("kitchen");
+          gameOpen = true;
+        }
       }
     }
   } else if (id == "communication") {

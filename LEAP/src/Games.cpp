@@ -7,12 +7,28 @@
 namespace leap {
 void Games::begin() {
   gamePrefs.begin("leap-games", false);
+  uint8_t kitchenBytes[KitchenState::SaveSize];
+  if (gamePrefs.getBytesLength("kitchen") == sizeof(kitchenBytes) &&
+      gamePrefs.getBytes("kitchen", kitchenBytes, sizeof(kitchenBytes)) == sizeof(kitchenBytes))
+    kitchen.state.decode(kitchenBytes, sizeof(kitchenBytes));
   PetState saved;
   if (gamePrefs.getBytesLength("pet") == sizeof(saved) &&
       gamePrefs.getBytes("pet", &saved, sizeof(saved)) == sizeof(saved) && saved.valid())
     pet = saved;
   highscore = constrain(gamePrefs.getInt("snake-best", 0), 0, SnakeState::Capacity - 3);
   petLast = petSavedAt = millis();
+}
+void Games::saveKitchen() {
+  uint8_t bytes[KitchenState::SaveSize];
+  kitchen.state.encode(bytes);
+  kitchenDirty = gamePrefs.putBytes("kitchen", bytes, sizeof(bytes)) != sizeof(bytes);
+  kitchenSavedAt = millis();
+}
+void Games::kitchenInput(const InputEvent &event) {
+  if (opened && isKitchen() && kitchen.input(event)) {
+    kitchenDirty = true;
+    saveKitchen();
+  }
 }
 void Games::savePet() {
   petDirty = gamePrefs.putBytes("pet", &pet, sizeof(pet)) != sizeof(pet);
@@ -33,13 +49,19 @@ String Games::petBlob(const String &path) const {
   return "";
 }
 void Games::close() {
+  if (kitchenDirty)
+    saveKitchen();
   if (opened && petDirty)
     savePet();
   opened = running = false;
   petAction = -1;
 }
 void Games::start(const String &id) {
+  if (opened)
+    close();
   kind = id;
+  if (isKitchen())
+    kitchen.start();
   opened = true;
   petSelection = 0;
   petAction = -1;
@@ -67,6 +89,8 @@ void Games::start(const String &id) {
     s = esp_random() % 4;
 }
 void Games::input(Key key) {
+  if (isKitchen())
+    return;
   if (isConnectFour() && opened) {
     if (!running) {
       if (key == Key::Center)
@@ -161,6 +185,8 @@ void Games::input(Key key) {
 }
 void Games::tick() {
   uint32_t now = millis();
+  if (kitchenDirty && elapsed(now, kitchenSavedAt, 5000))
+    saveKitchen();
   if (uint32_t(now - petLast) >= PetState::DecayIntervalMs) {
     unsigned ticks = uint32_t(now - petLast) / PetState::DecayIntervalMs;
     petLast += ticks * PetState::DecayIntervalMs;
@@ -223,6 +249,10 @@ void Games::tick() {
   }
 }
 void Games::draw(Arduino_GFX &gfx, int left, int top) {
+  if (isKitchen()) {
+    kitchen.draw(gfx, left, 0, kitchenDirty);
+    return;
+  }
   if (isConnectFour()) {
     drawFour(gfx, left, top);
     return;

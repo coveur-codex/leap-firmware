@@ -463,3 +463,10 @@ gezeichnet. Sie brauchen keine Bildpakete und funktionieren offline.
 Die Morgen-Karte zeigt Datum, Wetterlage, Temperaturspanne und
 Regenwahrscheinlichkeit. Fehlende Werte bleiben „?“, alte Wetterdaten sind
 gekennzeichnet. Ein älterer Homeserver ohne `tomorrow` zeigt „Vorhersage fehlt“.
+
+## Lokaler Kücheneditor
+
+„Meine Kueche“ steht als eingebautes Spiel in der Spieleauswahl zur Verfügung.
+15 programmatisch gezeichnete Objekte, drei Ebenen und vier Frontfarben lassen sich
+frei einrichten und werden automatisch lokal gespeichert. Bedienung, Platzierungsregeln
+und Hardware-Prüfung: [Kücheneditor](docs/kitchen.md).
