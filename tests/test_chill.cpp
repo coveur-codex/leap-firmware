@@ -38,6 +38,10 @@ JsonDocument manifest(const char *scene) {
   }
   return m;
 }
+static void adjust(Chill &chill, int delta, uint32_t now) {
+  for (int i = 0; i < std::abs(delta) / 5; ++i)
+    assert(!chill.input({true, delta > 0 ? Key::Right : Key::Left, false}, now));
+}
 int main(int argc, char **argv) {
   ChillMotion model;
   for (auto scene : {ChillScene::Space, ChillScene::Fire, ChillScene::Snow}) {
@@ -72,12 +76,12 @@ int main(int argc, char **argv) {
   chill.begin();
   Arduino_GFX gfx;
   assert(chill.start("chill-fire", 1, fire, 0));
-  chill.input(10, 50);
+  adjust(chill, 10, 50);
   chill.tick(1000);
   assert(Preferences::ints.empty());
   chill.tick(2050);
   assert(Preferences::ints["leap-chillfire"] == 55);
-  chill.input(5, 2100);
+  adjust(chill, 5, 2100);
   chill.close();
   assert(Preferences::ints["leap-chillfire"] == 60);
   assert(chill.start("chill-fire", 1, fire, 2200));
@@ -88,12 +92,50 @@ int main(int argc, char **argv) {
   assert(paths[0] != paths[1]);
   assert(chill.start("chill-snow", 1, snow, 2700));
   assert(chill.motion.value == 45);
-  chill.input(-5, 2800);
+  adjust(chill, -5, 2800);
   chill.close();
   assert(chill.start("chill-fire", 2, fire, 3000));
   assert(chill.motion.value == 60);
   assert(!chill.start("bad", 1, bad, 3100));
   assert(!chill.active());
+  // Actual GPIO -> debounced queue -> Chill input. Both centre pins must exit,
+  // even with the slider already visible, and save the pending value immediately.
+  Input buttons;
+  buttons.begin();
+  assert(buttons.start());
+  fakeNow = 0;
+  fakeUntil = 100;
+  fakeDown = [](int pin, uint32_t now) {
+    return (pin == hw::LeftKeys[4] || pin == hw::RightKeys[4]) && now >= 10 && now < 60;
+  };
+  try {
+    fakeTask(fakeContext);
+  } catch (SamplingFinished &) {
+  }
+  InputEvent event;
+  for (bool right : {false, true}) {
+    assert(buttons.poll(event) && event.right == right);
+    assert(chill.start("chill-snow", 1, snow, 0));
+    adjust(chill, 5, 10);
+    int saved = chill.motion.value;
+    assert(chill.motion.sliderVisible(20));
+    assert(chill.input(event, 30));
+    assert(!chill.active());
+    assert(Preferences::ints["leap-chillsnow"] == saved);
+    assert(!chill.input({true, Key::Right, false}, 40)); // No reopening after exit.
+    assert(!chill.active());
+  }
+  assert(!buttons.poll(event));
+  assert(chill.start("chill-snow", 1, snow, 100));
+  int level = chill.motion.value;
+  assert(!chill.input({false, Key::Up, false}, 110));
+  assert(chill.motion.value == level && !chill.motion.sliderVisible(120));
+  assert(!chill.input({true, Key::Down, false}, 130));
+  assert(chill.motion.value == level - 5 && chill.motion.sliderVisible(140));
+  assert(!chill.input({true, Key::Center, true}, 150)); // UI handles long presses.
+  assert(chill.active());
+  assert(chill.input({true, Key::Center, false}, 160));
+  assert(chill.input({false, Key::Center, false}, 170)); // Back also works before assets start.
   for (int i = 1; i < argc; ++i) {
     std::ifstream in(argv[i]);
     JsonDocument m;
@@ -104,5 +146,5 @@ int main(int argc, char **argv) {
     chill.close();
   }
   std::cout << "PASS: Chill limits, wraparound, calm motion, slider timeout, per-scene NVS, frames "
-               "and manifest references\n";
+               "and manifest references and both GPIO centre-button exits\n";
 }

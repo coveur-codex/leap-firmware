@@ -784,16 +784,14 @@ void Ui::input(const InputEvent &e) {
     return;
   }
   if (!menu && !pages.empty() && pages[page].id == "chill") {
-    if (!e.right && e.key == Key::Center) {
-      chill.close();
+    if (!chill.active()) {
+      String id = assetOfType("chill");
+      chill.start(id, state["assets"][id] | 0, manifestFor(id), millis());
+    }
+    if (chill.input(e, millis())) {
       menu = true;
       selection = page;
-    } else if (e.right) {
-      if (!chill.active()) {
-        String id = assetOfType("chill");
-        chill.start(id, state["assets"][id] | 0, manifestFor(id), millis());
-      }
-      action(e);
+      scroll = 0;
     }
     return;
   }
@@ -984,10 +982,6 @@ void Ui::action(const InputEvent &e) {
       network.requestSync();
       notice = "Sync angefragt";
     }
-  } else if (id == "chill") {
-    int delta = (e.key == Key::Right || e.key == Key::Up) -
-                (e.key == Key::Left || e.key == Key::Down);
-    chill.input(delta * 5, millis());
   } else {
     scroll = std::max(0, scroll + direction);
     if (e.key == Key::Left || e.key == Key::Right) {

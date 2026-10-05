@@ -1,5 +1,6 @@
 #pragma once
 #include "ChillMotion.h"
+#include "Input.h"
 #include "Media.h"
 #include <memory>
 #include <vector>
@@ -35,7 +36,8 @@ public:
   bool active() const { return motion.scene != ChillScene::None; }
   bool start(const String &id, int nextVersion, JsonVariantConst manifest, uint32_t now);
   void close();
-  void input(int delta, uint32_t now);
+  // True means the scene was closed and the UI should return to its menu.
+  bool input(const InputEvent &event, uint32_t now);
   void tick(uint32_t now);
   void draw(Arduino_GFX &gfx, uint32_t now);
 };

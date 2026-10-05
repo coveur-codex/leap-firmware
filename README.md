@@ -255,18 +255,16 @@ zählt auch eine Schüttelbewegung. Die IMU wird mit 50 Hz gelesen, inklusive
 Neutralstellungserkennung für Simon. Bei I²C-Ausfall bleiben die Schalter nutzbar.
 Bewusste lokale Spielregeln für die Server-IDs; kein vernetzter Spielzustand.
 
-**Chill (beta.18):** Homeserver → Gerät → Firmware & Inhalte → eine Chill-Szene
+**Chill (beta.19):** Homeserver → Gerät → Firmware & Inhalte → eine Chill-Szene
 (Weltraum, Lagerfeuer, Schnee) auswählen. Nach dem regulären Sync im Hauptmenü
-„Ruhezeit“ starten. Ganze 428×142-Fläche ohne Sidebar/Texte; links MITTE zurück
-zum Hauptmenü, rechts MITTE zeigt den Slider, rechts LINKS/UNTEN bzw.
-RECHTS/OBEN ändern ihn in Fünferschritten (0–100). Nach vier Sekunden verschwindet
+„Ruhezeit“ starten. Ganze 428×142-Fläche ohne Sidebar/Texte; MITTE an einem der
+beiden Schalter zurück zum Hauptmenü, rechts LINKS/UNTEN bzw. RECHTS/OBEN blenden den
+Slider ein und ändern ihn in Fünferschritten (0–100). Nach vier Sekunden verschwindet
 der Slider. Der Wert bleibt je Szene lokal gespeichert. Dimmung und automatische
 Sperre pausieren während der Szene; links MITTE lange drücken sperrt weiterhin.
-Weltraum: prozedurale Parallax-Sterne und gelegentlich ein Paket-Sprite.
-Feuer: sechs echte Flammenframes, Holz/Glut, wenige ruhige Funken.
-Schnee: Landschafts-Sprites und maximal 72 sanft driftende Flocken.
-Details: [Chill](docs/chill.md).
-
+Weltraum: prozedurale Parallax-Sterne und gelegentlich ein Paket-Sprite. Feuer: sechs
+echte Flammenframes, Holz/Glut, wenige ruhige Funken. Schnee: Landschafts-Sprites und
+maximal 72 sanft driftende Flocken. Details: [Chill](docs/chill.md).
 ## Offline, Assets und Speicher
 
 16 MiB Flash: NVS 20 KiB, OTA-Daten 8 KiB, **zwei App-Slots à 4 MiB**,
