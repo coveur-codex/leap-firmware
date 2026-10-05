@@ -50,9 +50,48 @@ static PetState savedPet() {
   return p;
 }
 int main() {
+  Arduino_GFX gfx;
+  Games kitchenGame;
+  kitchenGame.begin();
+  kitchenGame.start("kitchen");
+  assert(kitchenGame.active() && kitchenGame.isKitchen());
+  assert(Preferences::bytes["leap-gameskitchen"].empty());
+  kitchenGame.kitchenInput({true, Key::Center, false});
+  auto savedKitchen = Preferences::bytes["leap-gameskitchen"];
+  KitchenState loadedKitchen;
+  assert(loadedKitchen.decode(savedKitchen.data(), savedKitchen.size()));
+  assert(loadedKitchen.count == 1 && loadedKitchen.objects[0].type == KitchenType::Cabinet);
+  kitchenGame.kitchenInput({false, Key::Center, false});
+  kitchenGame.kitchenInput({false, Key::Right, false});
+  kitchenGame.close(); // An unconfirmed move must never persist.
+  assert(Preferences::bytes["leap-gameskitchen"] == savedKitchen);
+  Games kitchenReboot;
+  kitchenReboot.begin();
+  kitchenReboot.start("kitchen");
+  kitchenReboot.kitchenInput({true, Key::Right, false}); // Replace cabinet with drawers.
+  kitchenReboot.kitchenInput({true, Key::Center, false});
+  savedKitchen = Preferences::bytes["leap-gameskitchen"];
+  assert(loadedKitchen.decode(savedKitchen.data(), savedKitchen.size()));
+  assert(loadedKitchen.count == 1 && loadedKitchen.objects[0].type == KitchenType::Drawers);
+  kitchenReboot.close();
+  Preferences::failWrites = true;
+  kitchenReboot.start("kitchen");
+  kitchenReboot.kitchenInput({false, Key::Right, false});
+  kitchenReboot.kitchenInput({true, Key::Center, false});
+  assert(Preferences::bytes["leap-gameskitchen"] == savedKitchen);
+  gfx.text.clear();
+  kitchenReboot.draw(gfx, 94, 10);
+  assert(gfx.text.find("Speichern...") != std::string::npos);
+  Preferences::failWrites = false;
+  fakeNow += 5000;
+  kitchenReboot.tick();
+  savedKitchen = Preferences::bytes["leap-gameskitchen"];
+  assert(loadedKitchen.decode(savedKitchen.data(), savedKitchen.size()));
+  assert(loadedKitchen.count == 2);
+  kitchenReboot.close();
+  fakeNow = 0; // Preserve the existing pet timing regression below.
   Games game;
   game.begin();
-  Arduino_GFX gfx;
   game.start("tamagotchi");
   assert(game.active());
   fakeNow = PetState::DecayIntervalMs;

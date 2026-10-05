@@ -7,6 +7,10 @@ c++ -std=c++17 -Wall -Wextra -Werror -I tests/storage_fakes -I "$ARDUINOJSON_INC
 build/tests/storage-snapshot
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_maze.cpp -o build/tests/maze
 build/tests/maze
+c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_kitchen.cpp -o build/tests/kitchen
+c++ -std=c++17 -Wall -Wextra -Werror -I tests/input_fakes -I tests/game_fakes -I LEAP/src tests/test_kitchen_editor.cpp LEAP/src/KitchenEditor.cpp -o build/tests/kitchen-editor
+build/tests/kitchen-editor
+build/tests/kitchen
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_weather_icon.cpp -o build/tests/weather-icon
 build/tests/weather-icon
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_math_quiz.cpp -o build/tests/math-quiz
@@ -18,7 +22,7 @@ build/tests/quiz-questions
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/input_fakes -I LEAP/src tests/test_input.cpp -o build/tests/input
 build/tests/input
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_games.cpp -o build/tests/games
-c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_game_lifecycle.cpp LEAP/src/Games.cpp -o build/tests/game-lifecycle
+c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_game_lifecycle.cpp LEAP/src/Games.cpp LEAP/src/KitchenEditor.cpp -o build/tests/game-lifecycle
 build/tests/game-lifecycle
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_chill.cpp LEAP/src/Chill.cpp -o build/tests/chill
 build/tests/chill

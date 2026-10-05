@@ -1,5 +1,6 @@
 #pragma once
 #include "GameRules.h"
+#include "KitchenEditor.h"
 #include "ConnectFour.h"
 #include "Maze.h"
 #include "Input.h"
@@ -22,6 +23,10 @@ class Games {
   int fourDifficulty = 0, fourColumn = 3;
   bool fourSetup = true, fourThinking = false, fourFull = false;
   void drawFour(Arduino_GFX &gfx, int left, int top);
+  KitchenEditor kitchen;
+  bool kitchenDirty = false;
+  uint32_t kitchenSavedAt = 0;
+  void saveKitchen();
   Preferences gamePrefs;
   uint32_t petLast = 0, petSavedAt = 0, actionAt = 0;
   bool petDirty = false;
@@ -47,6 +52,10 @@ public:
   bool isConnectFour() const {
     return kind == "connect_four";
   }
+  bool isKitchen() const {
+    return kind == "kitchen";
+  }
+  void kitchenInput(const InputEvent &event);
   void input(Key key);
   void tick();
   void draw(Arduino_GFX &gfx, int left, int top);
