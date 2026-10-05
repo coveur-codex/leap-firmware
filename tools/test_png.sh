@@ -19,3 +19,10 @@ build/tests/png/mask
 : "${ARDUINOJSON_INCLUDE:?Set this to ArduinoJson/src for the Media integration test}"
 c++ -std=c++17 -D__LINUX__ @LEAP/build_opt.h -O1 -I tests/media_fakes -I tests/game_fakes -I "$ARDUINOJSON_INCLUDE" -I "$PNGDEC_SRC" -I LEAP/src tests/test_media_render.cpp LEAP/src/Media.cpp "$PNGDEC_SRC/PNGdec.cpp" build/tests/png/objects/*.o -o build/tests/png/render
 build/tests/png/render build/tests/png
+
+# Optional integration with actual files exported from homeserver manifests.
+if [[ -n "${CHILL_SPRITES_DIR:-}" ]]; then
+  c++ -std=c++17 -D__LINUX__ @LEAP/build_opt.h -O1 -I tests/media_fakes -I tests/game_fakes -I "$ARDUINOJSON_INCLUDE" -I "$PNGDEC_SRC" -I LEAP/src tests/test_chill_png.cpp LEAP/src/Media.cpp "$PNGDEC_SRC/PNGdec.cpp" build/tests/png/objects/*.o -o build/tests/png/chill-assets
+  mapfile -t chill_pngs < <(rg --files "$CHILL_SPRITES_DIR" -g '*.png')
+  build/tests/png/chill-assets "${chill_pngs[@]}"
+fi

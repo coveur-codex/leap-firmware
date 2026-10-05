@@ -1,4 +1,5 @@
 #include "Ui.h"
+#include "ChillAssets.h"
 #include "AircraftMap.h"
 #include "WeatherIcon.h"
 #include "Audio.h"
@@ -81,6 +82,7 @@ bool Ui::begin(JsonDocument *bootState) {
   if (!healthy && !beginDisplay()) return false;
   prefs.begin("leap-ui", false);
   game.begin();
+  chill.begin();
   brightness = constrain(prefs.getInt("brightness", 170), 20, 255);
   audio.volume = prefs.getUChar("volume", 35);
   if (bootState) state = std::move(*bootState);
@@ -264,7 +266,8 @@ void Ui::list(const std::vector<String> &labels, int x, int y, int width) {
 String Ui::assetOfType(const char *type) {
   if (!manifests) return "";
   for (JsonPairConst p : manifests->as<JsonObjectConst>()) {
-    if (p.value()["definition"]["type"] == type)
+    if (p.value()["definition"]["type"] == type &&
+        (String(type) != "chill" || validChill(p.value()["definition"], p.value()["files"])))
       return p.key().c_str();
   }
   return "";
@@ -712,13 +715,6 @@ void Ui::drawPage(const String &id) {
         labels.push_back(row["title"] | "");
       list(labels);
     }
-  } else if (id == "chill") {
-    float phase = (millis() % 8000) / 8000.0f;
-    int radius = 12 + int(16 * (0.5f - 0.5f * cosf(phase * 6.283185f)));
-    canvas->fillCircle(160, 80, radius, Accent);
-    text(phase < 0.5f ? "Einatmen" : "Ausatmen", 212, 62, 2);
-    text("Mitte: Klang / Stille", 212, 95);
-    drawAsset(assetOfType("chill"), picture, 345, 63, 64, 56, true);
   } else if (id == "settings") {
     list({"Licht: " + String(brightness * 100 / 255) + "%",
           "Lautstaerke: " + String(audio.volume.load()) + "%", "Jetzt synchronisieren",
@@ -731,6 +727,14 @@ void Ui::drawPage(const String &id) {
 void Ui::render() {
   if (!healthy)
     return;
+  if (!locked && !menu && !pages.empty() && pages[page].id == "chill") {
+    String id = assetOfType("chill");
+    chill.start(id, state["assets"][id] | 0, manifestFor(id), millis());
+    chill.draw(*canvas, millis());
+    canvas->flush();
+    return;
+  }
+  chill.close();
   canvas->fillScreen(Background);
   sidebar();
   if (locked) {
@@ -776,6 +780,20 @@ void Ui::input(const InputEvent &e) {
       locked = false;
       menu = true;
       selection = page;
+    }
+    return;
+  }
+  if (!menu && !pages.empty() && pages[page].id == "chill") {
+    if (!e.right && e.key == Key::Center) {
+      chill.close();
+      menu = true;
+      selection = page;
+    } else if (e.right) {
+      if (!chill.active()) {
+        String id = assetOfType("chill");
+        chill.start(id, state["assets"][id] | 0, manifestFor(id), millis());
+      }
+      action(e);
     }
     return;
   }
@@ -967,24 +985,9 @@ void Ui::action(const InputEvent &e) {
       notice = "Sync angefragt";
     }
   } else if (id == "chill") {
-    if (e.key == Key::Center) {
-      static bool playing = false;
-      playing = !playing;
-      if (!playing)
-        audio.stop();
-      else {
-        String package = assetOfType("sound");
-        JsonDocument m(&jsonRam);
-        if (storage.readJson(storage.package(package, state["assets"][package] | 0), m))
-          for (JsonObject f : m["files"].as<JsonArray>()) {
-            String name = f["path"] | "";
-            if (name.endsWith(".wav")) {
-              audio.play(storage.blob(f["sha256"].as<String>()));
-              break;
-            }
-          }
-      }
-    }
+    int delta = (e.key == Key::Right || e.key == Key::Up) -
+                (e.key == Key::Left || e.key == Key::Down);
+    chill.input(delta * 5, millis());
   } else {
     scroll = std::max(0, scroll + direction);
     if (e.key == Key::Left || e.key == Key::Right) {
@@ -1009,9 +1012,11 @@ void Ui::tick() {
   network.aircraftVisible = radarVisible;
   radio.poll();
   game.tick();
-  bool dim = elapsed(millis(), lastInput, 60000);
+  chill.tick(millis());
+  bool chillVisible = !locked && !menu && !pages.empty() && pages[page].id == "chill";
+  bool dim = !chillVisible && elapsed(millis(), lastInput, 60000);
   ledcWrite(hw::Backlight, dim ? 20 : brightness);
-  if (elapsed(millis(), lastInput, 180000)) {
+  if (!chillVisible && elapsed(millis(), lastInput, 180000)) {
     locked = true;
     game.close();
     gameOpen = false;

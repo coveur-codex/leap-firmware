@@ -1,6 +1,30 @@
 # Durchgeführte Prüfungen
 
-Stand: 2026-10-03. Referenz-Homeserver `8175c9f`, unverändert.
+Stand: 2026-10-05. Chill V1 mit entsprechend aktualisiertem Homeserver.
+
+## Chill V1: 1.0.0-beta.18
+
+- Alle nativen Firmwaretests bestanden, einschließlich neuer Prüfung des echten
+  `Chill.cpp`: Slider-Grenzen/Timeout, Timerüberlauf, pro Szene unabhängige
+  NVS-Werte, Speicherung nach Ruhefrist/beim Verlassen, Animationsframe-Wechsel,
+  Paketwechsel und fehlende Sprite-Referenzen.
+- Alle drei vom Homeserver erzeugten tatsächlichen Paketmanifeste mit dem
+  Firmwarevalidator und Szenenstart geprüft. Alle 18 tatsächlichen PNGs mit
+  `Media.cpp` und PNGdec 1.1.6 dekodiert, inklusive Alpha-Masken; übrige
+  PNG-Regressions-/Medientests weiterhin bestanden. PNGs bytegleich mit den
+  Original-ZIPs. Optionaler Sprite-Test über `CHILL_SPRITES_DIR` in
+  `tools/test_png.sh`, native Manifestprüfung über `build/tests/chill <manifeste>`.
+- ESP32-S3-N16R8-Cross-Build mit Core 3.3.0 und festgelegten Bibliotheken
+  bestanden: 1.466.231 Byte Programm, 125.140 Byte statischer RAM;
+  exportiertes App-Image 1.466.384 Byte, S3-Header und Slotgröße geprüft.
+  Bestehende Warnungen aus Core/Bibliotheken und bisherigen Modulen bleiben.
+- Homeserver nach Integration von `24ca2cc`: 101 Python-Tests sowie die
+  Flugradar-Vorschau-Regression bestanden. Bestehender vollständiger
+  Server-/Firmware-Sync-Vertrag inklusive Inventar-/Bereinigungsschranken geprüft.
+- Chromium: alle drei Homeserver-Vorschauen erreichbar, Vollbild ohne Sidebar,
+  Slider bis 100 bedienbar, keine JavaScript-Laufzeitfehler.
+- Physischer Display-/Tasten-/Dauertest und gemessene Hardware-Framerate bleiben
+  offen; Abnahmeschritte in [Chill](chill.md#prüfung-am-gerät).
 
 ## UI-Reaktionszeit und Transparenz: 1.0.0-beta.9
 

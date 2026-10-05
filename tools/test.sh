@@ -20,6 +20,8 @@ build/tests/input
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_games.cpp -o build/tests/games
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_game_lifecycle.cpp LEAP/src/Games.cpp -o build/tests/game-lifecycle
 build/tests/game-lifecycle
+c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_chill.cpp LEAP/src/Chill.cpp -o build/tests/chill
+build/tests/chill
 build/tests/games
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_connect_four.cpp -o build/tests/connect-four
 build/tests/connect-four
