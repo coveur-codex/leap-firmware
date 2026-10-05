@@ -46,6 +46,9 @@ with tempfile.TemporaryDirectory() as temp:
     files=distribution.file_map(old)
     png=BytesIO();Image.new("RGBA",(80,80),(60,200,180,255)).save(png,format="PNG")
     files["data/pet/idle/frame_01.png"]=distribution.store_bytes(png.getvalue())
+    for page in ("home", "news", "weather", "flightradar", "quiz", "games",
+                 "communication", "knowledge", "settings"):
+        files[f"data/pet/pagestatics/{page}.png"] = distribution.store_bytes(png.getvalue())
     for period in ("day", "night"):
         background=BytesIO();Image.new("RGB",(256,142),(120,180,220)).save(background,format="PNG")
         files[f"background_{period}.png"]=distribution.store_bytes(background.getvalue())
@@ -60,6 +63,10 @@ with tempfile.TemporaryDirectory() as temp:
     manifests = []
     for update in plan["assetUpdates"]:
         manifest = client.get(update["manifestUrl"]).json()
+        if manifest["packageId"] == "avatar-dragon":
+            paths = {f["path"] for f in manifest["files"]}
+            assert "data/pet/pagestatics/flightradar.png" in paths
+            assert "data/pet/pagestatics/home.png" in paths
         manifests.append(manifest)
         for file in manifest["files"]:
             payload = client.get(file["url"]).content

@@ -160,8 +160,15 @@ mit dem regulären Sync (15 Minuten), keine Animation oder Vorhersage.
 **Avatar:** Die Standard-Avatare werden im Homeserver als 80×80-PNG-Paket ausgeliefert.
 Unveränderte alte SVG-Standardpakete erhalten beim Serverstart eine neue Version;
 eigene Pakete bleiben unverändert. Nach dem Sync zeigt die Sidebar den zugewiesenen
-Avatar, bis dahin „Avatar wartet auf Sync“. PNG-Animationen eigener Pakete bleiben
-unterstützt; Standard-Avatare sind statische Bilder.
+Avatar, bis dahin „Avatar wartet auf Sync“. Die Sidebar zeigt pro Seite das
+80×80-PNG aus `data/pet/pagestatics/`: `home`, `news`, `weather`, `flightradar`,
+`quiz`, `games`, `communication`, `knowledge` oder `settings`. Die interne Seite
+`aircraft` verwendet `flightradar.png`; Menü und Sperrbildschirm verwenden
+`home.png`. Pfade mit einem äußeren Uploadordner werden ebenfalls erkannt.
+Fehlt das Seitenbild, wird `home.png` verwendet, danach der erste Idle-Frame
+bzw. die PNG-Vorschau eines alten Pakets, jeweils ohne Animation. Das Haustierspiel
+verwendet weiterhin seine animierten Zustände. Die vorhandene Manifest-/Datei-API
+des Homeservers reicht aus; eine Serveränderung ist dafür nicht erforderlich.
 
 **Flugradar:** Rechts zeigt eine 112×112-Ansicht die gemeldeten Flugzeugpositionen
 um den Gerätestandort (`aircraft.center` aus der Server-API), Nord oben. Der äußere

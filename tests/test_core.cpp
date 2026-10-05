@@ -110,6 +110,8 @@ int main(int argc, char **argv) {
       assert(manifestMetadata(m, 8 * 1024 * 1024));
       if (m["type"] == "avatar") {
         assert(avatarFrame(m) == "data/pet/idle/frame_01.png");
+        assert(avatarPageImage(m, "aircraft") == "data/pet/pagestatics/flightradar.png");
+        assert(avatarPageImage(m, "home") == "data/pet/pagestatics/home.png");
         assert(avatarImageSize(m["definition"], "background_day.png", 256, 142));
         assert(avatarImageSize(m["definition"], "background_night.png", 256, 142));
         JsonArray fileRows = m["files"].as<JsonArray>();
