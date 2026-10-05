@@ -51,6 +51,37 @@ inline std::string avatarFrame(JsonVariantConst manifest, uint32_t now = 0) {
     return frames[(now / 400) % frames.size()].as<std::string>();
   return ""; // Only canonical idle folders are discovered; other expressions are not avatars.
 }
+// Page IDs come from config; aircraft is the API name of the flight radar page.
+inline std::string avatarPageImage(JsonVariantConst manifest, const std::string &page) {
+  std::string name = page == "aircraft" ? "flightradar" : page;
+  bool known = false;
+  for (const char *id : {"home", "news", "weather", "flightradar", "quiz", "games",
+                         "communication", "knowledge", "settings"})
+    known = known || name == id;
+  if (!known)
+    name = "home";
+  auto find = [&](const std::string &image) {
+    const std::string canonical = "data/pet/pagestatics/" + image + ".png";
+    std::string prefixed;
+    for (JsonObjectConst file : manifest["files"].as<JsonArrayConst>()) {
+      std::string path = file["path"] | "";
+      if (path == canonical)
+        return path;
+      // Keep actual manifest paths for packages uploaded inside an outer folder.
+      const std::string ending = "/" + canonical;
+      if (path.size() > ending.size() &&
+          path.compare(path.size() - ending.size(), ending.size(), ending) == 0 &&
+          (prefixed.empty() || path < prefixed))
+        prefixed = path;
+    }
+    return prefixed;
+  };
+  std::string path = find(name);
+  if (path.empty() && name != "home")
+    path = find("home");
+  // Old packages remain usable, but the sidebar never animates their idle frames.
+  return path.empty() ? avatarFrame(manifest, 0) : path;
+}
 inline bool petBackgroundFile(JsonVariantConst definition, const std::string &path) {
   bool background = *petBackgroundPeriod(path);
   for (const char *key : {"day", "night"})

@@ -51,8 +51,7 @@ class Ui {
   void drawPage(const String &id);
   void action(const InputEvent &event);
   String assetOfType(const char *type);
-  bool drawAsset(const String &id, Media &media, int x, int y, int width, int height,
-                 bool animate = false);
+  bool drawSidebarAvatar(const String &id, const String &pageId);
 
 public:
   bool beginDisplay();
