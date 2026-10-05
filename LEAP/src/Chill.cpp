@@ -73,11 +73,23 @@ bool Chill::start(const String &id, int nextVersion, JsonVariantConst manifest, 
   }
   return true;
 }
-void Chill::input(int delta, uint32_t now) {
-  if (motion.input(delta, now)) {
+bool Chill::input(const InputEvent &event, uint32_t now) {
+  if (event.longPress)
+    return false;
+  // Both physical centre buttons mean Back; never route them to the slider.
+  if (event.key == Key::Center) {
+    close();
+    return true;
+  }
+  if (!active() || !event.right)
+    return false;
+  int delta = (event.key == Key::Right || event.key == Key::Up) -
+              (event.key == Key::Left || event.key == Key::Down);
+  if (motion.input(delta * 5, now)) {
     dirty = true;
     changedAt = now;
   }
+  return false;
 }
 void Chill::tick(uint32_t now) {
   if (dirty && uint32_t(now - changedAt) >= 2000)

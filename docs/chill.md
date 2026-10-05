@@ -1,11 +1,12 @@
 # Chill V1 (1.0.0-beta.18)
 
-Das NV3007 bleibt wie alle bestehenden Seiten im Querformat 428×142. Chill
-verwendet den vorhandenen Canvas; keine zusätzliche Vollbildkopie. Nur der
-Zurück-Pfeil und während Eingaben ein Slider bleiben sichtbar. Rechts MITTE
-blendet den Slider ein; Richtungstasten ändern den generischen Wert 0–100 in
-Fünferschritten. Ausblenden nach 4 s. Links MITTE öffnet das Hauptmenü, langes
-Drücken sperrt. Die automatische Inaktivitätssperre/Dimmung pausiert hier.
+Das NV3007 bleibt wie alle bestehenden Seiten im Querformat 428×142. Chill verwendet
+den vorhandenen Canvas; keine zusätzliche Vollbildkopie. Nur der Zurück-Pfeil und
+während Eingaben ein Slider bleiben sichtbar. Rechte Richtungstasten blenden den
+Slider ein und ändern den generischen Wert 0–100 in Fünferschritten. Ausblenden nach
+4 s. MITTE an jedem der beiden Schalter öffnet das Hauptmenü (ab beta.19); langes
+Drücken der linken Mitteltaste sperrt. Die automatische Inaktivitätssperre/Dimmung
+pausiert hier.
 
 `Chill` übernimmt Paket-Sprites über die vorhandenen Manifest-/SHA-Blob-Daten und
 `Media`-Worker. Pro Sprite/Frame wird ein kleiner dekodierter Bildpuffer gecacht,

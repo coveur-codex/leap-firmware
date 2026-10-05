@@ -2,6 +2,23 @@
 
 Stand: 2026-10-05. Chill V1 mit entsprechend aktualisiertem Homeserver.
 
+## Chill-Ausstieg: 1.0.0-beta.19
+
+- Beide Mitteltasten schließen Chill und liefern der UI das Rückkehrsignal für
+  das Hauptmenü. Die rechte Mitteltaste wird nicht mehr an den Slider geleitet;
+  die rechten Richtungstasten blenden ihn ein und ändern den Wert wie bisher.
+  Das globale lange Halten der linken Mitteltaste sperrt weiterhin.
+- Eingabeverarbeitung liegt in `Chill::input(InputEvent, now)`; kein separater
+  Slider-Eingabepfad in `Ui::action`. Zurück funktioniert auch vor Szenenstart.
+- Native Regression mit echtem `Input.h` und simulierten GPIOs: kurze Drücke
+  beider Mittel-Pins werden entprellt und über die Queue an `Chill.cpp` gegeben.
+  Geprüft: Ausstieg bei sichtbarem Slider, sofortige NVS-Speicherung, kein
+  Wiederöffnen durch eine nachfolgende Richtungseingabe, rechte Richtungstasten
+  und Ignorieren linker Richtungen. Alle nativen Firmwaretests bestanden.
+- Vollständiger ESP32-S3-N16R8-Cross-Build und App-Image-Prüfung bestanden
+  (Core 3.3.0, gepinnte Bibliotheken; App-Image 1.466.416 Byte).
+- Physische Schalterzuordnung und Display-Abnahme benötigen weiterhin das Gerät.
+
 ## Chill V1: 1.0.0-beta.18
 
 - Alle nativen Firmwaretests bestanden, einschließlich neuer Prüfung des echten
