@@ -11,19 +11,37 @@ Spiele-Seite muss wie bisher in der LEAP-Konfiguration eingeschaltet sein.
 | Links: links / rechts | Rasterposition wählen (12 Plätze) |
 | Links: hoch / runter | Unten, Arbeitsplatte oder Oben wählen |
 | Links: Mitte | Vorhandenes Objekt aufnehmen; erneut drücken bricht Verschieben ab |
-| Rechts: links / rechts | Passende Objekte der gewählten Ebene einschließlich Entfernen durchblättern |
+| Rechts: links / rechts | Passende Objekte der gewählten Ebene einschließlich Entfernen, Zurueck und Kueche leeren durchblättern |
 | Rechts: hoch / runter | Eine von vier Frontfarben wählen |
 | Rechts: Mitte | Vorschau platzieren, Verschieben bestätigen, ersetzen oder entfernen |
-| Links: Mitte halten | Zur Spieleauswahl zurückkehren |
+| Links: Mitte mindestens 2 Sekunden halten | Zur Spieleauswahl zurückkehren |
+| Rechts: „Zurueck“ auswählen, dann Mitte | Ohne Halten zur Spieleauswahl zurückkehren |
+| Rechts: „Kueche leeren“ auswählen, dann Mitte | Bestätigung zum Zurücksetzen öffnen |
 
 Die Vorschau ist grün bei gültiger Platzierung und pink bei fehlendem Platz oder
 fehlender Unterstützung. Zum Ersetzen den neuen Objekttyp an der Position des alten
 Objekts bestätigen. Zum Löschen „Entfernen“ auswählen und rechts bestätigen; auch
 die zweite Rasterposition eines breiten Objekts kann dafür ausgewählt werden.
 
+„Zurueck“ und „Kueche leeren“ stehen auf jeder Ebene hinter „Entfernen“ in der
+Objektauswahl. Von der ersten Objektart aus führt rechts-links direkt zu
+„Kueche leeren“, ein weiterer Schritt links zu „Zurueck“.
+
+Beim Leeren ist zuerst „Abbrechen“ ausgewählt. Rechts-rechts oder rechts-runter
+wählt „Leeren“, rechts-Mitte bestätigt. Links-Mitte bricht auch dann ab, wenn
+„Leeren“ markiert ist. Erst die ausdrückliche Bestätigung entfernt sämtliche
+Objekte und speichert die leere Küche automatisch. Verlassen oder Abbrechen
+verändert die eingerichtete Küche nicht.
+
 Der linke lange Mitteldruck ist bewusst der Ausgang: Die Eingabe liefert zunächst
 einen kurzen Druck und später das Halte-Ereignis. Der kurze linke Druck verändert
 nur die Auswahl; so platziert oder löscht das Verlassen keine Gegenstände.
+Zusätzlich zum bisherigen 900-ms-Ereignis erzeugt die vorhandene Eingabe für die
+Mitteltaster ein einmaliges Ereignis nach 2000 ms. Die Küche ignoriert das erste
+Halte-Ereignis und verarbeitet das zweite als Ausgang, bevor die globale
+Sperrbehandlung greifen kann. Beide Ausgänge werden durch den Kücheneditor an die
+UI gemeldet, die das Spiel schließt und die Spieleauswahl anzeigt. Die bisherigen
+900-ms-Aktionen anderer Seiten bleiben erhalten.
 
 ## Platzierung und Speicherung
 
@@ -59,19 +77,19 @@ Kochfunktionen, Sounds, Punkte, Zeitlimits und Multiplayer sind nicht enthalten.
 
 `tools/test.sh` enthält native Tests für Kollisionen, breite Objekte, Ersetzen,
 Verschieben, Unterstützung, Entfernen, alle 15 Typen, Farben, beide Taster,
-Zeichengrenzen sowie beschädigte und unvollständige Speicherstände. Die vorhandene
+Zeichengrenzen, echte gesampelte 2-s-Tasterereignisse, beide Ausgänge,
+Reset/Abbruch sowie beschädigte und unvollständige Speicherstände. Die vorhandene
 Games-Lifecycle-Prüfung testet zusätzlich echtes Speichern über Preferences,
 Wiederherstellung in einer neuen Games-Instanz und Verlassen während des Verschiebens.
 Der CI-Workflow baut weiterhin die ESP32-S3-Firmware mit den gepinnten Bibliotheken.
 
 Auf echter Hardware noch prüfen: Erkennbarkeit der Objekte und Farben,
-Tastergefühl beim Blättern, linker langer Mitteldruck zum Verlassen,
+Tastergefühl beim Blättern, beide Ausgänge, Reset-Bestätigung,
 Wiederherstellung nach Neustart und Bearbeiten einer dicht eingerichteten Küche.
 
-Validierung in dieser Arbeitsumgebung: Küchenmodell und Editor sowie Maze,
-WeatherIcon, MathQuiz, GameRules, ConnectFour, AircraftMap, StorageRecovery, Input
-und Partitionen bestehen. Die neuen Küchentests bestehen zusätzlich mit Address-
-und UndefinedBehavior-Sanitizer (Leak-Erkennung wegen der ptrace-Umgebung deaktiviert).
-Die vollständige Test-Suite einschließlich Games-Lifecycle und der ESP32-Build
-konnten hier nicht laufen: ArduinoJson und Arduino-Toolchain sind nicht installiert;
-der konfigurierte Netzwerkproxy ist nicht erreichbar und verhindert ihren Download.
+Validierung des ursprünglichen Editors: Die GitHub-Actions-Prüfung für PR #12
+bestand einschließlich der vollständigen nativen Test-Suite und des ESP32-S3-Builds.
+Die vollständige native Suite besteht lokal auch mit den neuen Regressionen für
+die erweiterten Tasterereignisse, beide Ausgänge und das bestätigte Leeren. Lokale Tests verwenden die
+gepinnten ArduinoJson-7.4.2-Quellen; das Verhalten auf dem echten Gerät muss noch
+geprüft werden.

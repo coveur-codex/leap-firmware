@@ -55,7 +55,7 @@ public:
   bool isKitchen() const {
     return kind == "kitchen";
   }
-  void kitchenInput(const InputEvent &event);
+  bool kitchenInput(const InputEvent &event);
   void input(Key key);
   void tick();
   void draw(Arduino_GFX &gfx, int left, int top);
