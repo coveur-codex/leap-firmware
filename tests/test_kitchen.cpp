@@ -16,7 +16,7 @@ int main() {
   k.encode(before);
   assert(!k.place(obj(KitchenType::Fridge, 0)));
   assert(!k.place(obj(KitchenType::Sink, 0)));
-  assert(!k.place(obj(KitchenType::Stove, 11)));
+  assert(!k.place(obj(KitchenType::Stove, 23)));
   assert(!k.place(obj(KitchenType::Cabinet, 5), k.at(KitchenLayer::Floor, 0)));
   k.encode(after); assert(memcmp(before, after, sizeof(before)) == 0);
   assert(k.place(obj(KitchenType::Toaster, 0, 3))); // Replace the whole microwave.
@@ -60,5 +60,39 @@ int main() {
     assert(scene.place(item));
     assert(scene.valid());
   }
+  KitchenState dining;
+  assert(dining.place(obj(KitchenType::Table, 21, 2)));
+  assert(dining.place(obj(KitchenType::FruitBowl, 22)));
+  assert(dining.place(obj(KitchenType::Chair, 20)));
+  assert(!dining.place(obj(KitchenType::Coffee, 20))); // A chair is no worktop.
+  assert(!dining.place(obj(KitchenType::Chair, 22))); // Would orphan the bowl.
+  assert(dining.remove(KitchenLayer::Floor, 23)); // Interior of a three-unit table.
+  assert(dining.count == 1 && dining.objects[0].type == KitchenType::Chair);
+  assert(!dining.place(obj(KitchenType::Table, 22)));
+  KitchenState full;
+  for (int pos = 0; pos < KitchenState::Columns; ++pos) {
+    assert(full.place(obj(KitchenType::Cabinet, pos)));
+    assert(full.place(obj(KitchenType::Coffee, pos)));
+    assert(full.place(obj(KitchenType::WallCabinet, pos)));
+  }
+  assert(full.count == KitchenState::Capacity && full.valid());
+  full.encode(before); assert(restored.decode(before, sizeof(before)));
+  assert(restored.count == 72);
+  uint8_t legacy[KitchenState::LegacySaveSize]{};
+  legacy[0] = 'K'; legacy[1] = 'T'; legacy[2] = 1; legacy[3] = 1;
+  legacy[4] = uint8_t(KitchenType::Stove); legacy[5] = 10;
+  legacy[6] = uint8_t(KitchenLayer::Floor); legacy[7] = 2; legacy[8] = 3;
+  auto legacyHash = [&]() {
+    auto sum = KitchenState::checksum(legacy, sizeof(legacy) - 4);
+    for (int i = 0; i < 4; ++i) legacy[sizeof(legacy) - 4 + i] = uint8_t(sum >> (i * 8));
+  };
+  legacyHash(); assert(restored.decode(legacy, sizeof(legacy)));
+  assert(restored.count == 1 && restored.objects[0] == obj(KitchenType::Stove, 10, 3));
+  restored.encode(before); assert(before[2] == 2);
+  KitchenState migrated; assert(migrated.decode(before, sizeof(before)));
+  legacy[5] = 11; legacyHash(); assert(!restored.decode(legacy, sizeof(legacy)));
+  legacy[5] = 0; legacy[4] = uint8_t(KitchenType::Table); legacy[7] = 3;
+  legacyHash(); assert(!restored.decode(legacy, sizeof(legacy)));
+  assert(!restored.decode(nullptr, 0));
   std::cout << "PASS: kitchen collisions, support, atomic edits, semantic save validation\n";
 }

@@ -8,9 +8,10 @@ namespace leap {
 void Games::begin() {
   gamePrefs.begin("leap-games", false);
   uint8_t kitchenBytes[KitchenState::SaveSize];
-  if (gamePrefs.getBytesLength("kitchen") == sizeof(kitchenBytes) &&
-      gamePrefs.getBytes("kitchen", kitchenBytes, sizeof(kitchenBytes)) == sizeof(kitchenBytes))
-    kitchen.state.decode(kitchenBytes, sizeof(kitchenBytes));
+  size_t kitchenSize = gamePrefs.getBytesLength("kitchen");
+  if ((kitchenSize == sizeof(kitchenBytes) || kitchenSize == KitchenState::LegacySaveSize) &&
+      gamePrefs.getBytes("kitchen", kitchenBytes, kitchenSize) == kitchenSize)
+    kitchen.state.decode(kitchenBytes, kitchenSize);
   PetState saved;
   if (gamePrefs.getBytesLength("pet") == sizeof(saved) &&
       gamePrefs.getBytes("pet", &saved, sizeof(saved)) == sizeof(saved) && saved.valid())
