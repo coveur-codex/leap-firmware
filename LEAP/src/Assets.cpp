@@ -1,4 +1,5 @@
 #include "Assets.h"
+#include "ChillAssets.h"
 #include "Audio.h"
 #include "Core.h"
 #include "Media.h"
@@ -106,6 +107,8 @@ bool Assets::validDefinition(JsonDocument &m) {
   if (!def["minFirmware"].isNull() && !meetsVersion(FirmwareVersion, def["minFirmware"] | ""))
     return fail(m, "Minimum firmware requirement not met");
   String kind = m["type"] | "";
+  if (kind == "chill" && !validChill(def, m["files"]))
+    return fail(m, "Invalid Chill scene, slider or sprite references");
   if (kind == "avatar" && avatarFrame(m.as<JsonVariantConst>()).empty())
     return fail(m, "No supported PNG idle/preview frame");
   if (kind == "quiz" || kind == "communication") {

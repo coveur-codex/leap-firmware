@@ -11,6 +11,9 @@ struct Arduino_GFX {
     uint16_t color;
   };
   std::vector<Rect> rects;
+  void fillScreen(uint16_t) {}
+  void drawPixel(int,int,uint16_t) {}
+  void drawFastHLine(int,int,int,uint16_t) {}
   void setTextColor(uint16_t) {}
   void setTextSize(int) {}
   void setCursor(int, int) {}

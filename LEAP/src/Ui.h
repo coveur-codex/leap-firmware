@@ -1,5 +1,6 @@
 #pragma once
 #include "Games.h"
+#include "Chill.h"
 #include "Input.h"
 #include "Media.h"
 #include "QuizQuestions.h"
@@ -25,6 +26,7 @@ class Ui {
   bool quizLoaded = false;
   Media avatar, picture;
   Games game;
+  Chill chill;
   Preferences prefs;
   int page = 0, selection = 0, item = 0, scroll = 0, answerOrder[4] = {0, 1, 2, 3},
       knowledgeMode = 0, character = 0;
