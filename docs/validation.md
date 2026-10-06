@@ -18,8 +18,8 @@ Stand: 2026-10-06. Krabbenreise und bisherige Firmwaremodule.
   auch beim Polling-Fallback, bestanden. Bestehende Eingabeprüfungen bestehen.
 - Echte PNGdec-1.1.6- und asynchrone Media-Regressionen bestanden.
 - ESP32-S3-N16R8-Cross-Build mit Core 3.3.0 und den festgelegten Bibliotheken
-  bestanden: 1.490.667 Byte Programm, 126.428 Byte statischer RAM. App-Image
-  1.490.816 Byte; S3-Header, SHA-256 und OTA-Slotgrenze bestanden.
+  bestanden: 1.497.775 Byte Programm, 126.508 Byte statischer RAM. App-Image
+  1.497.920 Byte; S3-Header, SHA-256 und OTA-Slotgrenze bestanden.
   Bestehende Core-/Bibliotheks-/Modulwarnungen bleiben vorhanden.
 - Keine Grafikassets oder neue Server-/Speicherprotokolle. Reale Bildrate,
   Displaytransfer, Tastenlatenz, Audio und Schwierigkeit mit einem Kind sind
