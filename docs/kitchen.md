@@ -53,25 +53,31 @@ Andere Seiten behalten ihre bisherigen 900-ms-Aktionen.
 
 ## Objekte und Platzierungsregeln
 
-22 semantische Objekttypen werden direkt aus Flächen, Linien und kleinen Details
+28 semantische Objekttypen werden direkt aus Flächen, Linien und kleinen Details
 gezeichnet, ohne zusätzlichen Framebuffer oder externe Grafikdateien:
 
 | Ebene | Objekte |
 | --- | --- |
-| Unten | Unterschrank, Schubladen, Spüle, Herd mit Ofen, Geschirrspüler, Kühlschrank, Hochschrank, **Esstisch, Stuhl** |
-| Arbeitsplatte | Mikrowelle, Kaffeemaschine, Toaster, Pflanze, **Wasserkocher, Messerblock, Obstschale** |
-| Oben | Hängeschrank, breiter Schrank, Regal, Abzugshaube, **Gewürzregal, Wanduhr** |
+| Unten | Unterschrank, Schubladen, Spüle, Herd mit Ofen, Geschirrspüler, Kühlschrank, Hochschrank, **Esstisch, schmaler Tisch, Stuhl, Stuhl nach links, Stuhl nach rechts** |
+| Arbeitsplatte | Mikrowelle, Kaffeemaschine, Toaster, Pflanze, **Wasserkocher, Messerblock, Obstschale, Küchenmaschine, Kerzenständer mit Kerze** |
+| Oben | Hängeschrank, breiter Schrank, Regal, Abzugshaube, **Gewürzregal, Wanduhr, Tellerregal** |
 
 Der Esstisch ist drei Plätze breit und hat eine farbige Platte, Holzmaserung,
-Zarge und Beine. Der Stuhl hat eine farbige Rückenlehne und Sitzfläche sowie
+Zarge und Beine. Der schmale Tisch ist zwei Plätze breit und trägt ebenfalls
+Dekoration. Die seitlichen Stühle können links oder rechts zum Tisch zeigen;
+ihre Richtung bleibt beim Umfärben erhalten. Der Stuhl hat eine farbige Rückenlehne und Sitzfläche sowie
 Holzbeine und eine Querstrebe. Weitere Details sind unter anderem Griff, Deckel
 und Sockel des Wasserkochers, drei Messer im Holzblock, Früchte mit Stielen,
-beschriftete Gewürzgläser und das Zifferblatt mit Zeigern der Wanduhr.
+beschriftete Gewürzgläser und das Zifferblatt mit Zeigern der Wanduhr. Die
+Küchenmaschine hat einen Motorarm, Geschwindigkeitsregler, Rührbesen und eine
+Stahlschüssel. Das Hängeregal zeigt sechs Teller mit farbigen Rändern auf zwei
+Ablagen. Der Kerzenständer zeigt Fuß, Schaft, Kerze, Docht und Flamme und passt
+auf beide Tische sowie auf Arbeitsplatten.
 
 Spüle, Herd, Kühlschrank, Hochschrank und einige Wand- oder Plattenobjekte sind
 zwei Plätze breit. Kühlschrank und Hochschrank blockieren alle drei Ebenen.
 Arbeitsplattenobjekte benötigen über ihre ganze Breite Unterschränke,
-Schubladen, Geschirrspüler oder einen Esstisch. Stühle, Spüle und Herd tragen
+Schubladen, Geschirrspüler oder einen der beiden Tische. Stühle, Spüle und Herd tragen
 keine weiteren Objekte. Wandobjekte benötigen keine Unterbauten.
 
 Verschieben und Ersetzen werden auf einer Kopie geprüft. Bei Kollisionen oder
@@ -107,7 +113,7 @@ nicht enthalten.
 `tools/test.sh` enthält native Regressionen für alle Modi, beide Taster,
 Scrollgrenzen und automatische Cursorverfolgung, breite Objekte, atomare
 Änderungen, Unterstützung und Entfernung, Farben, beide Ausgänge und bestätigtes
-Leeren. Alle 22 Typen in vier Farben werden an beiden Scrollrändern und in
+Leeren. Alle 28 Typen in vier Farben werden an beiden Scrollrändern und in
 angeschnittenen Ausschnitten auf Zeichengrenzen geprüft. Die Logiktests prüfen
 auch eine volle Küche mit 72 Objekten, beschädigte Daten und v1-Migration.
 Die Games-Lifecycle-Prüfung verwendet echtes Laden und Speichern über die

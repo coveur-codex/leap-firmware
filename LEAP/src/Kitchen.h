@@ -7,7 +7,8 @@ enum class KitchenLayer : uint8_t { Floor, Counter, Upper };
 enum class KitchenType : uint8_t {
   Cabinet, Drawers, Sink, Stove, Dishwasher, Fridge, Pantry,
   WallCabinet, WideWallCabinet, Shelf, Hood, Microwave, Coffee, Toaster, Plant,
-  Table, Chair, Kettle, KnifeBlock, FruitBowl, SpiceRack, Clock, Count
+  Table, Chair, Kettle, KnifeBlock, FruitBowl, SpiceRack, Clock,
+  NarrowTable, Mixer, PlateShelf, Candle, ChairLeft, ChairRight, Count
 };
 struct KitchenSpec {
   const char *name;
@@ -25,7 +26,10 @@ inline constexpr KitchenSpec KitchenCatalog[] = {
     {"Pflanze", KitchenLayer::Counter, 1}, {"Esstisch", KitchenLayer::Floor, 3},
     {"Stuhl", KitchenLayer::Floor, 1}, {"Wasserkocher", KitchenLayer::Counter, 1},
     {"Messerblock", KitchenLayer::Counter, 1}, {"Obstschale", KitchenLayer::Counter, 2},
-    {"Gewuerzregal", KitchenLayer::Upper, 2}, {"Wanduhr", KitchenLayer::Upper, 1}};
+    {"Gewuerzregal", KitchenLayer::Upper, 2}, {"Wanduhr", KitchenLayer::Upper, 1},
+    {"Schmaler Tisch", KitchenLayer::Floor, 2}, {"Kuechenmaschine", KitchenLayer::Counter, 2},
+    {"Tellerregal", KitchenLayer::Upper, 2}, {"Kerzenstaender", KitchenLayer::Counter, 1},
+    {"Stuhl nach links", KitchenLayer::Floor, 1}, {"Stuhl nach rechts", KitchenLayer::Floor, 1}};
 struct KitchenObject {
   KitchenType type = KitchenType::Cabinet;
   uint8_t position = 0;
@@ -52,7 +56,8 @@ public:
   }
   static bool supports(KitchenType type) {
     return type == KitchenType::Cabinet || type == KitchenType::Drawers ||
-           type == KitchenType::Dishwasher || type == KitchenType::Table;
+           type == KitchenType::Dishwasher || type == KitchenType::Table ||
+           type == KitchenType::NarrowTable;
   }
   static bool overlaps(KitchenObject a, KitchenObject b) {
     return a.position < b.position + b.width && b.position < a.position + a.width;

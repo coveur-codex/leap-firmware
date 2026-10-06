@@ -69,6 +69,23 @@ int main() {
   assert(dining.remove(KitchenLayer::Floor, 23)); // Interior of a three-unit table.
   assert(dining.count == 1 && dining.objects[0].type == KitchenType::Chair);
   assert(!dining.place(obj(KitchenType::Table, 22)));
+  KitchenState smallDining;
+  assert(smallDining.place(obj(KitchenType::NarrowTable, 22, 1)));
+  assert(smallDining.place(obj(KitchenType::Candle, 23, 3)));
+  assert(smallDining.place(obj(KitchenType::ChairRight, 21, 2)));
+  assert(!smallDining.place(obj(KitchenType::Mixer, 21))); // Chair cannot support half the mixer.
+  assert(!smallDining.place(obj(KitchenType::Candle, 21)));
+  assert(!smallDining.place(obj(KitchenType::NarrowTable, 23)));
+  smallDining.encode(before); assert(restored.decode(before, sizeof(before)));
+  assert(restored.objects[0] == obj(KitchenType::NarrowTable, 22, 1));
+  assert(restored.objects[1] == obj(KitchenType::Candle, 23, 3));
+  assert(restored.objects[2] == obj(KitchenType::ChairRight, 21, 2));
+  assert(!smallDining.place(obj(KitchenType::ChairLeft, 22))); // Keep candle supported.
+  assert(smallDining.remove(KitchenLayer::Floor, 23));
+  assert(smallDining.count == 1 && smallDining.objects[0].type == KitchenType::ChairRight);
+  assert(smallDining.place(obj(KitchenType::NarrowTable, 22)));
+  assert(smallDining.place(obj(KitchenType::Mixer, 22)));
+  assert(smallDining.place(obj(KitchenType::PlateShelf, 22)));
   KitchenState full;
   for (int pos = 0; pos < KitchenState::Columns; ++pos) {
     assert(full.place(obj(KitchenType::Cabinet, pos)));
