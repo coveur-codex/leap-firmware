@@ -26,6 +26,7 @@ public:
   std::atomic<uint32_t> generation{0};
   bool ready = false;
   std::atomic<size_t> freeSpace{0};
+  std::atomic<size_t> totalSpace{0};
   bool begin(bool formatRequested = false);
   bool load(JsonDocument &out, TickType_t wait = portMAX_DELAY, bool *busy = nullptr,
             JsonDocument *inventory = nullptr,

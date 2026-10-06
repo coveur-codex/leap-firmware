@@ -53,7 +53,10 @@ int main() {
   assert(heldView == loadedView && fakeOpens == opens); // Share, no inventory clone.
   assert(visible.as<JsonVariantConst>() == state.as<JsonVariantConst>());
   size_t scans = fakeUsedCalls;
-  store.freeBytes(); store.freeBytes();
+  assert(store.totalSpace.load() == LittleFS.totalBytes());
+  assert(store.totalSpace.load() - store.freeBytes() == LittleFS.usedBytes());
+  scans = fakeUsedCalls;
+  store.freeBytes(); store.freeBytes(); store.totalSpace.load();
   assert(fakeUsedCalls == scans); // No filesystem scan in the health/UI loop.
   Storage reboot;
   assert(reboot.begin() && reboot.load(visible));
