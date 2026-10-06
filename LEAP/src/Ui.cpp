@@ -409,6 +409,8 @@ void Ui::chooseQuizCatalog(int index) {
   nextQuestion(0);
 }
 void Ui::nextQuestion(int delta) {
+  quizTimer.reset();
+  quizTrackingFailed = false;
   if (quizCatalog == int(quiz["catalogs"].size()) - 1) {
     auto math = generateMathQuestion(state["config"]["mathQuiz"]["operation"] | "add",
                                     state["config"]["mathQuiz"]["limit"] | 20,
@@ -432,6 +434,47 @@ void Ui::nextQuestion(int delta) {
     answerOrder[i] = i;
   for (int i = 3; i > 0; i--)
     std::swap(answerOrder[i], answerOrder[esp_random() % (i + 1)]);
+}
+void Ui::recordQuizAnswer(uint32_t clickedAt) {
+  JsonDocument attempt(&jsonRam);
+  char eventId[33];
+  snprintf(eventId, sizeof(eventId), "%08lx%08lx%08lx%08lx",
+           (unsigned long)esp_random(), (unsigned long)esp_random(),
+           (unsigned long)esp_random(), (unsigned long)esp_random());
+  attempt["eventId"] = eventId;
+  int index = questionOrder[item % questionOrder.size()];
+  quizAnswerSnapshot(attempt, quiz["questions"][index], answerOrder, selection,
+                     quizTimer.duration(clickedAt));
+  JsonObjectConst catalog = quiz["catalogs"][quizCatalog];
+  bool math = quizCatalog == int(quiz["catalogs"].size()) - 1;
+  String package = catalog["package"] | "";
+  attempt["kind"] = math ? "math" : "catalog";
+  attempt["quizSetName"] = catalog["name"];
+  attempt["questionIndex"] = index;
+  attempt["firmwareVersion"] = FirmwareVersion;
+  if (math) {
+    attempt["quizSetId"] = "math";
+    attempt["quizSetVersion"] = state["config"]["configVersion"];
+    attempt["mathOperation"] = state["config"]["mathQuiz"]["operation"] | "add";
+    attempt["mathLimit"] = state["config"]["mathQuiz"]["limit"] | 20;
+  } else if (package.length()) {
+    attempt["quizSetId"] = package;
+    attempt["quizSetVersion"] = state["assets"][package];
+  } else {
+    attempt["quizSetId"] = catalog["id"].isNull() ? String("legacy")
+                          : String("catalog-") + catalog["id"].as<String>();
+    attempt["quizSetVersion"] = state["versions"]["quizVersion"];
+  }
+  if (network.timeSynced) {
+    time_t now = time(nullptr);
+    tm utc{};
+    gmtime_r(&now, &utc);
+    char timestamp[24];
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%SZ", &utc);
+    attempt["answeredAt"] = timestamp;
+  }
+  quizTrackingFailed = !quizTracking.enqueue(attempt);
+  if (quizTrackingFailed) log("QUIZ", "Answer could not be saved; queue full or storage unavailable");
 }
 void Ui::drawPage(const String &id) {
   auto content = state["content"].as<JsonObject>();
@@ -640,6 +683,7 @@ void Ui::drawPage(const String &id) {
     }
     if (answered) {
       notice = "Hoch/Runter: lesen | Rechts: weiter | OK: Kataloge";
+      if (quizTrackingFailed) notice = "Tracking: Antwort konnte nicht gespeichert werden";
       body(String(answerOrder[selection] == 0 ? "Richtig!\n" : "Gute Idee! Richtig ist:\n") +
            String(q["a"][0] | "") + "\n" + String(q["explanation"] | "") +
            "\nRechts: weiter | Mitte: Kataloge");
@@ -764,6 +808,9 @@ void Ui::render() {
                        : "L: Seiten / Menue   R: Waehlen / OK",
        94, 134, 1, Muted);
   canvas->flush();
+  if (!locked && !menu && !pages.empty() && pages[page].id == "quiz" &&
+      quizCatalog >= 0 && quiz["questions"].size() && !answered)
+    quizTimer.shown(millis());
 }
 void Ui::input(const InputEvent &e) {
   if (bootLogoVisible)
@@ -890,7 +937,9 @@ void Ui::action(const InputEvent &e) {
         quizDetail = e.key == Key::Left ? 1 : 2;
         scroll = 0;
       }
-      if (e.key == Key::Center && quiz["questions"].size()) {
+      uint32_t clickedAt = e.timestamped ? e.atMs : millis();
+      if (e.key == Key::Center && quiz["questions"].size() && quizTimer.accepts(clickedAt)) {
+        recordQuizAnswer(clickedAt);
         answered = true;
         scroll = 0;
         audio.tone(answerOrder[selection] == 0 ? 880 : 220);
