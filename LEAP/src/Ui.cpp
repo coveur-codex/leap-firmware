@@ -8,6 +8,7 @@
 #include "MemoryUsage.h"
 #include "Network.h"
 #include "Protocol.h"
+#include "GameSelection.h"
 #include "Radio.h"
 #include <algorithm>
 #include <time.h>
@@ -701,13 +702,12 @@ void Ui::drawPage(const String &id) {
       game.draw(*canvas, 94, 10);
     else {
       std::vector<String> labels;
-      JsonArray configuredGames = state["config"]["games"].as<JsonArray>();
-      for (JsonObject g : configuredGames)
-        if (g["enabled"] == true && g["id"] != "kitchen" && g["id"] != "crab_journey")
-          labels.push_back(gameTitle(g["id"] | ""));
-      labels.push_back(gameTitle("kitchen"));
-      labels.push_back(gameTitle("crab_journey"));
-      list(labels);
+      for (const auto &id : enabledGames(state["config"]))
+        labels.push_back(gameTitle(id.c_str()));
+      if (labels.empty())
+        body("Keine Spiele freigegeben.");
+      else
+        list(labels);
     }
   } else if (id == "communication") {
     if (!radio.enabled) {
@@ -961,21 +961,11 @@ void Ui::action(const InputEvent &e) {
       } else
         game.input(e.key);
     } else {
-      selection = std::max(0, selection + direction);
-      if (e.key == Key::Center) {
-        int n = 0;
-        JsonArray configuredGames = state["config"]["games"].as<JsonArray>();
-        for (JsonObject g : configuredGames)
-          if (g["enabled"] == true && g["id"] != "kitchen" && g["id"] != "crab_journey" &&
-              n++ == selection) {
-            game.start(g["id"] | "");
-            gameOpen = true;
-            break;
-          }
-        if (!gameOpen && (selection == n || selection == n + 1)) {
-          game.start(selection == n ? "kitchen" : "crab_journey");
-          gameOpen = true;
-        }
+      auto available = enabledGames(state["config"]);
+      selection = constrain(selection + direction, 0, std::max(0, int(available.size()) - 1));
+      if (e.key == Key::Center && selection < int(available.size())) {
+        game.start(available[selection].c_str());
+        gameOpen = true;
       }
     }
   } else if (id == "communication") {
