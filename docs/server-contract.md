@@ -123,3 +123,18 @@ Unbekannte Codes erhalten ein Fragezeichen. Fehlendes `tomorrow` bleibt sichtbar
 als „Vorhersage fehlt“, fehlende Messwerte als „?“ statt als Null. Datum und
 Stand-Zeile helfen beim Einordnen gespeicherter Vorhersagen. Die bisherige
 Wetter-/Regenradar-Synchronisation bleibt erhalten.
+
+## Speicherwerte
+
+`POST /checkin` sendet zusätzlich `memory` mit `flash`, `littlefs` und `psram`.
+Jeder Eintrag enthält `used` und `total` in Bytes. Flash bezeichnet das laufende
+Firmware-Image und die Kapazität seines OTA-Slots; LittleFS ist eine separate
+Partition desselben Flash-Chips. PSRAM wird zum Abfragezeitpunkt gemessen.
+`total: 0` bedeutet nicht verfügbar. `freeFlash` bleibt aus Kompatibilitätsgründen
+der freie LittleFS-Platz für Asset-Downloads.
+
+Die Einstellungen zeigen unter „Speicher“ alle drei Werte als belegt / gesamt
+mit einer Nachkommastelle und Dezimalkomma. Anzeigeeinheit MB entspricht
+1.048.576 Bytes. LittleFS-Werte werden nach Schreibvorgängen zwischengespeichert;
+die UI führt keine Dateisystem-Scans aus. Der Homeserver zeigt den Stand des
+letzten Check-ins (beim Sync, regulär alle 15 Minuten), keine Live-Messung.

@@ -1,6 +1,7 @@
 #include "Network.h"
 #include "Core.h"
 #include "Media.h"
+#include "MemoryUsage.h"
 #include "Protocol.h"
 #include <esp_wifi.h>
 #include <sys/time.h>
@@ -92,6 +93,7 @@ void Network::checkin(JsonDocument &state) {
   request["firmwareVersion"] = FirmwareVersion;
   request["wifiRssi"] = WiFi.RSSI();
   request["freeFlash"] = storage.freeBytes();
+  writeMemoryUsage(request, memorySnapshot());
   // No fabricated battery percentage: absent ADC wiring means omitted field.
   if (net.json(base + "/checkin", response, &request)) {
     String stamp = response["serverTime"] | "";

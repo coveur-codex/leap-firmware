@@ -57,7 +57,10 @@ size_t Storage::freeBytes() const {
 }
 void Storage::refreshSpace() {
   // usedBytes() scans LittleFS; never perform that scan in the UI/health loop.
-  freeSpace = ready ? LittleFS.totalBytes() - LittleFS.usedBytes() : 0;
+  const size_t total = ready ? LittleFS.totalBytes() : 0;
+  const size_t used = ready ? LittleFS.usedBytes() : 0;
+  totalSpace = total;
+  freeSpace = total > used ? total - used : 0;
 }
 String Storage::package(const String &id, int version) const {
   // Hash of ID is not needed: server IDs fit one path component, checked before use.

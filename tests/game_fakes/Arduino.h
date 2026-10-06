@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 #include <algorithm>
 #include <cstdlib>
+#include <cstdio>
 #include <string>
 using SemaphoreHandle_t = void *;
 constexpr TickType_t portMAX_DELAY = UINT32_MAX;
@@ -10,6 +11,18 @@ class String : public std::string {
 public:
   using std::string::string;
   String(const std::string &s) : std::string(s) {}
+  String(double n, unsigned digits) {
+    char buffer[48];
+    snprintf(buffer, sizeof(buffer), "%.*f", int(digits), n);
+    assign(buffer);
+  }
+  void replace(const char *from, const char *to) {
+    size_t pos = 0;
+    while ((pos = find(from, pos)) != npos) {
+      std::string::replace(pos, strlen(from), to);
+      pos += strlen(to);
+    }
+  }
   String(int n) : std::string(std::to_string(n)) {}
   String substring(size_t begin, size_t end) const {
     return substr(begin, end - begin);

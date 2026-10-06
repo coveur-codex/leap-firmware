@@ -5,6 +5,7 @@
 #include "Audio.h"
 #include "Hardware.h"
 #include "Motion.h"
+#include "MemoryUsage.h"
 #include "Network.h"
 #include "Protocol.h"
 #include "Radio.h"
@@ -711,9 +712,19 @@ void Ui::drawPage(const String &id) {
       list(labels);
     }
   } else if (id == "settings") {
-    list({"Licht: " + String(brightness * 100 / 255) + "%",
-          "Lautstaerke: " + String(audio.volume.load()) + "%", "Jetzt synchronisieren",
-          "Info / Geraete-ID"});
+    if (selection == 4) {
+      const auto memory = memorySnapshot();
+      text("Speicher (belegt / gesamt)", 122, 12, 1, Accent);
+      text("Flash (Firmware): " + memoryLabel(memory.flash), 122, 38);
+      text("LittleFS: " + memoryLabel(memory.littlefs), 122, 62);
+      text("PSRAM: " + memoryLabel(memory.psram), 122, 86);
+      notice = "Hoch: zurueck zu Einstellungen";
+    } else {
+      list({"Licht: " + String(brightness * 100 / 255) + "%",
+            "Lautstaerke: " + String(audio.volume.load()) + "%", "Jetzt synchronisieren",
+            "Info / Geraete-ID", "Speicher"});
+      text("Runter: Speicher", 94, 104, 1, Muted);
+    }
     if (selection == 3)
       notice = String(LEAP_DEVICE_ID) + " | " + FirmwareVersion +
                (motion.available ? " | IMU OK" : " | IMU fehlt");
@@ -979,7 +990,7 @@ void Ui::action(const InputEvent &e) {
       }
     }
   } else if (id == "settings") {
-    selection = constrain(selection + direction, 0, 3);
+    selection = constrain(selection + direction, 0, 4);
     int delta = (e.key == Key::Right) - (e.key == Key::Left);
     if (selection == 0 && delta) {
       brightness = constrain(brightness + delta * 15, 20, 255);
