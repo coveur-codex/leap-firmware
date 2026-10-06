@@ -138,3 +138,42 @@ mit einer Nachkommastelle und Dezimalkomma. Anzeigeeinheit MB entspricht
 1.048.576 Bytes. LittleFS-Werte werden nach Schreibvorgängen zwischengespeichert;
 die UI führt keine Dateisystem-Scans aus. Der Homeserver zeigt den Stand des
 letzten Check-ins (beim Sync, regulär alle 15 Minuten), keine Live-Messung.
+
+## Quiz-Tracking (beta.20)
+
+Die Firmware sendet endgültige Antworten an
+`POST /api/v1/devices/{device_id}/quiz-attempts`. Der Snapshot enthält eine
+zufällige 128-Bit-`eventId`, `kind` (`catalog`/`math`), `quizSetId`,
+`quizSetName`, `quizSetVersion`, optionale `questionId`, `questionIndex`,
+`question`, vier `answers` in der tatsächlichen Anzeige-Reihenfolge,
+`selectedIndex`, `correctIndex`, `elapsedMs` und `firmwareVersion`.
+Beide Antwortindizes sind nullbasiert. Kataloge verwenden die installierte
+Paketversion oder im Legacy-Fallback die Quiz-Version; Mathe verwendet die
+Konfigurationsversion und zusätzlich `mathOperation` und `mathLimit`.
+Neue Homeserver-Publikationen liefern Frage-IDs auch in `questions.json`.
+Ältere Pakete werden durch Paketversion, Text und geladenen Poolindex beschrieben.
+
+Die Zeitmessung beginnt nach der ersten Displayübertragung der neuen Aufgabe.
+Neuzeichnen, Auswahlwechsel und Detailansichten starten sie nicht neu. Ende ist
+der Zeitstempel des entprellten endgültigen Center-Ereignisses, vor Flashzugriff
+und Netzwerkübertragung. Nicht beantwortete Aufgaben werden nicht aufgezeichnet;
+jeder neue Aufruf einer Aufgabe ist ein neuer Versuch. Unsigned `millis()`-
+Subtraktion berücksichtigt den Überlauf; vor dem Einblenden gepufferte Klicks
+werden ignoriert. Mit synchronisierter Geräteuhr wird auch `answeredAt` in UTC
+übertragen, sonst bleibt das Feld leer/null.
+
+`/quiz-attempts.json` hält bis zu 128 offene Antworten bzw. 512 KiB atomar in
+LittleFS. HTTP läuft im Netzwerkworker ohne gehaltenen Warteschlangen-Mutex.
+Nur eine passende Bestätigung `ok: true` plus `eventId` entfernt den Kopf
+atomar. Fehler oder Neustarts wiederholen die Übertragung mit derselben ID;
+der Homeserver verhindert doppelte Einträge. Weitere Antworten während eines
+Uploads bleiben erhalten. Uploads erfolgen bei WLAN-Verbindung, regulär mit
+1 s Abstand und nach Fehlern mit 30 s Abstand, unabhängig vom Inhaltssync.
+
+Bei voller Warteschlange oder Schreibfehler erscheint auf der Ergebnisanzeige
+„Tracking: Antwort konnte nicht gespeichert werden“; bereits gespeicherte
+Antworten bleiben erhalten. Ein beschädigter Warteschlangendatensatz wird nicht
+überschrieben. Ein älterer Homeserver ohne Endpunkt liefert 404: offene Antworten
+bleiben gespeichert, bis der Server aktualisiert wurde oder die Grenze erreicht
+ist. Deshalb zuerst den Homeserver samt Migration aktualisieren. Frühere
+Firmwarestände haben keine historischen Antworten zum Nachsenden gespeichert.

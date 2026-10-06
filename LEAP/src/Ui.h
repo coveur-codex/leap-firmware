@@ -5,6 +5,7 @@
 #include "Media.h"
 #include "QuizQuestions.h"
 #include "MathQuiz.h"
+#include "QuizTracking.h"
 #include "Storage.h"
 #include <vector>
 namespace leap {
@@ -31,6 +32,9 @@ class Ui {
   int page = 0, selection = 0, item = 0, scroll = 0, answerOrder[4] = {0, 1, 2, 3},
       knowledgeMode = 0, character = 0;
   int quizDetail = 0, quizCatalog = -1;
+  QuizTimer quizTimer;
+  bool quizTrackingFailed = false;
+  void recordQuizAnswer(uint32_t clickedAt);
   void chooseQuizCatalog(int index);
   uint32_t generation = UINT32_MAX, lastFrame = 0, lastInput = 0, lastSave = 0;
   uint32_t bootLogoAt = 0, lastAircraftFrame = 0;

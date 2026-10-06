@@ -3,6 +3,7 @@
 #include "Media.h"
 #include "MemoryUsage.h"
 #include "Protocol.h"
+#include "QuizTracking.h"
 #include <esp_wifi.h>
 #include <sys/time.h>
 namespace leap {
@@ -58,6 +59,7 @@ static void pruneRadar() {
   }
 }
 bool Network::begin() {
+  if (!quizTracking.begin()) log("QUIZ", "Tracking storage unavailable; queued data retained");
   aircraftMutex = xSemaphoreCreateMutex();
   if (!aircraftMutex) return false;
   base = "/api/v1/devices/" + Transport::encode(LEAP_DEVICE_ID);
@@ -316,6 +318,7 @@ void Network::run() {
   bootState.clear();
   uint32_t lastConnect = millis() - 30000, lastSync = millis() - SyncInterval;
   uint32_t lastAircraft = millis() - 30000;
+  uint32_t lastQuizUpload = millis() - 1000, quizUploadInterval = 1000;
   uint32_t interval = 10000;
   int lastWifiStatus = -1;
   const char *lastBlock = nullptr;
@@ -350,6 +353,22 @@ void Network::run() {
     if (block != lastBlock) {
       log("SYNC", block ? block : "Ready; starting scheduled synchronization");
       lastBlock = block;
+    }
+    if (connected && storage.ready && elapsed(millis(), lastQuizUpload, quizUploadInterval)) {
+      JsonDocument attempt(&jsonRam), response(&jsonRam);
+      quizUploadInterval = 1000;
+      if (quizTracking.front(attempt)) {
+        busy = true;
+        bool ok = net.json(base + "/quiz-attempts", response, &attempt) &&
+                  response["ok"] == true && response["eventId"] == attempt["eventId"];
+        if (ok) ok = quizTracking.acknowledge(attempt["eventId"].as<String>());
+        if (!ok) {
+          quizUploadInterval = 30000;
+          Serial.printf("[QUIZ] Upload deferred HTTP=%d; answer retained\n", net.status);
+        }
+        busy = false;
+      }
+      lastQuizUpload = millis();
     }
     if (connected && storage.ready && ota.locallyConfirmed &&
         (requested.exchange(false) || elapsed(millis(), lastSync, interval))) {
