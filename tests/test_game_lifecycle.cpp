@@ -61,14 +61,15 @@ int main() {
   KitchenState loadedKitchen;
   assert(loadedKitchen.decode(savedKitchen.data(), savedKitchen.size()));
   assert(loadedKitchen.count == 1 && loadedKitchen.objects[0].type == KitchenType::Cabinet);
-  kitchenGame.kitchenInput({false, Key::Center, false});
-  kitchenGame.kitchenInput({false, Key::Right, false});
+  kitchenGame.kitchenInput({false, Key::Down, false}); // Move mode.
+  kitchenGame.kitchenInput({true, Key::Center, false});
+  kitchenGame.kitchenInput({true, Key::Right, false});
   kitchenGame.close(); // An unconfirmed move must never persist.
   assert(Preferences::bytes["leap-gameskitchen"] == savedKitchen);
   Games kitchenReboot;
   kitchenReboot.begin();
   kitchenReboot.start("kitchen");
-  kitchenReboot.kitchenInput({true, Key::Right, false}); // Replace cabinet with drawers.
+  kitchenReboot.kitchenInput({false, Key::Right, false}); // Select drawers.
   kitchenReboot.kitchenInput({true, Key::Center, false});
   savedKitchen = Preferences::bytes["leap-gameskitchen"];
   assert(loadedKitchen.decode(savedKitchen.data(), savedKitchen.size()));
@@ -76,7 +77,7 @@ int main() {
   kitchenReboot.close();
   Preferences::failWrites = true;
   kitchenReboot.start("kitchen");
-  kitchenReboot.kitchenInput({false, Key::Right, false});
+  kitchenReboot.kitchenInput({true, Key::Right, false});
   kitchenReboot.kitchenInput({true, Key::Center, false});
   assert(Preferences::bytes["leap-gameskitchen"] == savedKitchen);
   gfx.text.clear();
@@ -96,7 +97,8 @@ int main() {
   kitchenReboot.close();
   assert(Preferences::bytes["leap-gameskitchen"] == savedKitchen);
   kitchenReboot.start("kitchen");
-  kitchenReboot.kitchenInput({true, Key::Left, false}); // Kueche leeren.
+  for (int i = 0; i < 4; ++i) kitchenReboot.kitchenInput({false, Key::Down, false}); // Menu.
+  kitchenReboot.kitchenInput({true, Key::Right, false}); // Kueche leeren.
   kitchenReboot.kitchenInput({true, Key::Center, false});
   assert(Preferences::bytes["leap-gameskitchen"] == savedKitchen);
   kitchenReboot.kitchenInput({true, Key::Down, false});
@@ -107,15 +109,40 @@ int main() {
   kitchenReboot.close();
   Games emptyReboot;
   emptyReboot.begin(); emptyReboot.start("kitchen");
-  emptyReboot.kitchenInput({true, Key::Left, false}); // Reset again.
+  for (int i = 0; i < 4; ++i) emptyReboot.kitchenInput({false, Key::Down, false});
+  emptyReboot.kitchenInput({true, Key::Right, false}); // Reset again.
   emptyReboot.kitchenInput({true, Key::Center, false});
   emptyReboot.kitchenInput({true, Key::Down, false});
   emptyReboot.kitchenInput({true, Key::Center, false});
   assert(Preferences::bytes["leap-gameskitchen"] == savedKitchen);
-  emptyReboot.kitchenInput({true, Key::Left, false});
   emptyReboot.kitchenInput({true, Key::Left, false}); // Zurueck.
   assert(emptyReboot.kitchenInput({true, Key::Center, false}));
   emptyReboot.close();
+  // The real Preferences loader accepts v1 and migrates only after a confirmed edit.
+  uint8_t legacyKitchen[KitchenState::LegacySaveSize]{};
+  legacyKitchen[0] = 'K'; legacyKitchen[1] = 'T'; legacyKitchen[2] = 1; legacyKitchen[3] = 1;
+  legacyKitchen[4] = uint8_t(KitchenType::Cabinet); legacyKitchen[5] = 11; legacyKitchen[7] = 1; legacyKitchen[8] = 2;
+  uint32_t hash = KitchenState::checksum(legacyKitchen, sizeof(legacyKitchen) - 4);
+  for (int i = 0; i < 4; ++i) legacyKitchen[sizeof(legacyKitchen) - 4 + i] = uint8_t(hash >> (i * 8));
+  Preferences::bytes["leap-gameskitchen"] = std::vector<uint8_t>(legacyKitchen, legacyKitchen + sizeof(legacyKitchen));
+  Games legacyReboot;
+  legacyReboot.begin(); legacyReboot.start("kitchen");
+  gfx.text.clear(); legacyReboot.draw(gfx, 94, 0);
+  assert(Preferences::bytes["leap-gameskitchen"].size() == sizeof(legacyKitchen));
+  for (int i = 0; i < 23; ++i) legacyReboot.kitchenInput({true, Key::Right, false});
+  legacyReboot.kitchenInput({true, Key::Center, false});
+  auto migratedBytes = Preferences::bytes["leap-gameskitchen"];
+  assert(loadedKitchen.decode(migratedBytes.data(), migratedBytes.size()));
+  assert(loadedKitchen.count == 2 && loadedKitchen.at(KitchenLayer::Floor, 11) >= 0 &&
+         loadedKitchen.at(KitchenLayer::Floor, 23) >= 0);
+  assert(loadedKitchen.objects[0].variant == 2);
+  legacyReboot.close();
+  Games wideReboot;
+  wideReboot.begin(); wideReboot.start("kitchen");
+  for (int i = 0; i < 23; ++i) wideReboot.kitchenInput({true, Key::Right, false});
+  wideReboot.kitchenInput({true, Key::Center, false}); // Same cabinet: unchanged after reboot.
+  assert(Preferences::bytes["leap-gameskitchen"] == migratedBytes);
+  wideReboot.close();
   fakeNow = 0; // Preserve the existing pet timing regression below.
   Games game;
   game.begin();

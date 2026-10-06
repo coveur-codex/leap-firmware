@@ -3,21 +3,20 @@
 #include "Input.h"
 #include <Arduino_GFX_Library.h>
 namespace leap {
+enum class KitchenAction : uint8_t { Scroll, Build, Move, Remove, Color, Menu, Count };
 class KitchenEditor {
-  int position = 0, choice = 0, variant = 0, moving = -1;
+  int position = 0, choice = 0, variant = 0, moving = -1, viewport = 0, menuChoice = 0;
   KitchenLayer layer = KitchenLayer::Floor;
-  static constexpr int RemoveChoice = int(KitchenType::Count);
-  static constexpr int BackChoice = RemoveChoice + 1, ResetChoice = RemoveChoice + 2;
-  static constexpr int ChoiceCount = RemoveChoice + 3;
+  KitchenAction action = KitchenAction::Build;
   bool blocked = false, leaveRequested = false, resetConfirm = false, confirmClear = false;
   void browse(int direction);
+  void followCursor();
 public:
+  static constexpr int VisibleColumns = 12;
   KitchenState state;
   void start();
   bool input(const InputEvent &event);
-  bool wantsExit() const {
-    return leaveRequested;
-  }
+  bool wantsExit() const { return leaveRequested; }
   void draw(Arduino_GFX &gfx, int left, int top, bool savePending);
 };
 } // namespace leap
