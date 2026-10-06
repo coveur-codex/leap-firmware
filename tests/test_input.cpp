@@ -60,6 +60,18 @@ int main() {
   assert(!released.poll(false, 2050, false, Input::ExtendedCenterHoldMs));
   assert(!released.stable);
 
+  // Held direction state survives a full event queue and clears after release.
+  Input held;
+  held.begin(); assert(held.start());
+  fakeNow = 0; fakeUntil = 6000;
+  fakeDown = [](int pin, uint32_t) { return pin == hw::RightKeys[3]; };
+  try { fakeTask(fakeContext); } catch (SamplingFinished &) {}
+  assert(held.heldRightDirections() == 8);
+  fakeUntil = fakeNow + 100;
+  fakeDown = [](int, uint32_t) { return false; };
+  try { fakeTask(fakeContext); } catch (SamplingFinished &) {}
+  assert(held.heldRightDirections() == 0);
+
   // Failure to start a task must preserve the original direct-polling fallback.
   fakeDown = [](int pin, uint32_t) { return pin == hw::LeftKeys[0]; };
   Input fallback;
@@ -70,15 +82,37 @@ int main() {
   assert(!fallback.poll(event));
   fakeNow = 25;
   assert(fallback.poll(event) && event.key == Key::Up && !event.longPress);
+  Input heldFallback;
+  heldFallback.begin();
+  assert(!heldFallback.start());
+  fakeDown = [](int pin, uint32_t) { return pin == hw::RightKeys[3]; };
+  fakeNow = 0;
+  assert(!heldFallback.poll(event));
+  fakeNow = 25;
+  assert(heldFallback.poll(event));
+  assert(heldFallback.heldRightDirections() == 8);
+  fakeDown = [](int, uint32_t) { return false; };
+  fakeNow = 30;
+  assert(!heldFallback.poll(event));
+  fakeNow = 55;
+  assert(!heldFallback.poll(event));
+  assert(heldFallback.heldRightDirections() == 0);
   Input centreFallback;
   centreFallback.begin();
   assert(!centreFallback.start());
   fakeDown = [](int pin, uint32_t) { return pin == hw::LeftKeys[4]; };
-  fakeNow = 0; assert(!centreFallback.poll(event));
-  fakeNow = 25; assert(centreFallback.poll(event) && !event.longPress);
-  fakeNow = 925; assert(centreFallback.poll(event) && event.heldMs == Debouncer::LongPressMs);
-  fakeNow = 2024; assert(!centreFallback.poll(event));
-  fakeNow = 2025; assert(centreFallback.poll(event) && event.heldMs == Input::ExtendedCenterHoldMs);
-  fakeNow = 3025; assert(!centreFallback.poll(event));
-  puts("PASS: short simultaneous presses during UI stall, bounded queue, 900 ms/2 s centre holds and polling fallback");
+  fakeNow = 0;
+  assert(!centreFallback.poll(event));
+  fakeNow = 25;
+  assert(centreFallback.poll(event) && !event.longPress);
+  fakeNow = 925;
+  assert(centreFallback.poll(event) && event.heldMs == Debouncer::LongPressMs);
+  fakeNow = 2024;
+  assert(!centreFallback.poll(event));
+  fakeNow = 2025;
+  assert(centreFallback.poll(event) && event.heldMs == Input::ExtendedCenterHoldMs);
+  fakeNow = 3025;
+  assert(!centreFallback.poll(event));
+  puts("PASS: short simultaneous presses during UI stall, bounded queue, 900 ms/2 s centre holds "
+       "and polling fallback");
 }

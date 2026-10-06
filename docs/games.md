@@ -149,3 +149,65 @@ ungültige Referenzen und die Geräte-Vorschau.
   unveränderter Sync erhält Runde, Konfigurations-/Assetwechsel beendet sie sauber.
   Spielstände bleiben. Fehlende Bilder/offline: Ersatzdarstellung, bedienbar.
 - Reale Bildübertragung, Tastenlatenz, NVS bei Stromverlust und Sounds abnehmen.
+
+## Krabbenreise
+
+`crab_journey` ist wie die Küche lokal in der Spieleauswahl verfügbar, auch ohne
+Homeserver-Update. Ein gleichnamiger Servereintrag wird nicht doppelt angezeigt.
+Die rechte Richtungstaste halten: freie Bewegung mit 92 Pixeln/s (ca. 3,7 Pixel
+pro 40-ms-Frame), ohne Bewegungsraster; diagonale Bewegung ist normalisiert.
+Die entprellten gehaltenen Richtungen werden unabhängig von der Ereignisqueue
+übergeben. Loslassen stoppt die Bewegung. Linke Navigation, Zurück, Sperren und
+Konfigurationswechsel behalten ihren bisherigen Ablauf. Rechts Mitte ist nicht
+zum Bewegen erforderlich. Bei einem neuen Spiel beginnt die Reise auf Level 1.
+
+Die volle Fläche rechts der unveränderten 86-Pixel-Sidebar wird genutzt: 342×142.
+Grafiken entstehen ausschließlich aus Zeichencode: Comic-Krabbe, gewölbte Quallen
+mit Tentakeln, Schnecken mit Spiralgehäuse, stachelige Seeigel, schwingender Seetang,
+Strömungspartikel, Spiralstrudel, Muscheln, Sand, kleine Steine und Blasen.
+Bodenobjekte und Krabbe werden nach ihrer Y-Position gezeichnet. Die Animationen
+laufen zeitabhängig; der Spielbereich fordert einen Frame alle 40 ms an (Ziel
+25 FPS, tatsächliche Bildrate hängt vom Displaytransfer ab).
+
+Jeder Start und Levelwechsel erzeugt eine neue Karte aus einem ESP-Zufallsseed.
+Ein zusammenhängender, unsichtbarer Korridor aus fünf Segmenten bleibt vollständig
+frei: Hindernisradius, Krabbenradius, maximaler Bewegungsausschlag und 16 Pixel
+zusätzliche Korridorbreite werden beim Platzieren berücksichtigt. Damit können
+auch pendelnde Tiere und Strudeleinflüsse diesen Weg nicht blockieren. Start und
+Ziel haben eigene Schutzzonen. Bewegungs-/Einflussbereiche verschiedener Elemente
+überlappen nicht. Begrenzte Platzierungsversuche lassen bei wenig Platz Budget
+ungenutzt, statt eine unfaire Karte zu erzwingen. Drei optionale Muscheln liegen
+auf dem Weg bzw. auf freien Umwegen; auch ihre Zugänge vom Hauptweg werden
+freigehalten. Sie bleiben nach einem Rücksetzen gesammelt.
+
+Level 1 enthält Seeigel; Level 2 führt Schnecken ein, Level 3 Quallen, Level 4
+Seetang, Level 5 Strömung und Level 6 Strudel. In diesen Levels werden Seeigel und
+der neu eingeführte Typ kombiniert; ab Level 7 werden bis zu drei Typen gewählt.
+Das Budget wächst von 3 um 2 je Level bis maximal 28. Seeigel/Schnecke kosten 1,
+Seetang 2, Qualle/Strömung 3, Strudel 5. Anzahl, Kombinationen, Bewegungsachsen,
+Wegverlauf und leicht wachsendes Quallentempo erzeugen die Schwierigkeit.
+
+Seeigel-/Quallenberührung löst ein kurzes Erschrecken aus und setzt 23 Pixel auf
+den sicheren Weg zurück. Schnecken und Seetang schieben freundlich zur Seite.
+Strömungen versetzen die Krabbe langsam; die Strudelanziehung steigt zum Zentrum
+hin. Im Zentrum folgt eine Wirbelanimation und ein Rücksetzen um 38 Pixel.
+Nach Rücksetzen gelten 1,8 Sekunden Schutz. Kleine Kollisionsradien erlauben
+knappe sichtbare Berührungen. Keine Leben, kein Zeitlimit, kein Game Over.
+Das Ziel bestätigt den Erfolg und zeigt die gesammelten Muscheln; nach 2,5 Sekunden
+beginnt automatisch das nächste Level. Sammeln und Erfolg nutzen die vorhandene
+Audioqueue. Lautstärke und Stummschaltung bleiben unverändert.
+
+`CrabJourney.h` enthält plattformunabhängige Generierung/Simulation und zentrale
+Parameter (Tempo, Budget, Kapazität, Elementkosten, Radien, Bewegung, Schutzzeit).
+`CrabJourneyDraw.cpp` enthält die Darstellung. Weltbreite und Kameraversatz sind
+von den Bildschirmkoordinaten getrennt; V1 scrollt nicht und erzeugt keine
+Endless-Abschnitte. Feste Arrays begrenzen Speicher und Renderaufwand; kein
+Grafikpaket, keine neue Speicherung und keine Netzwerkabhängigkeit.
+
+Automatisch geprüft: 4.500 Karten auf 30 Stufen mit echtem Durchlaufen des freien
+Wegs, Budget/Abstände, Zufallsvariation, kontinuierliche Bewegung, Sammeln,
+Rücksetzen, Strömung, Strudel und Erfolg ohne Muscheln. Lifecycle-Tests prüfen
+die echte Games-Integration und Renderergrenzen mit Kameraversatz; Input-Tests
+prüfen gehaltene Tasten bei voller Queue und im Polling-Fallback.
+Am Gerät bleiben Bildrate, Tastenlatenz, Sounds, Lesbarkeit und die Schwierigkeit
+mit einem Grundschulkind zu prüfen.

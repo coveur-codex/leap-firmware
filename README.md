@@ -474,3 +474,13 @@ rechts der Ort gesteuert und die Aktion bestätigt. Alte Küchen werden übernom
 halten oder „Zurueck“ auswählen führt zur Spieleauswahl. „Kueche leeren“ setzt die
 Küche nach Bestätigung zurück. Bedienung, Platzierungsregeln
 und Hardware-Prüfung: [Kücheneditor](docs/kitchen.md).
+
+## Krabbenreise
+
+Das neue lokale Singleplayer-Spiel `crab_journey` erscheint als „Krabbenreise“ in
+der bestehenden Spieleauswahl. Rechts eine Richtung halten: Die Comic-Krabbe
+bewegt sich frei durch zufällige Unterwasserwelten und sammelt optional drei
+Muscheln. Kinderfreundliches Rücksetzen statt Leben oder Game Over; am Ziel geht
+es nach einer kurzen Feier automatisch ins nächste Level. Die 86-Pixel-Sidebar
+bleibt erhalten, Grafiken benötigen keine externen Assets. Regeln, Generierung,
+Parameter und Hardware-Abnahme: [Spiele](docs/games.md#krabbenreise).

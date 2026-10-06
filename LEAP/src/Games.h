@@ -3,6 +3,7 @@
 #include "KitchenEditor.h"
 #include "ConnectFour.h"
 #include "Maze.h"
+#include "CrabJourney.h"
 #include "Input.h"
 #include "Media.h"
 #include <Arduino_GFX_Library.h>
@@ -16,6 +17,8 @@ class Games {
   PetState pet;
   SnakeState snake;
   MazeState maze;
+  CrabJourney crab;
+  uint8_t crabDirections = 0;
   int snakeSpeed = 0;
   bool snakeSetup = true;
   inline static constexpr uint32_t snakeIntervals[] = {450, 300, 220};
@@ -51,6 +54,12 @@ public:
   }
   bool isConnectFour() const {
     return kind == "connect_four";
+  }
+  bool isCrabJourney() const {
+    return kind == "crab_journey";
+  }
+  void heldDirections(uint8_t mask) {
+    crabDirections = mask;
   }
   bool isKitchen() const {
     return kind == "kitchen";

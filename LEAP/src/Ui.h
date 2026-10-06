@@ -62,6 +62,9 @@ public:
   bool begin(JsonDocument *bootState = nullptr);
   void input(const InputEvent &event);
   void tick();
+  void heldDirections(uint8_t mask) {
+    game.heldDirections(mask);
+  }
   bool healthy = false;
 };
 extern Ui ui;

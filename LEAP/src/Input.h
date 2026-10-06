@@ -2,6 +2,7 @@
 #include "Core.h"
 #include "Hardware.h"
 #include <Arduino.h>
+#include <atomic>
 #include <freertos/queue.h>
 #include <freertos/task.h>
 namespace leap {
@@ -16,6 +17,14 @@ struct InputEvent {
 };
 class Input {
   Debouncer keys[10];
+  std::atomic<uint8_t> rightDirections{0};
+  void publishDirections() {
+    uint8_t mask = 0;
+    for (int i = 0; i < 4; ++i)
+      if (keys[i + 5].stable)
+        mask |= uint8_t(1u << i);
+    rightDirections.store(mask);
+  }
   int pins[10];
   QueueHandle_t events = nullptr;
   static void sampleTask(void *context) {
@@ -36,6 +45,7 @@ class Input {
         // Preserve queued presses; drop new events if the consumer is stalled.
         xQueueSend(input.events, &event, 0);
       }
+      input.publishDirections();
       vTaskDelayUntil(&wake, pdMS_TO_TICKS(5));
     }
   }
@@ -63,6 +73,9 @@ public:
     }
     return true;
   }
+  uint8_t heldRightDirections() const {
+    return rightDirections.load();
+  }
   bool poll(InputEvent &e) {
     if (events)
       return xQueueReceive(events, &e, 0) == pdTRUE;
@@ -75,9 +88,11 @@ public:
              result == 4 ? ExtendedCenterHoldMs : result == 3 ? Debouncer::LongPressMs : 0};
         e.atMs = millis();
         e.timestamped = true;
+        publishDirections();
         return true;
       }
     }
+    publishDirections();
     return false;
   }
 };
