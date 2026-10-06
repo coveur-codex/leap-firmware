@@ -467,8 +467,8 @@ gekennzeichnet. Ein älterer Homeserver ohne `tomorrow` zeigt „Vorhersage fehl
 ## Lokaler Kücheneditor
 
 „Meine Kueche“ steht als eingebautes Spiel in der Spieleauswahl zur Verfügung.
-24 Rasterplätze mit horizontalem Scrollen, 22 detailliert gezeichnete Objekte
-inklusive Esstisch und Stuhl, drei Ebenen und vier Farben lassen sich frei einrichten
+24 Rasterplätze mit horizontalem Scrollen, 28 detailliert gezeichnete Objekte
+inklusive zweier Tische, gedrehter Stühle, Küchenmaschine, Tellerregal und Kerze, drei Ebenen und vier Farben lassen sich frei einrichten
 und werden automatisch lokal gespeichert. Links wird der Aktionsmodus gewählt,
 rechts der Ort gesteuert und die Aktion bestätigt. Alte Küchen werden übernommen. Links-Mitte zwei Sekunden
 halten oder „Zurueck“ auswählen führt zur Spieleauswahl. „Kueche leeren“ setzt die

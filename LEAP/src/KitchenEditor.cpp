@@ -73,7 +73,9 @@ void object(SceneCanvas &g, KitchenObject o, int left, int top) {
     g.drawRect(bx, by, bw, bh, Ink);
   };
   auto handle = [&](int hx, int hy, int hw) { g.fillRect(hx, hy, hw, 2, Ink); };
-  bool cabinet = (o.layer == KitchenLayer::Floor && o.type != KitchenType::Table && o.type != KitchenType::Chair) || o.type == KitchenType::WallCabinet ||
+  bool cabinet = (o.layer == KitchenLayer::Floor && o.type != KitchenType::Table &&
+                  o.type != KitchenType::NarrowTable && o.type != KitchenType::Chair &&
+                  o.type != KitchenType::ChairLeft && o.type != KitchenType::ChairRight) || o.type == KitchenType::WallCabinet ||
                  o.type == KitchenType::WideWallCabinet;
   if (cabinet) {
     g.fillRect(x + 2, y + 2, w, h, 0x8c51);
@@ -173,6 +175,7 @@ void object(SceneCanvas &g, KitchenObject o, int left, int top) {
     g.fillCircle(x + 16, y + 3, 4, 0x3387);
     g.fillCircle(x + 13, y + 7, 3, 0x650b); break;
   case KitchenType::Table:
+  case KitchenType::NarrowTable:
     g.fillRect(x + 4, y + 3, 5, h - 3, Wood);
     g.fillRect(x + w - 9, y + 3, 5, h - 3, Wood);
     g.drawLine(x + 7, y + 7, x + 7, y + h - 1, Ink);
@@ -239,6 +242,68 @@ void object(SceneCanvas &g, KitchenObject o, int left, int top) {
     g.drawLine(x + 12, y + 13, x + 17, y + 16, Ink);
     g.fillCircle(x + 12, y + 13, 1, Ink);
     break;
+  case KitchenType::Mixer:
+    // Stand mixer: motor arm, vertical stand, whisk, steel bowl and speed dial.
+    box(x + 3, y + 14, w - 6, 3, front);
+    box(x + 4, y + 3, 9, 12, front);
+    box(x + 5, y, w - 14, 6, front);
+    g.drawFastHLine(x + 8, y + 1, w - 22, White);
+    g.fillCircle(x + 10, y + 6, 2, Ink);
+    g.drawPixel(x + 10, y + 5, White);
+    g.fillRect(x + 29, y + 5, 2, 5, Steel);
+    g.drawLine(x + 26, y + 7, x + 29, y + 11, Ink);
+    g.drawLine(x + 33, y + 7, x + 30, y + 11, Ink);
+    box(x + 18, y + 9, 24, 6, Steel);
+    g.drawFastHLine(x + 19, y + 9, 22, White);
+    g.drawFastHLine(x + 22, y + 12, 16, 0x7c73);
+    break;
+  case KitchenType::PlateShelf:
+    // Plate rack with two ledges, upright plates and visible hanging brackets.
+    g.fillRect(x + 1, y + 1, 3, h - 2, Wood);
+    g.fillRect(x + w - 4, y + 1, 3, h - 2, Wood);
+    for (int row = 0; row < 2; ++row) {
+      for (int plate = 0; plate < 3; ++plate) {
+        int px = x + 10 + plate * 15, py = y + 6 + row * 12;
+        g.fillCircle(px, py, 5, front);
+        g.fillCircle(px, py, 4, White);
+        g.fillCircle(px, py, 2, front);
+        g.drawPixel(px - 2, py - 2, White);
+      }
+      g.fillRect(x, y + 11 + row * 12, w, 3, Wood);
+      g.drawFastHLine(x + 2, y + 11 + row * 12, w - 4, White);
+    }
+    g.drawLine(x + 5, y + 25, x + 10, y + 25, Ink);
+    g.drawLine(x + w - 10, y + 25, x + w - 5, y + 25, Ink);
+    break;
+  case KitchenType::Candle:
+    // Candle, wick, flame and brass-style stem/base; fits on either table.
+    g.fillRect(x + 5, y + 15, w - 10, 2, front);
+    g.fillRect(x + 10, y + 11, 4, 4, front);
+    g.drawFastHLine(x + 7, y + 10, 10, Ink);
+    g.fillRect(x + 9, y + 4, 6, 6, White);
+    g.drawLine(x + 10, y + 5, x + 10, y + 8, 0xfeb2);
+    g.drawPixel(x + 12, y + 3, Ink);
+    g.fillCircle(x + 12, y + 1, 2, 0xfd20);
+    g.drawPixel(x + 12, y - 2, 0xfd20);
+    g.drawPixel(x + 12, y + 1, 0xffe0);
+    break;
+  case KitchenType::ChairLeft:
+  case KitchenType::ChairRight: {
+    // Mirror the side profile independently of the four upholstery colors.
+    auto sideBox = [&](int dx, int dy, int bw, int bh, uint16_t color) {
+      int sx = o.type == KitchenType::ChairRight ? dx : w - dx - bw;
+      g.fillRect(x + sx, y + dy, bw, bh, color);
+      if (bw > 3 && bh > 2) g.drawRect(x + sx, y + dy, bw, bh, Ink);
+    };
+    sideBox(2, -10, 5, 25, Wood);
+    sideBox(3, -8, 3, 19, front);
+    sideBox(5, 13, w - 7, 5, front);
+    sideBox(3, 18, 3, h - 18, Wood);
+    sideBox(w - 6, 18, 3, h - 18, Wood);
+    sideBox(6, 26, w - 12, 2, Wood);
+    sideBox(7, 14, w - 12, 1, White);
+    break;
+  }
   case KitchenType::Count: break;
   }
 }
