@@ -32,6 +32,8 @@ static String displayText(String s) {
   return out;
 }
 static String gameTitle(const String &id) {
+  if (id == "crab_journey")
+    return "Krabbenreise";
   if (id == "kitchen")
     return "Meine Kueche";
   if (id == "connect_four")
@@ -701,9 +703,10 @@ void Ui::drawPage(const String &id) {
       std::vector<String> labels;
       JsonArray configuredGames = state["config"]["games"].as<JsonArray>();
       for (JsonObject g : configuredGames)
-        if (g["enabled"] == true && g["id"] != "kitchen")
+        if (g["enabled"] == true && g["id"] != "kitchen" && g["id"] != "crab_journey")
           labels.push_back(gameTitle(g["id"] | ""));
       labels.push_back(gameTitle("kitchen"));
+      labels.push_back(gameTitle("crab_journey"));
       list(labels);
     }
   } else if (id == "communication") {
@@ -799,7 +802,8 @@ void Ui::render() {
     // Current page title lives below the sidebar navigation.
     drawPage(pages[page].id);
   }
-  if (!locked && !menu && gameOpen && (game.isPet() || game.isConnectFour() || game.isKitchen())) {
+  if (!locked && !menu && gameOpen &&
+      (game.isPet() || game.isConnectFour() || game.isKitchen() || game.isCrabJourney())) {
     canvas->flush();
     return;
   }
@@ -962,13 +966,14 @@ void Ui::action(const InputEvent &e) {
         int n = 0;
         JsonArray configuredGames = state["config"]["games"].as<JsonArray>();
         for (JsonObject g : configuredGames)
-          if (g["enabled"] == true && g["id"] != "kitchen" && n++ == selection) {
+          if (g["enabled"] == true && g["id"] != "kitchen" && g["id"] != "crab_journey" &&
+              n++ == selection) {
             game.start(g["id"] | "");
             gameOpen = true;
             break;
           }
-        if (!gameOpen && selection == n) {
-          game.start("kitchen");
+        if (!gameOpen && (selection == n || selection == n + 1)) {
+          game.start(selection == n ? "kitchen" : "crab_journey");
           gameOpen = true;
         }
       }
@@ -1094,10 +1099,14 @@ void Ui::tick() {
     dirtySettings = false;
     lastSave = millis();
   }
-  if ((frameRequested && elapsed(millis(), lastFrame, 25)) || elapsed(millis(), lastFrame, 100)) {
+  uint32_t frameInterval = gameOpen && game.isCrabJourney() ? CrabJourney::FrameMs : 100;
+  if ((frameRequested && elapsed(millis(), lastFrame, 25)) ||
+      elapsed(millis(), lastFrame, frameInterval)) {
     frameRequested = false;
+    uint32_t frameAt = millis();
     render();
-    lastFrame = millis(); // Avoid immediately rendering again after a slow transfer.
+    // Animated gameplay measures cadence from frame start, including display transfer time.
+    lastFrame = gameOpen && game.isCrabJourney() ? frameAt : millis();
   }
 }
 } // namespace leap

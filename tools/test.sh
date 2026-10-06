@@ -3,6 +3,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 : "${ARDUINOJSON_INCLUDE:?Set this to the ArduinoJson/src directory}"
 mkdir -p build/tests
+c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_crab_journey.cpp -o build/tests/crab-journey
+build/tests/crab-journey
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/storage_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_storage_snapshot.cpp LEAP/src/Storage.cpp -o build/tests/storage-snapshot
 build/tests/storage-snapshot
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/storage_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_memory_usage.cpp LEAP/src/Storage.cpp -o build/tests/memory-usage
@@ -26,7 +28,7 @@ build/tests/quiz-questions
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/input_fakes -I LEAP/src tests/test_input.cpp -o build/tests/input
 build/tests/input
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_games.cpp -o build/tests/games
-c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_game_lifecycle.cpp LEAP/src/Games.cpp LEAP/src/KitchenEditor.cpp -o build/tests/game-lifecycle
+c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_game_lifecycle.cpp LEAP/src/Games.cpp LEAP/src/CrabJourneyDraw.cpp LEAP/src/KitchenEditor.cpp -o build/tests/game-lifecycle
 build/tests/game-lifecycle
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_chill.cpp LEAP/src/Chill.cpp -o build/tests/chill
 build/tests/chill

@@ -1,5 +1,6 @@
 #include "Games.h"
 #include "Audio.h"
+#include "CrabJourneyDraw.h"
 #include "Motion.h"
 #include "PetAssets.h"
 #include "Protocol.h"
@@ -58,12 +59,17 @@ void Games::close() {
   if (opened && petDirty)
     savePet();
   opened = running = false;
+  crabDirections = 0;
   petAction = -1;
 }
 void Games::start(const String &id) {
   if (opened)
     close();
   kind = id;
+  if (isCrabJourney()) {
+    crab.start(1, esp_random());
+    crabDirections = 0;
+  }
   if (isKitchen())
     kitchen.start();
   opened = true;
@@ -93,6 +99,8 @@ void Games::start(const String &id) {
     s = esp_random() % 4;
 }
 void Games::input(Key key) {
+  if (isCrabJourney())
+    return;
   if (isKitchen())
     return;
   if (isConnectFour() && opened) {
@@ -221,6 +229,16 @@ void Games::tick() {
   }
   if (!opened || !running)
     return;
+  if (isCrabJourney()) {
+    float dt = uint32_t(now - last) / 1000.0f;
+    last = now;
+    int event = crab.update(dt, crabDirections);
+    if (event)
+      audio.tone(event == 2 ? 1047 : 784, event == 2 ? 180 : 65);
+    if (crab.complete && crab.celebration >= CrabJourney::SuccessSeconds)
+      crab.start(crab.level + 1, esp_random());
+    return;
+  }
   if (isConnectFour() && fourThinking && elapsed(now, last, 300)) {
     int column = four.choose(ConnectFour::Difficulty(fourDifficulty), esp_random());
     if (column >= 0)
@@ -253,6 +271,10 @@ void Games::tick() {
   }
 }
 void Games::draw(Arduino_GFX &gfx, int left, int top) {
+  if (isCrabJourney()) {
+    drawCrabJourney(gfx, crab, 86);
+    return;
+  }
   if (isKitchen()) {
     kitchen.draw(gfx, left, 0, kitchenDirty);
     return;

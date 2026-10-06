@@ -1,6 +1,7 @@
 #include "Audio.h"
 #include "Games.h"
 #include "Motion.h"
+#include "CrabJourneyDraw.h"
 #include <cassert>
 #include <iostream>
 using namespace leap;
@@ -51,6 +52,53 @@ static PetState savedPet() {
 }
 int main() {
   Arduino_GFX gfx;
+  // Real integration: continuous held input, safe exit/re-entry and full-height viewport.
+  fakeRandom = 42;
+  Games journey;
+  journey.begin();
+  journey.start("crab_journey");
+  CrabJourney witness;
+  witness.start(1, 42);
+  assert(journey.active() && journey.isCrabJourney());
+  for (int i = 0; i < 1000 && !witness.complete; ++i) {
+    float yy = witness.routeY(witness.x + 4);
+    uint8_t mask = 8 | (witness.y < yy - 1.5f ? 2 : witness.y > yy + 1.5f ? 1 : 0);
+    journey.heldDirections(mask);
+    fakeNow += 40;
+    journey.tick();
+    witness.update(.04f, mask);
+  }
+  assert(witness.complete);
+  Arduino_GFX journeyGfx;
+  journeyGfx.recordAll = true;
+  journey.draw(journeyGfx, 94, 10);
+  assert(journeyGfx.text.find("Krabbenreise 1") != std::string::npos);
+  for (int i = 0; i < 65; ++i) {
+    fakeNow += 40;
+    journey.tick();
+  }
+  journeyGfx.text.clear();
+  journey.draw(journeyGfx, 94, 10);
+  assert(journeyGfx.text.find("Krabbenreise 2") != std::string::npos);
+  journey.close();
+  assert(!journey.active());
+  fakeNow += 5000;
+  journey.tick();
+  journey.start("crab_journey");
+  // Exercise every sprite and camera clipping with the real renderer.
+  for (unsigned level = 1; level <= 12; ++level) {
+    CrabJourney world;
+    world.start(level, level * 723);
+    for (float camera : {0.0f, 48.0f, -16.0f}) {
+      world.cameraX = camera;
+      world.update(.04f, 0);
+      journeyGfx.rects.clear();
+      drawCrabJourney(journeyGfx, world, 86);
+      for (auto r : journeyGfx.rects)
+        assert(r.x >= 86 && r.y >= 0 && r.x + r.w <= 428 && r.y + r.h <= 142);
+    }
+  }
+  journey.close();
   Games kitchenGame;
   kitchenGame.begin();
   kitchenGame.start("kitchen");

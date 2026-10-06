@@ -1,6 +1,29 @@
 # Durchgeführte Prüfungen
 
-Stand: 2026-10-05. Chill V1 mit entsprechend aktualisiertem Homeserver.
+Stand: 2026-10-06. Krabbenreise und bisherige Firmwaremodule.
+
+
+## Krabbenreise
+
+- Native Firmware-Regressionssuite bestanden. Neue Simulation prüft 4.500 Karten
+  auf 30 Stufen, freien Start-Ziel-Weg und Muschelzugänge, Budgets, Abstände,
+  Einführungsstufen und bewegte Hindernisgrenzen. Geprüft sind auch Sammeln,
+  Diagonaltempo, Loslassen, freundliche Barrieren, Schutzzeit/Rücksetzen,
+  Strömung, steigende Strudelanziehung und Erfolg ohne Muscheln.
+- Die echte `Games.cpp` startet die Krabbenreise, verarbeitet kontinuierliche
+  Eingabe, wechselt nach Erfolg zu Level 2 und beendet/neustartet das Spiel.
+  Renderergrenzen bei mehreren Levels und Kameraversätzen bleiben innerhalb
+  des 342×142-Spielbereichs; die Sidebar wird nicht überschrieben.
+- Input-Regression für gehaltene Richtungen bei voller Queue und Loslassen,
+  auch beim Polling-Fallback, bestanden. Bestehende Eingabeprüfungen bestehen.
+- Echte PNGdec-1.1.6- und asynchrone Media-Regressionen bestanden.
+- ESP32-S3-N16R8-Cross-Build mit Core 3.3.0 und den festgelegten Bibliotheken
+  bestanden: 1.490.667 Byte Programm, 126.428 Byte statischer RAM. App-Image
+  1.490.816 Byte; S3-Header, SHA-256 und OTA-Slotgrenze bestanden.
+  Bestehende Core-/Bibliotheks-/Modulwarnungen bleiben vorhanden.
+- Keine Grafikassets oder neue Server-/Speicherprotokolle. Reale Bildrate,
+  Displaytransfer, Tastenlatenz, Audio und Schwierigkeit mit einem Kind sind
+  noch am Gerät zu prüfen; siehe [Spiele](games.md#krabbenreise).
 
 ## Chill-Ausstieg: 1.0.0-beta.19
 
