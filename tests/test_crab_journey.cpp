@@ -9,7 +9,7 @@ int main() {
     for (uint32_t seed = 1; seed <= 150; ++seed) {
       CrabJourney w;
       w.start(level, seed);
-      assert(w.worldWidth == w.ViewWidth + ((level - 1) / 3) * 70);
+      assert(w.worldWidth == w.ViewWidth + ((level - 1) / 2) * 80);
       assert(w.cameraX == 0);
       assert(w.shoreY(24) < 50 && w.shoreY(w.worldWidth - 24) < 50);
       for (float xx = 0; xx <= w.worldWidth; xx += 1) {
@@ -107,11 +107,11 @@ int main() {
   for (unsigned level = 1; level <= 100; ++level) {
     a.start(level, level * 73);
     if (level > 1)
-      assert(a.worldWidth - previousWidth == (level % 3 == 1 ? 70 : 0));
+      assert(a.worldWidth - previousWidth == (level % 2 == 1 ? 80 : 0));
     previousWidth = a.worldWidth;
-    assert(a.signCount() == (level <= 3 ? 0 : 1 + unsigned((a.worldWidth - 412) / 275)));
+    assert(a.signCount() == (level <= 2 ? 0 : 1 + unsigned((a.worldWidth - 422) / 275)));
     for (unsigned i = 0; i < a.signCount(); ++i) {
-      assert(a.signX(i) == 319 + i * 275 && a.signX(i) <= a.worldWidth - 93);
+      assert(a.signX(i) == 319 + i * 275 && a.signX(i) <= a.worldWidth - 103);
       if (i > 0)
         assert(a.signX(i) - a.signX(i - 1) >= 250 && a.signX(i) - a.signX(i - 1) <= 300);
     }
