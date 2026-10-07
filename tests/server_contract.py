@@ -106,6 +106,12 @@ with tempfile.TemporaryDirectory() as temp:
     assert record.details["message"] == failure["message"]
     session.refresh(device)
     assert device.installed_assets == before
-    Path(sys.argv[1]).write_text(json.dumps({"config": config, "manifests": manifests}), encoding="utf-8")
+    device.enabled_games = ["snake"]
+    device.config_version += 1
+    session.commit()
+    game_plan = client.post(base + "/sync", json=report).json()
+    game_config = client.get(game_plan["configUrl"]).json()
+    assert {g["id"] for g in game_config["games"] if g["enabled"]} == {"snake"}
+    Path(sys.argv[1]).write_text(json.dumps({"config": config, "gameConfig": game_config, "manifests": manifests}), encoding="utf-8")
     session.close()
 print("PASS: real Homeserver sync, hashes, complete-inventory gate, closed plans, communication disable")

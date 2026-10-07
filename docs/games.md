@@ -1,5 +1,16 @@
 # Spiele: Regeln, Asset-Vertrag und Abnahme
 
+## Auswahl durch den Homeserver
+
+`config.games` steuert die sichtbaren und startbaren Spiele einschließlich `kitchen` und `crab_journey`.
+Nur bekannte IDs mit `enabled: true` erscheinen, ohne automatische Zusatzspiele.
+Eine leere, fehlende oder vollständig deaktivierte Liste zeigt „Keine Spiele
+freigegeben“. Anzeige und Start verwenden dieselbe gefilterte Liste.
+Die lokal gespeicherte Konfiguration gilt auch ohne WLAN. Eine geänderte
+Konfiguration schließt beim Sync ein laufendes Spiel und übernimmt die neue Auswahl.
+Die Spielprogramme und lokalen Spielstände bleiben erhalten. Homeserver und
+Firmware zusammen aktualisieren: ältere Server führen Küche und Krabbenreise nicht in der Liste.
+
 ## Vier Gewinnt (beta.15)
 
 `connect_four` wird zusätzlich vom Homeserver in `config.games` angeboten.
