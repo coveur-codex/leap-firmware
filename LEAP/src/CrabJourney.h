@@ -17,6 +17,7 @@ struct CrabJourney {
                                                 {2, 7, 2, .6f}, {3, 13, 0, .7f}, {5, 16, 0, .7f}};
   static constexpr float SuccessSeconds = 2.5f, ProtectionSeconds = 1.8f;
   static constexpr int ShorePoints = 8, WaterTop = 16, LevelsPerExpansion = 3, ExpansionWidth = 70;
+  static constexpr int SignSpacing = 275;
   static constexpr float ShoreMargin = 3;
 
   struct Element {
@@ -44,8 +45,12 @@ struct CrabJourney {
   unsigned expansions() const {
     return (level - 1) / LevelsPerExpansion;
   }
+  unsigned signCount() const {
+    // Preserve the first former goal; keep subsequent signs clear of the new goal.
+    return expansions() ? 1 + unsigned((worldWidth - ViewWidth - ExpansionWidth) / SignSpacing) : 0;
+  }
   static float signX(unsigned index) {
-    return ViewWidth - 23 + float(index) * ExpansionWidth;
+    return ViewWidth - 23 + float(index) * SignSpacing;
   }
   void followCamera() {
     // A dead zone avoids camera motion on small corrections and leaves room to look ahead.

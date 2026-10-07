@@ -100,7 +100,7 @@ int main() {
   }
   // The waypoint is drawn at the former goal and moves with the world, not the HUD.
   CrabJourney signs;
-  signs.start(7, 734);
+  signs.start(16, 734);
   signs.count = 0;
   for (auto &shell : signs.shells)
     shell.collected = true;
@@ -115,10 +115,10 @@ int main() {
     signs.cameraX = camera;
     journeyGfx.rects.clear();
     drawCrabJourney(journeyGfx, signs, 86);
-    for (unsigned i = 0; i < signs.expansions(); ++i) {
+    for (unsigned i = 0; i < signs.signCount(); ++i) {
       int xx = 86 + int(signs.signX(i) - camera) - 11;
       if (xx >= 86 && xx < 428)
-        assert(pixelAt(xx, 109) == 0xe5b0);
+        assert(pixelAt(xx, 109) == 0xff79);
     }
   }
   // Pixels in the overlap of two camera views must describe the same world scenery.

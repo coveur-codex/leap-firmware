@@ -109,8 +109,12 @@ int main() {
     if (level > 1)
       assert(a.worldWidth - previousWidth == (level % 3 == 1 ? 70 : 0));
     previousWidth = a.worldWidth;
-    for (unsigned i = 0; i < a.expansions(); ++i)
-      assert(a.signX(i) == 319 + i * 70 && a.signX(i) <= a.worldWidth - 93);
+    assert(a.signCount() == (level <= 3 ? 0 : 1 + unsigned((a.worldWidth - 412) / 275)));
+    for (unsigned i = 0; i < a.signCount(); ++i) {
+      assert(a.signX(i) == 319 + i * 275 && a.signX(i) <= a.worldWidth - 93);
+      if (i > 0)
+        assert(a.signX(i) - a.signX(i - 1) >= 250 && a.signX(i) - a.signX(i - 1) <= 300);
+    }
   }
   a.start(10, 22);
   a.count = 0;

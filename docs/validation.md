@@ -12,14 +12,15 @@ Stand: 2026-10-07. Krabbenreise und bisherige Firmwaremodule.
 - Wachstum um 70 Pixel nach jeweils drei Leveln, Breitenstabilität innerhalb
   einer Gruppe, Vorwärts-/Rückwärtsscrolling, ruhiger Bildausschnitt bei Stillstand,
   Kameragrenzen, Rücksetzen, neuer Zielort und Kamerareset beim Neustart geprüft.
-- Echte Zeichenroutine: Wegweiser an den früheren Zielpositionen, Pixelvergleich
+- Wegweiser ab Welt-X 319 im Abstand von 275 Pixeln und mit Abstand zum aktuellen
+  Ziel geprüft. Echte Zeichenroutine: kontrastreiche Wegweiser, Pixelvergleich
   überlappender Kamerabilder für stabile Weltdekoration und Clipping bis Level
   300 innerhalb der 342×142-Spielfläche bestanden. Vorschauen von Anfang und Ende
   einer 552 Pixel breiten Karte geprüft.
 - Weitere 15.000 Karten mit verteilten 32-Bit-Seeds enthalten weiterhin alle neu
   eingeführten Hindernistypen auf den Stufen 2 bis 6.
-- ESP32-S3-N16R8-Cross-Build: 1.500.619 Byte Programm, 126.572 Byte statischer RAM;
-  App-Image 1.500.768 Byte, S3-Header, SHA-256 und OTA-Slotgrenze bestanden.
+- ESP32-S3-N16R8-Cross-Build: 1.500.675 Byte Programm, 126.572 Byte statischer RAM;
+  App-Image 1.500.816 Byte, S3-Header, SHA-256 und OTA-Slotgrenze bestanden.
   Scrollgefühl und tatsächliche Bildrate bleiben am Gerät zu prüfen.
 
 

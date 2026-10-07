@@ -55,21 +55,21 @@ struct Brush {
     }
   }
   void sign(int x, int y) {
-    oval(x, y + 2, 11, 2, 0xbd8c);
-    line(x - 1, y, x - 1, y - 29, 0x946c);
-    line(x, y, x, y - 29, 0xc4ad);
+    oval(x, y + 2, 11, 2, 0x9b69);
+    for (int dx = -2; dx <= 1; ++dx)
+      line(x + dx, y, x + dx, y - 29, dx == 0 ? 0xbba9 : 0x6266);
     // Wooden arrow board, outlined and engraved; entirely drawn with primitives.
     for (int h = -6; h <= 6; ++h) {
       int tip = 18 - std::abs(h);
-      line(x - 13, y - 24 + h, x + tip, y - 24 + h, 0x946c);
-      if (std::abs(h) < 6)
-        line(x - 12, y - 24 + h, x + tip - 1, y - 24 + h, 0xe5b0);
+      line(x - 13, y - 24 + h, x + tip, y - 24 + h, 0x6266);
+      if (std::abs(h) < 5)
+        line(x - 11, y - 24 + h, x + tip - 2, y - 24 + h, 0xff79);
     }
     line(x - 7, y - 24, x + 9, y - 24, Ink);
     line(x + 5, y - 28, x + 9, y - 24, Ink);
     line(x + 5, y - 20, x + 9, y - 24, Ink);
-    pixel(x - 10, y - 27, 0xb40b);
-    pixel(x - 10, y - 21, 0xb40b);
+    pixel(x - 10, y - 27, Ink);
+    pixel(x - 10, y - 21, Ink);
   }
   void crab(int x, int y, float t, bool scared, bool spin) {
     int bob = int(std::sin(t * 4) * 1.4f);
@@ -238,11 +238,11 @@ void drawCrabJourney(Arduino_GFX &gfx, const CrabJourney &w, int left) {
   }
   b.shell(int(18 - w.cameraX), 113, 0xef5a, 5);
   b.kelp(int(42 - w.cameraX), 139, t, 13);
-  // Former goal positions become milestones; only the visible few need drawing.
+  // Milestones start at the former goal and recur every 275 pixels; only visible signs are drawn.
   int firstSign = std::max(
-      0, int(std::floor((w.cameraX - CrabJourney::signX(0) - 20) / CrabJourney::ExpansionWidth)));
+      0, int(std::floor((w.cameraX - CrabJourney::signX(0) - 20) / CrabJourney::SignSpacing)));
   for (unsigned i = unsigned(firstSign);
-       i < w.expansions() && CrabJourney::signX(i) < w.cameraX + CrabJourney::ViewWidth + 20; ++i)
+       i < w.signCount() && CrabJourney::signX(i) < w.cameraX + CrabJourney::ViewWidth + 20; ++i)
     b.sign(int(CrabJourney::signX(i) - w.cameraX), 133);
   int goal = int(w.worldWidth - 23 - w.cameraX), gy = int(w.route[5]);
   b.oval(goal, gy + 6, 17, 6, 0xb56b);

@@ -262,8 +262,9 @@ Küste, Sandtextur, Pflanzen, Blasen und Spielobjekte sind in Weltkoordinaten
 verankert, während Levelanzeige und Muschelzähler fest auf dem Bildschirm bleiben.
 
 Am bisherigen Ziel bei Welt-X 319 erscheint ab Level 4 ein programmatisch
-gezeichneter hölzerner Wegweiser mit Rechtspfeil. Jede weitere Verlängerung ergänzt
-einen Wegweiser im Abstand von 70 Pixeln an der früheren Zielposition. Sie sind
+gezeichneter hölzerner Wegweiser mit Rechtspfeil. Weitere Wegweiser folgen im
+Abstand von 275 Pixeln, mit Abstand zum aktuellen Ziel. Ein dunkler Holzrahmen,
+eine helle Pfeilfläche und ein kräftiger Pfosten heben sie vom Sand ab. Sie sind
 rein dekorativ und blockieren den Weg nicht. Die Zielmuschel steht ausschließlich
 am Ende der aktuellen Welt. Nur sichtbare Landschaftsabschnitte und Wegweiser
 werden gezeichnet, sodass ihre Anzahl pro Bild begrenzt bleibt.
