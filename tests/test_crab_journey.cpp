@@ -9,6 +9,8 @@ int main() {
     for (uint32_t seed = 1; seed <= 150; ++seed) {
       CrabJourney w;
       w.start(level, seed);
+      assert(w.worldWidth == w.ViewWidth + ((level - 1) / 3) * 70);
+      assert(w.cameraX == 0);
       assert(w.shoreY(24) < 50 && w.shoreY(w.worldWidth - 24) < 50);
       for (float xx = 0; xx <= w.worldWidth; xx += 1) {
         float coast = w.shoreY(xx);
@@ -60,6 +62,8 @@ int main() {
           directions |= 1;
         w.update(.04f, directions);
         assert(w.reaction == 0);
+        assert(w.cameraX >= 0 && w.cameraX <= w.worldWidth - w.ViewWidth);
+        assert(w.x - w.cameraX >= 18 && w.x - w.cameraX <= w.ViewWidth - 20);
       }
       assert(w.complete);
     }
@@ -98,6 +102,66 @@ int main() {
   assert(waterAnimal.y + waterAnimal.radius + a.ShoreMargin < a.shoreY(waterAnimal.x - 16));
   assert(waterAnimal.y + waterAnimal.radius + a.ShoreMargin < a.shoreY(waterAnimal.x + 16));
   assert(!a.waterPlacement(waterAnimal));
+  // Width is stable within each group, independent of the level's scene seed.
+  float previousWidth = 0;
+  for (unsigned level = 1; level <= 100; ++level) {
+    a.start(level, level * 73);
+    if (level > 1)
+      assert(a.worldWidth - previousWidth == (level % 3 == 1 ? 70 : 0));
+    previousWidth = a.worldWidth;
+    for (unsigned i = 0; i < a.expansions(); ++i)
+      assert(a.signX(i) == 319 + i * 70 && a.signX(i) <= a.worldWidth - 93);
+  }
+  a.start(10, 22);
+  a.count = 0;
+  while (a.x < a.worldWidth - 60) {
+    float camera = a.cameraX;
+    a.update(.04f, 8);
+    assert(a.cameraX >= camera && a.cameraX - camera <= a.Speed * .04f + .001f);
+    if (a.cameraX > 0)
+      assert(a.x - a.cameraX >= a.ViewWidth * .4f - .001f);
+  }
+  assert(a.cameraX == a.worldWidth - a.ViewWidth);
+  float idleCamera = a.cameraX;
+  a.update(.04f, 1);
+  a.update(.04f, 0);
+  assert(a.cameraX == idleCamera);
+  while (a.x > 24) {
+    float camera = a.cameraX;
+    a.update(.04f, 4);
+    assert(a.cameraX <= camera && camera - a.cameraX <= a.Speed * .04f + .001f);
+    assert(a.x - a.cameraX <= a.ViewWidth - 20);
+  }
+  assert(a.cameraX == 0);
+  a.x = 280;
+  a.followCamera();
+  a.setback(true);
+  assert(a.x - a.cameraX >= a.ViewWidth * .4f - .001f && a.reaction > 0);
+  a.start(4, 22);
+  a.count = 0;
+  a.x = a.signX(0);
+  a.y = 78;
+  a.update(.04f, 0);
+  assert(!a.complete); // The former goal is now just a waypoint.
+  a.x = a.worldWidth - 32;
+  assert(a.update(.04f, 0) == 2 && a.complete);
+  assert(a.cameraX == a.worldWidth - a.ViewWidth);
+  idleCamera = a.cameraX;
+  a.update(.04f, 4);
+  assert(a.cameraX == idleCamera);
+  a.start(1, 22);
+  assert(a.worldWidth == a.ViewWidth && a.cameraX == 0);
+  // Longer worlds must still be traversable with the actual camera and simulation.
+  for (unsigned level : {31u, 100u, 300u}) {
+    a.start(level, 734);
+    for (int step = 0; step < 5000 && !a.complete; ++step) {
+      float yy = a.routeY(a.x + 4);
+      a.update(.04f, 8 | (a.y < yy - 1.5f ? 2 : a.y > yy + 1.5f ? 1 : 0));
+      assert(a.reaction == 0);
+      assert(a.cameraX >= 0 && a.cameraX <= a.worldWidth - a.ViewWidth);
+    }
+    assert(a.complete);
+  }
   a.start(1, 22);
   a.count = 0;
   a.x = 60;

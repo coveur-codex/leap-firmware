@@ -2,7 +2,7 @@
 namespace leap {
 namespace {
 constexpr uint16_t Ink = 0x194b, Sand = 0xddd0, Coral = 0xfaca, Red = 0xfaa8, White = 0xffff;
-// All world drawing is clipped, including future objects partially outside a camera viewport.
+// All world drawing is clipped, including objects partially outside the scrolling viewport.
 struct Brush {
   Arduino_GFX &g;
   int left;
@@ -53,6 +53,23 @@ struct Brush {
         py = y - h;
       }
     }
+  }
+  void sign(int x, int y) {
+    oval(x, y + 2, 11, 2, 0xbd8c);
+    line(x - 1, y, x - 1, y - 29, 0x946c);
+    line(x, y, x, y - 29, 0xc4ad);
+    // Wooden arrow board, outlined and engraved; entirely drawn with primitives.
+    for (int h = -6; h <= 6; ++h) {
+      int tip = 18 - std::abs(h);
+      line(x - 13, y - 24 + h, x + tip, y - 24 + h, 0x946c);
+      if (std::abs(h) < 6)
+        line(x - 12, y - 24 + h, x + tip - 1, y - 24 + h, 0xe5b0);
+    }
+    line(x - 7, y - 24, x + 9, y - 24, Ink);
+    line(x + 5, y - 28, x + 9, y - 24, Ink);
+    line(x + 5, y - 20, x + 9, y - 24, Ink);
+    pixel(x - 10, y - 27, 0xb40b);
+    pixel(x - 10, y - 21, 0xb40b);
   }
   void crab(int x, int y, float t, bool scared, bool spin) {
     int bob = int(std::sin(t * 4) * 1.4f);
@@ -179,29 +196,38 @@ void drawCrabJourney(Arduino_GFX &gfx, const CrabJourney &w, int left) {
   for (int i = 0; i < 18; ++i)
     b.line(i * 21, 11 + int(std::sin(t + i) * 2), i * 21 + 12, 11 + int(std::sin(t + i) * 2),
            0xb75f);
-  // Stable seeded texture, no per-frame random flicker.
-  uint32_t texture = w.seed;
-  for (int i = 0; i < 125; ++i) {
-    texture = texture * 1664525u + 1013904223u;
-    int x = texture % 342;
-    int y = 43 + (texture >> 16) % 96;
-    if (y >= coast[x] + 4) {
-      b.pixel(x, y, 0xcced);
-      if (i % 7 == 0)
-        b.oval(x, y, 2, 1, 0xbdf0);
+  // Texture is generated in world tiles, so scenery stays anchored while scrolling.
+  int firstTile = std::max(0, int(std::floor(w.cameraX / CrabJourney::ViewWidth)));
+  int lastTile = int(std::floor((w.cameraX + CrabJourney::ViewWidth) / CrabJourney::ViewWidth));
+  for (int tile = firstTile; tile <= lastTile; ++tile) {
+    uint32_t texture = w.seed ^ (uint32_t(tile) * 0x9e3779b9u);
+    for (int i = 0; i < 125; ++i) {
+      texture = texture * 1664525u + 1013904223u;
+      float wx = tile * CrabJourney::ViewWidth + texture % CrabJourney::ViewWidth;
+      int xx = int(std::floor(wx - w.cameraX));
+      int yy = 43 + (texture >> 16) % 96;
+      if (xx >= 0 && xx < CrabJourney::ViewWidth && yy >= coast[xx] + 4) {
+        b.pixel(xx, yy, 0xcced);
+        if (i % 7 == 0)
+          b.oval(xx, yy, 2, 1, 0xbdf0);
+      }
     }
   }
-  for (int i = 0; i < 7; ++i) {
-    int x = 12 + i * 49, y = 38 + int(std::fmod(t * 8 + i * 17, 91.0f));
-    if (w.waterAt(x + w.cameraX, y)) {
-      b.pixel(x, y, 0xefff);
-      b.pixel(x + 1, y - 1, 0xefff);
+  int firstBubble = std::max(0, int(std::floor((w.cameraX - 12) / 49)));
+  for (int i = firstBubble; 12 + i * 49 < w.cameraX + CrabJourney::ViewWidth; ++i) {
+    float wx = 12 + i * 49;
+    int xx = int(wx - w.cameraX), yy = 38 + int(std::fmod(t * 8 + i * 17, 91.0f));
+    if (w.waterAt(wx, yy)) {
+      b.pixel(xx, yy, 0xefff);
+      if (w.waterAt(wx + 1, yy - 1))
+        b.pixel(xx + 1, yy - 1, 0xefff);
     }
   }
-  for (int i = 0; i < 4; ++i) {
-    int xx = 64 + i * 68, yy = 138 - i % 2 * 4;
+  int firstPlant = std::max(0, int(std::floor((w.cameraX - 74) / 68)));
+  for (int i = firstPlant; 64 + i * 68 < w.cameraX + CrabJourney::ViewWidth + 10; ++i) {
+    int xx = int(64 + i * 68 - w.cameraX), yy = 138 - i % 2 * 4;
     if (i % 2)
-      b.kelp(xx, yy, t + i, 12 + i);
+      b.kelp(xx, yy, t + i, 12 + i % 4);
     else {
       b.line(xx, yy, xx, yy - 12, Coral);
       b.line(xx, yy - 5, xx - 5, yy - 9, Coral);
@@ -210,8 +236,14 @@ void drawCrabJourney(Arduino_GFX &gfx, const CrabJourney &w, int left) {
       b.oval(xx, yy - 13, 2, 2, Coral);
     }
   }
-  b.shell(18, 113, 0xef5a, 5);
-  b.kelp(42, 139, t, 13);
+  b.shell(int(18 - w.cameraX), 113, 0xef5a, 5);
+  b.kelp(int(42 - w.cameraX), 139, t, 13);
+  // Former goal positions become milestones; only the visible few need drawing.
+  int firstSign = std::max(
+      0, int(std::floor((w.cameraX - CrabJourney::signX(0) - 20) / CrabJourney::ExpansionWidth)));
+  for (unsigned i = unsigned(firstSign);
+       i < w.expansions() && CrabJourney::signX(i) < w.cameraX + CrabJourney::ViewWidth + 20; ++i)
+    b.sign(int(CrabJourney::signX(i) - w.cameraX), 133);
   int goal = int(w.worldWidth - 23 - w.cameraX), gy = int(w.route[5]);
   b.oval(goal, gy + 6, 17, 6, 0xb56b);
   b.shell(goal, gy, 0xfddd, 15);

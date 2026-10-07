@@ -3,7 +3,7 @@
 #include <cmath>
 #include <cstdint>
 namespace leap {
-// World coordinates are independent of the viewport; a future camera only changes rendering.
+// Gameplay stays in world coordinates; the camera only selects the visible section.
 struct CrabJourney {
   static constexpr int ViewWidth = 342, ViewHeight = 142, Capacity = 18;
   static constexpr float Speed = 92, CrabRadius = 6, CorridorHalf = 16;
@@ -16,7 +16,7 @@ struct CrabJourney {
   inline static constexpr Feature Features[] = {{1, 7, 0, 0},   {1, 5, 3, .22f}, {3, 7, 9, .7f},
                                                 {2, 7, 2, .6f}, {3, 13, 0, .7f}, {5, 16, 0, .7f}};
   static constexpr float SuccessSeconds = 2.5f, ProtectionSeconds = 1.8f;
-  static constexpr int ShorePoints = 8, WaterTop = 16;
+  static constexpr int ShorePoints = 8, WaterTop = 16, LevelsPerExpansion = 3, ExpansionWidth = 70;
   static constexpr float ShoreMargin = 3;
 
   struct Element {
@@ -41,6 +41,21 @@ struct CrabJourney {
   int count = 0, collected = 0, spent = 0;
   float age = 0, reaction = 0, protection = 0, celebration = 0, sparkle = 0;
   bool spinning = false, complete = false;
+  unsigned expansions() const {
+    return (level - 1) / LevelsPerExpansion;
+  }
+  static float signX(unsigned index) {
+    return ViewWidth - 23 + float(index) * ExpansionWidth;
+  }
+  void followCamera() {
+    // A dead zone avoids camera motion on small corrections and leaves room to look ahead.
+    float screenX = x - cameraX;
+    if (screenX > ViewWidth * .60f)
+      cameraX = x - ViewWidth * .60f;
+    else if (screenX < ViewWidth * .40f)
+      cameraX = x - ViewWidth * .40f;
+    cameraX = std::clamp(cameraX, 0.0f, worldWidth - ViewWidth);
+  }
   uint32_t next() {
     seed ^= seed << 13;
     seed ^= seed >> 17;
@@ -121,6 +136,8 @@ struct CrabJourney {
   }
   void start(unsigned difficulty, uint32_t randomSeed) {
     level = std::max(1u, difficulty);
+    worldWidth = ViewWidth + float(expansions()) * ExpansionWidth;
+    cameraX = 0;
     seed = randomSeed ? randomSeed : 1;
     age = reaction = protection = celebration = sparkle = 0;
     spinning = complete = false;
@@ -251,6 +268,7 @@ struct CrabJourney {
     reaction = whirl ? 0.75f : 0.45f;
     protection = ProtectionSeconds;
     spinning = whirl;
+    followCamera();
   }
   // Returns 1 for a shell and 2 for success, for the existing audio queue.
   int update(float dt, uint8_t directions) {
@@ -308,6 +326,7 @@ struct CrabJourney {
     }
     x = std::clamp(x, 18.0f, worldWidth - 20);
     y = std::clamp(y, 44.0f, 125.0f);
+    followCamera();
     int event = 0;
     for (auto &s : shells)
       if (!s.collected && distance(x, y, s.x, s.y) < 12) {
