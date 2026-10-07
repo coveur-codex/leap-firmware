@@ -86,7 +86,7 @@ int main() {
   journey.tick();
   journey.start("crab_journey");
   // Exercise every sprite and camera clipping with the real renderer.
-  for (unsigned level : {1u, 3u, 4u, 6u, 7u, 12u, 31u, 100u, 300u}) {
+  for (unsigned level : {1u, 2u, 3u, 4u, 5u, 6u, 7u, 12u, 31u, 100u, 300u}) {
     CrabJourney world;
     world.start(level, level * 723);
     world.update(.04f, 0);

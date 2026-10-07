@@ -16,7 +16,7 @@ struct CrabJourney {
   inline static constexpr Feature Features[] = {{1, 7, 0, 0},   {1, 5, 3, .22f}, {3, 7, 9, .7f},
                                                 {2, 7, 2, .6f}, {3, 13, 0, .7f}, {5, 16, 0, .7f}};
   static constexpr float SuccessSeconds = 2.5f, ProtectionSeconds = 1.8f;
-  static constexpr int ShorePoints = 8, WaterTop = 16, LevelsPerExpansion = 3, ExpansionWidth = 70;
+  static constexpr int ShorePoints = 8, WaterTop = 16, LevelsPerExpansion = 2, ExpansionWidth = 80;
   static constexpr int SignSpacing = 275;
   static constexpr float ShoreMargin = 3;
 

@@ -4,6 +4,21 @@ Stand: 2026-10-07. Krabbenreise und bisherige Firmwaremodule.
 
 
 
+## Krabbenreise: 80-Pixel-Wachstum nach zwei Leveln (beta.22)
+
+- Vollständige native Firmware-Regressionssuite bestanden: Wachstum jeweils nach
+  zwei Leveln um 80 Pixel (342 / 422 / 502 Pixel), stabile Breite innerhalb der
+  Levelpaare, Kameragrenzen und Wegweiserabstände geprüft. Die 4.500 Karten sowie
+  Durchläufe bis Level 300 bleiben fair und vollständig durchquerbar.
+- Weitere 15.000 Karten mit verteilten Seeds: keine fehlenden Hindernisse auf den
+  Einführungsstufen 2 bis 6. Renderer-, Weltdekorations- und Clippingprüfungen
+  bestehen mit den neuen Breiten.
+- Firmwareversion in `LEAP/src/Config.h` und im erzeugten App-Image bestätigt:
+  `1.0.0-beta.22`. ESP32-S3-N16R8-Build: 1.500.667 Byte Programm, 126.572 Byte
+  statischer RAM; App-Image 1.500.816 Byte. S3-Header, SHA-256 und OTA-Slotgrenze
+  bestanden. Reale Bildrate und Scrollgefühl bleiben am Gerät zu prüfen.
+
+
 ## Krabbenreise: wachsende Welt und Kameranachführung
 
 - Vollständige native Firmware-Regressionssuite bestanden. Die 4.500 Karten

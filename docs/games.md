@@ -248,8 +248,8 @@ laufen; das Ufer bildet keine neue Barriere und verändert keine Spielregel.
 
 ### Wachsende Karte, Kamera und Wegweiser
 
-Nach jeweils drei Leveln wächst die Welt um 70 Pixel: Level 1–3 haben 342 Pixel,
-Level 4–6 haben 412 Pixel, Level 7–9 haben 482 Pixel usw. Die Breite hängt nur vom
+Nach jeweils zwei Leveln wächst die Welt um 80 Pixel: Level 1–2 haben 342 Pixel,
+Level 3–4 haben 422 Pixel, Level 5–6 haben 502 Pixel usw. Die Breite hängt nur vom
 Level ab; wechselnde Kartenseeds ändern die erreichte Länge nicht. Spielfläche
 und Sidebar behalten ihre Größe. Start, Ziel, freier Korridor, Küste, Hindernisse
 und Muscheln werden innerhalb der jeweils vollständigen Welt erzeugt.
@@ -261,7 +261,7 @@ gehalten; Rücksetzen bleibt sichtbar. Jeder neue Level setzt die Kamera zurück
 Küste, Sandtextur, Pflanzen, Blasen und Spielobjekte sind in Weltkoordinaten
 verankert, während Levelanzeige und Muschelzähler fest auf dem Bildschirm bleiben.
 
-Am bisherigen Ziel bei Welt-X 319 erscheint ab Level 4 ein programmatisch
+Am bisherigen Ziel bei Welt-X 319 erscheint ab Level 3 ein programmatisch
 gezeichneter hölzerner Wegweiser mit Rechtspfeil. Weitere Wegweiser folgen im
 Abstand von 275 Pixeln, mit Abstand zum aktuellen Ziel. Ein dunkler Holzrahmen,
 eine helle Pfeilfläche und ein kräftiger Pfosten heben sie vom Sand ab. Sie sind
