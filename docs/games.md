@@ -225,8 +225,12 @@ mit einem Grundschulkind zu prüfen.
 
 ### Küstenlinie und Wasserbereiche
 
-Jede Karte erhält eine aus acht zufälligen Stützpunkten weich interpolierte
-Küstenlinie. Unterschiedlich tiefe Buchten können bis vier Pixel vor den unteren
+Jede Karte erhält eine aus acht Stützpunkten weich interpolierte Küstenlinie.
+Zufällige Positionen und Höhen variieren die Breite und Lage der Buchten: links,
+rechts, als Doppelbucht mit Landzunge oder als breite asymmetrische Bucht. Der
+Zufallszustand berücksichtigt auch die Levelnummer, sodass selbst derselbe
+Vorschau-Seed in aufeinanderfolgenden Leveln unterschiedliche Küsten erzeugt.
+Unterschiedlich tiefe Buchten können bis vier Pixel vor den unteren
 Rand reichen; Start und Ziel behalten ruhige Sandflächen. Stufen mit Quallen,
 Strömung oder Strudeln erhalten eine breite tiefe Bucht, damit die Wasserhabitate
 zusätzlich zum geschützten Durchgang ausreichend Platz bieten. Seichtes Wasser,

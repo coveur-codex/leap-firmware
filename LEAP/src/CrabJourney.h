@@ -34,7 +34,8 @@ struct CrabJourney {
   };
   Element elements[Capacity]{};
   Shell shells[3]{};
-  float shore[ShorePoints]{}, route[6]{}, x = 24, y = 78, worldWidth = ViewWidth, cameraX = 0;
+  float shore[ShorePoints]{}, shoreX[ShorePoints]{}, route[6]{},
+      x = 24, y = 78, worldWidth = ViewWidth, cameraX = 0;
   uint32_t seed = 1;
   unsigned level = 1;
   int count = 0, collected = 0, spent = 0;
@@ -54,9 +55,11 @@ struct CrabJourney {
   }
   // Smooth, monotone interpolation keeps coves rounded without overshooting their bounds.
   float shoreY(float xx) const {
-    float p = std::clamp(xx / worldWidth * (ShorePoints - 1), 0.0f, float(ShorePoints - 1));
-    int i = std::min(ShorePoints - 2, int(p));
-    float t = p - i;
+    xx = std::clamp(xx, 0.0f, worldWidth);
+    int i = 0;
+    while (i < ShorePoints - 2 && xx > shoreX[i + 1])
+      ++i;
+    float t = (xx - shoreX[i]) / (shoreX[i + 1] - shoreX[i]);
     t = t * t * (3 - 2 * t);
     return shore[i] + (shore[i + 1] - shore[i]) * t;
   }
@@ -74,7 +77,7 @@ struct CrabJourney {
     float minShore = std::min(shoreY(x - radius), shoreY(x + radius));
     // A monotone shore segment has its minimum at an endpoint or a control point.
     for (int i = 0; i < ShorePoints; ++i) {
-      float xx = i * worldWidth / (ShorePoints - 1);
+      float xx = shoreX[i];
       if (xx >= x - radius && xx <= x + radius)
         minShore = std::min(minShore, shore[i]);
     }
@@ -127,16 +130,51 @@ struct CrabJourney {
       route[i] = random(56, 110);
     x = 24;
     y = route[0];
+    // Mix the level into the coastline seed: even a reused preview seed gets a new coast.
+    seed ^= level * 0x9e3779b9u;
+    if (!seed)
+      seed = 1;
+    shoreX[0] = 0;
+    shoreX[1] = worldWidth * .16f;
+    shoreX[2] = worldWidth * random(.22f, .28f);
+    shoreX[3] = worldWidth * random(.43f, .50f);
+    shoreX[4] = worldWidth * random(.57f, .63f);
+    shoreX[5] = worldWidth * random(.77f, .80f);
+    shoreX[6] = worldWidth * .87f;
+    shoreX[7] = worldWidth;
     shore[0] = shore[ShorePoints - 1] = 38;
     shore[1] = random(38, 48);
     shore[6] = random(38, 48);
-    shore[2] = random(64, 110);
-    shore[5] = random(64, 110);
-    // Wide bays may reach almost to the bottom, while start and goal stay sandy.
-    // Aquatic stages need a broad deep bay; other stages also allow shallower coastlines.
+    // Shift both bay location and width, with headlands instead of a fixed central bowl.
+    // A broad deep section leaves room for aquatic features beside the protected route.
     float bayMin = level == 3 || level >= 5 ? 136 : 84;
-    shore[3] = random(bayMin, 138);
-    shore[4] = random(bayMin, 138);
+    // Cycle the profile family per level; the seed chooses the initial family.
+    switch ((randomSeed + level) % 4) {
+    case 0: // Left bay.
+      shore[2] = random(bayMin, 138);
+      shore[3] = random(bayMin, 138);
+      shore[4] = random(60, 95);
+      shore[5] = random(50, 95);
+      break;
+    case 1: // Right bay.
+      shore[2] = random(50, 95);
+      shore[3] = random(60, 95);
+      shore[4] = random(bayMin, 138);
+      shore[5] = random(bayMin, 138);
+      break;
+    case 2: // Two bays separated by a headland.
+      shore[2] = random(bayMin, 138);
+      shore[3] = random(bayMin, 138);
+      shore[4] = random(65, 95);
+      shore[5] = random(110, 138);
+      break;
+    default: // Broad, asymmetric bay.
+      shore[2] = random(100, 130);
+      shore[3] = random(bayMin, 138);
+      shore[4] = random(bayMin, 138);
+      shore[5] = random(80, 118);
+      break;
+    }
 
     Type pool[3] = {Urchin, Urchin, Urchin};
     int types = 1;

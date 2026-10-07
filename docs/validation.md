@@ -1,7 +1,24 @@
 # Durchgeführte Prüfungen
 
-Stand: 2026-10-06. Krabbenreise und bisherige Firmwaremodule.
+Stand: 2026-10-07. Krabbenreise und bisherige Firmwaremodule.
 
+
+
+## Krabbenreise: prozedurale Küste und Wasserhabitate
+
+- Native Firmware-Regressionssuite bestanden. Die 4.500 Karten prüfen zusätzlich
+  die vollständigen Wasserhabitate von Quallen, Strömung und Strudeln inklusive
+  Animation, Grafik und Küstenabstand; freie Wege und Einführungsstufen bleiben
+  erhalten. Eine Senke innerhalb des Habitats wird ebenfalls erkannt.
+- Bei gleichem Seed unterscheiden sich aufeinanderfolgende Level sichtbar;
+  derselbe Seed und dasselbe Level bleiben reproduzierbar. Vorschauen mit Seed
+  734 zeigen unterschiedliche Buchten für Level 3, 5 und 6.
+- Zusätzliche Simulation mit 15.000 Karten und über den 32-Bit-Bereich verteilten
+  Seeds: alle Stufen 2 bis 6 enthalten ihren neu eingeführten Hindernistyp.
+- Renderergrenzen bei Kameraversatz und bestehende Games-/Input-Regressionen
+  bestanden. ESP32-S3-N16R8-Cross-Build: 1.499.683 Byte Programm, 126.572 Byte
+  statischer RAM; App-Image 1.499.824 Byte, S3-Header, SHA-256 und OTA-Slotgrenze
+  bestanden. Reale Bildrate und Displayabnahme bleiben am Gerät zu prüfen.
 
 ## Krabbenreise
 

@@ -71,13 +71,28 @@ int main() {
   b.start(5, 2);
   assert(a.route[1] != b.route[1]);
   assert(a.shore[2] != b.shore[2]);
+  // Reusing the same seed across levels must still produce visibly different coastlines.
+  for (unsigned level = 1; level < 30; ++level) {
+    a.start(level, 734);
+    b.start(level + 1, 734);
+    float difference = 0;
+    for (int xx = 0; xx <= a.ViewWidth; ++xx)
+      difference += std::abs(a.shoreY(xx) - b.shoreY(xx));
+    assert(difference / a.ViewWidth > 3);
+    CrabJourney repeat;
+    repeat.start(level, 734);
+    for (int xx = 0; xx <= a.ViewWidth; ++xx)
+      assert(a.shoreY(xx) == repeat.shoreY(xx));
+  }
   // A shoreline dip inside a footprint must be checked, even when both ends are water.
   for (auto &height : a.shore)
     height = 138;
   a.shore[3] = 40;
+  a.shoreX[2] = a.shoreX[3] - 24;
+  a.shoreX[4] = a.shoreX[3] + 24;
   CrabJourney::Element waterAnimal;
   waterAnimal.type = CrabJourney::Whirlpool;
-  waterAnimal.x = 3 * a.worldWidth / (a.ShorePoints - 1);
+  waterAnimal.x = a.shoreX[3];
   waterAnimal.y = 45;
   waterAnimal.radius = 16;
   assert(waterAnimal.y + waterAnimal.radius + a.ShoreMargin < a.shoreY(waterAnimal.x - 16));
