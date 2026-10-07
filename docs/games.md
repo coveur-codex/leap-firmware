@@ -222,3 +222,22 @@ die echte Games-Integration und Renderergrenzen mit Kameraversatz; Input-Tests
 prüfen gehaltene Tasten bei voller Queue und im Polling-Fallback.
 Am Gerät bleiben Bildrate, Tastenlatenz, Sounds, Lesbarkeit und die Schwierigkeit
 mit einem Grundschulkind zu prüfen.
+
+### Küstenlinie und Wasserbereiche
+
+Jede Karte erhält eine aus acht zufälligen Stützpunkten weich interpolierte
+Küstenlinie. Unterschiedlich tiefe Buchten können bis vier Pixel vor den unteren
+Rand reichen; Start und Ziel behalten ruhige Sandflächen. Stufen mit Quallen,
+Strömung oder Strudeln erhalten eine breite tiefe Bucht, damit die Wasserhabitate
+zusätzlich zum geschützten Durchgang ausreichend Platz bieten. Seichtes Wasser,
+ein schimmernder Schaumsaum und feuchter Sand markieren das Ufer. Sandtextur und
+Blasen erscheinen auf dem jeweils passenden Untergrund.
+
+Generator und Renderer verwenden dieselbe Küstengeometrie in Weltkoordinaten.
+Quallen, Strudel und Strömungen werden ausschließlich im Wasser platziert.
+Geprüft werden der komplette Bewegungsbereich und die größeren sichtbaren
+Grafiken (einschließlich Pulsieren/Tentakeln bzw. Strudelinfluss), mit drei Pixeln
+Abstand zur Küste. Auch Senken zwischen den äußeren Kanten eines Habitats werden
+berücksichtigt. Die Küste bleibt während der Animation geometrisch stabil; nur
+die Brandung schimmert. Die Krabbe kann weiterhin frei auf beiden Untergründen
+laufen; das Ufer bildet keine neue Barriere und verändert keine Spielregel.

@@ -16,6 +16,8 @@ struct CrabJourney {
   inline static constexpr Feature Features[] = {{1, 7, 0, 0},   {1, 5, 3, .22f}, {3, 7, 9, .7f},
                                                 {2, 7, 2, .6f}, {3, 13, 0, .7f}, {5, 16, 0, .7f}};
   static constexpr float SuccessSeconds = 2.5f, ProtectionSeconds = 1.8f;
+  static constexpr int ShorePoints = 8, WaterTop = 16;
+  static constexpr float ShoreMargin = 3;
 
   struct Element {
     Type type = Urchin;
@@ -32,7 +34,7 @@ struct CrabJourney {
   };
   Element elements[Capacity]{};
   Shell shells[3]{};
-  float route[6]{}, x = 24, y = 78, worldWidth = ViewWidth, cameraX = 0;
+  float shore[ShorePoints]{}, route[6]{}, x = 24, y = 78, worldWidth = ViewWidth, cameraX = 0;
   uint32_t seed = 1;
   unsigned level = 1;
   int count = 0, collected = 0, spent = 0;
@@ -49,6 +51,38 @@ struct CrabJourney {
   }
   static float distance(float ax, float ay, float bx, float by) {
     return std::hypot(ax - bx, ay - by);
+  }
+  // Smooth, monotone interpolation keeps coves rounded without overshooting their bounds.
+  float shoreY(float xx) const {
+    float p = std::clamp(xx / worldWidth * (ShorePoints - 1), 0.0f, float(ShorePoints - 1));
+    int i = std::min(ShorePoints - 2, int(p));
+    float t = p - i;
+    t = t * t * (3 - 2 * t);
+    return shore[i] + (shore[i + 1] - shore[i]) * t;
+  }
+  bool waterAt(float xx, float yy) const {
+    return yy >= WaterTop && yy < shoreY(xx);
+  }
+  static bool aquatic(Type type) {
+    return type == Jelly || type == Whirlpool || type == Current;
+  }
+  static float waterRadius(const Element &e) {
+    // Includes the widest pulsing bell, tentacles, current arrows and whirlpool influence.
+    return e.type == Jelly ? 14 : e.type == Current ? 18 : e.radius;
+  }
+  float waterBottom(float x, float radius) const {
+    float minShore = std::min(shoreY(x - radius), shoreY(x + radius));
+    // A monotone shore segment has its minimum at an endpoint or a control point.
+    for (int i = 0; i < ShorePoints; ++i) {
+      float xx = i * worldWidth / (ShorePoints - 1);
+      if (xx >= x - radius && xx <= x + radius)
+        minShore = std::min(minShore, shore[i]);
+    }
+    return minShore;
+  }
+  bool waterPlacement(const Element &e) const {
+    float r = waterRadius(e) + e.amplitude;
+    return e.y - r >= WaterTop + ShoreMargin && e.y + r + ShoreMargin <= waterBottom(e.x, r);
   }
   float routeY(float xx) const {
     float p = std::clamp((xx - 24) / (worldWidth - 48) * 5, 0.0f, 5.0f);
@@ -69,6 +103,8 @@ struct CrabJourney {
   }
   bool placement(const Element &e) const {
     float r = e.envelope();
+    if (aquatic(e.type) && !waterPlacement(e))
+      return false;
     if (e.x - r < 62 || e.x + r > worldWidth - 44 || e.y - r < 25 || e.y + r > 138 ||
         routeDistance(e.x, e.y) < r + CrabRadius + CorridorHalf)
       return false;
@@ -91,6 +127,17 @@ struct CrabJourney {
       route[i] = random(56, 110);
     x = 24;
     y = route[0];
+    shore[0] = shore[ShorePoints - 1] = 38;
+    shore[1] = random(38, 48);
+    shore[6] = random(38, 48);
+    shore[2] = random(64, 110);
+    shore[5] = random(64, 110);
+    // Wide bays may reach almost to the bottom, while start and goal stay sandy.
+    // Aquatic stages need a broad deep bay; other stages also allow shallower coastlines.
+    float bayMin = level == 3 || level >= 5 ? 136 : 84;
+    shore[3] = random(bayMin, 138);
+    shore[4] = random(bayMin, 138);
+
     Type pool[3] = {Urchin, Urchin, Urchin};
     int types = 1;
     // Introduce each feature, then select only two or three types in later worlds.
@@ -106,7 +153,7 @@ struct CrabJourney {
     int budget = std::min(BudgetMax, BudgetBase + int(std::min(level, 100u) - 1) * BudgetGrowth);
     for (int attempt = 0; attempt < 600 && count < Capacity; ++attempt) {
       // Prioritize the newly introduced type so it is actually visible when space permits.
-      Type t = attempt < 120 && types > 1 && count == 0 ? pool[1] : pool[next() % types];
+      Type t = attempt < 400 && types > 1 && count == 0 ? pool[1] : pool[next() % types];
       if (spent + cost(t) > budget)
         continue;
       Element e;
@@ -120,6 +167,16 @@ struct CrabJourney {
         e.speed += random(-.15f, .15f) + std::min(level, 12u) * .025f;
       e.phase = random(0, 6.28f);
       e.horizontal = next() % 2;
+      if (aquatic(t)) {
+        float r = waterRadius(e) + e.amplitude;
+        float low = std::max(25 + e.envelope(), WaterTop + r + ShoreMargin);
+        float high = std::min(138 - e.envelope(), waterBottom(e.x, r) - r - ShoreMargin - .01f);
+        if (high < low)
+          continue;
+        // Favor the upper/lower side of a bay, away from the protected crossing.
+        float inset = random(0, std::min(2.0f, (high - low) * .5f));
+        e.y = next() % 2 ? low + inset : high - inset;
+      }
       if (!placement(e))
         continue;
       e.px = e.x;

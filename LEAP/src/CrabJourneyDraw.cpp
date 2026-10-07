@@ -164,8 +164,18 @@ void drawCrabJourney(Arduino_GFX &gfx, const CrabJourney &w, int left) {
   gfx.fillRect(left, 0, 342, 142, Sand);
   gfx.fillRect(left, 0, 342, 8, 0xa71f);
   gfx.fillRect(left, 8, 342, 8, 0x4ddb);
-  gfx.fillRect(left, 16, 342, 17, 0x34d7);
-  gfx.fillRect(left, 33, 342, 9, 0x8dd6);
+  int coast[CrabJourney::ViewWidth];
+  for (int xx = 0; xx < CrabJourney::ViewWidth; ++xx) {
+    coast[xx] = int(w.shoreY(xx + w.cameraX));
+    int shore = coast[xx];
+    gfx.fillRect(left + xx, CrabJourney::WaterTop, 1, shore - 12 - CrabJourney::WaterTop, 0x34d7);
+    gfx.fillRect(left + xx, shore - 12, 1, 7, 0x4dba);
+    gfx.fillRect(left + xx, shore - 5, 1, 5, 0x8dd6);
+    gfx.fillRect(left + xx, shore, 1, std::min(4, CrabJourney::ViewHeight - shore), 0xe5d2);
+    // The surf shimmers inside the fixed habitat boundary; it never exposes an animal to sand.
+    if (std::sin(t * 2 + (xx + w.cameraX) * .09f) > -.2f)
+      b.pixel(xx, shore - 1, 0xe7ff);
+  }
   for (int i = 0; i < 18; ++i)
     b.line(i * 21, 11 + int(std::sin(t + i) * 2), i * 21 + 12, 11 + int(std::sin(t + i) * 2),
            0xb75f);
@@ -175,14 +185,18 @@ void drawCrabJourney(Arduino_GFX &gfx, const CrabJourney &w, int left) {
     texture = texture * 1664525u + 1013904223u;
     int x = texture % 342;
     int y = 43 + (texture >> 16) % 96;
-    b.pixel(x, y, 0xcced);
-    if (i % 7 == 0)
-      b.oval(x, y, 2, 1, 0xbdf0);
+    if (y >= coast[x] + 4) {
+      b.pixel(x, y, 0xcced);
+      if (i % 7 == 0)
+        b.oval(x, y, 2, 1, 0xbdf0);
+    }
   }
   for (int i = 0; i < 7; ++i) {
     int x = 12 + i * 49, y = 38 + int(std::fmod(t * 8 + i * 17, 91.0f));
-    b.pixel(x, y, 0xefff);
-    b.pixel(x + 1, y - 1, 0xefff);
+    if (w.waterAt(x + w.cameraX, y)) {
+      b.pixel(x, y, 0xefff);
+      b.pixel(x + 1, y - 1, 0xefff);
+    }
   }
   for (int i = 0; i < 4; ++i) {
     int xx = 64 + i * 68, yy = 138 - i % 2 * 4;
