@@ -86,18 +86,58 @@ int main() {
   journey.tick();
   journey.start("crab_journey");
   // Exercise every sprite and camera clipping with the real renderer.
-  for (unsigned level = 1; level <= 12; ++level) {
+  for (unsigned level : {1u, 3u, 4u, 6u, 7u, 12u, 31u, 100u, 300u}) {
     CrabJourney world;
     world.start(level, level * 723);
-    for (float camera : {0.0f, 48.0f, -16.0f}) {
+    world.update(.04f, 0);
+    for (float camera : {0.0f, 48.0f, -16.0f, world.worldWidth - world.ViewWidth}) {
       world.cameraX = camera;
-      world.update(.04f, 0);
       journeyGfx.rects.clear();
       drawCrabJourney(journeyGfx, world, 86);
       for (auto r : journeyGfx.rects)
         assert(r.x >= 86 && r.y >= 0 && r.x + r.w <= 428 && r.y + r.h <= 142);
     }
   }
+  // The waypoint is drawn at the former goal and moves with the world, not the HUD.
+  CrabJourney signs;
+  signs.start(16, 734);
+  signs.count = 0;
+  for (auto &shell : signs.shells)
+    shell.collected = true;
+  auto pixelAt = [&](int x, int y) {
+    uint16_t color = 0;
+    for (auto r : journeyGfx.rects)
+      if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h)
+        color = r.color;
+    return color;
+  };
+  for (float camera : {0.0f, 48.0f, signs.worldWidth - signs.ViewWidth}) {
+    signs.cameraX = camera;
+    journeyGfx.rects.clear();
+    drawCrabJourney(journeyGfx, signs, 86);
+    for (unsigned i = 0; i < signs.signCount(); ++i) {
+      int xx = 86 + int(signs.signX(i) - camera) - 11;
+      if (xx >= 86 && xx < 428)
+        assert(pixelAt(xx, 109) == 0xff79);
+    }
+  }
+  // Pixels in the overlap of two camera views must describe the same world scenery.
+  auto frame = [&](float camera) {
+    signs.cameraX = camera;
+    journeyGfx.rects.clear();
+    drawCrabJourney(journeyGfx, signs, 86);
+    std::vector<uint16_t> pixels(signs.ViewWidth * signs.ViewHeight);
+    for (auto r : journeyGfx.rects)
+      for (int yy = r.y; yy < r.y + r.h; ++yy)
+        for (int xx = r.x; xx < r.x + r.w; ++xx)
+          pixels[yy * signs.ViewWidth + xx - 86] = r.color;
+    return pixels;
+  };
+  auto beforeScroll = frame(0), afterScroll = frame(48);
+  for (int yy = 43; yy < signs.ViewHeight; ++yy)
+    for (int xx = 70; xx < 330; ++xx)
+      assert(beforeScroll[yy * signs.ViewWidth + xx] ==
+             afterScroll[yy * signs.ViewWidth + xx - 48]);
   journey.close();
   Games kitchenGame;
   kitchenGame.begin();

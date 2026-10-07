@@ -211,8 +211,8 @@ Audioqueue. Lautstärke und Stummschaltung bleiben unverändert.
 `CrabJourney.h` enthält plattformunabhängige Generierung/Simulation und zentrale
 Parameter (Tempo, Budget, Kapazität, Elementkosten, Radien, Bewegung, Schutzzeit).
 `CrabJourneyDraw.cpp` enthält die Darstellung. Weltbreite und Kameraversatz sind
-von den Bildschirmkoordinaten getrennt; V1 scrollt nicht und erzeugt keine
-Endless-Abschnitte. Feste Arrays begrenzen Speicher und Renderaufwand; kein
+von den Bildschirmkoordinaten getrennt. Feste Arrays begrenzen Speicher und
+Renderaufwand; kein
 Grafikpaket, keine neue Speicherung und keine Netzwerkabhängigkeit.
 
 Automatisch geprüft: 4.500 Karten auf 30 Stufen mit echtem Durchlaufen des freien
@@ -245,3 +245,26 @@ Abstand zur Küste. Auch Senken zwischen den äußeren Kanten eines Habitats wer
 berücksichtigt. Die Küste bleibt während der Animation geometrisch stabil; nur
 die Brandung schimmert. Die Krabbe kann weiterhin frei auf beiden Untergründen
 laufen; das Ufer bildet keine neue Barriere und verändert keine Spielregel.
+
+### Wachsende Karte, Kamera und Wegweiser
+
+Nach jeweils drei Leveln wächst die Welt um 70 Pixel: Level 1–3 haben 342 Pixel,
+Level 4–6 haben 412 Pixel, Level 7–9 haben 482 Pixel usw. Die Breite hängt nur vom
+Level ab; wechselnde Kartenseeds ändern die erreichte Länge nicht. Spielfläche
+und Sidebar behalten ihre Größe. Start, Ziel, freier Korridor, Küste, Hindernisse
+und Muscheln werden innerhalb der jeweils vollständigen Welt erzeugt.
+
+Auf längeren Karten folgt die Kamera horizontal in beide Richtungen. Zwischen
+40 und 60 Prozent der sichtbaren Breite kann die Krabbe sich bewegen, ohne die
+Kamera zu verschieben. Am Anfang und Ende wird die Kamera an den Weltgrenzen
+gehalten; Rücksetzen bleibt sichtbar. Jeder neue Level setzt die Kamera zurück.
+Küste, Sandtextur, Pflanzen, Blasen und Spielobjekte sind in Weltkoordinaten
+verankert, während Levelanzeige und Muschelzähler fest auf dem Bildschirm bleiben.
+
+Am bisherigen Ziel bei Welt-X 319 erscheint ab Level 4 ein programmatisch
+gezeichneter hölzerner Wegweiser mit Rechtspfeil. Weitere Wegweiser folgen im
+Abstand von 275 Pixeln, mit Abstand zum aktuellen Ziel. Ein dunkler Holzrahmen,
+eine helle Pfeilfläche und ein kräftiger Pfosten heben sie vom Sand ab. Sie sind
+rein dekorativ und blockieren den Weg nicht. Die Zielmuschel steht ausschließlich
+am Ende der aktuellen Welt. Nur sichtbare Landschaftsabschnitte und Wegweiser
+werden gezeichnet, sodass ihre Anzahl pro Bild begrenzt bleibt.
