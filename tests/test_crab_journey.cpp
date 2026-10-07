@@ -4,10 +4,18 @@
 using leap::CrabJourney;
 int main() {
   unsigned seen[6]{};
+  bool deepBay = false, variedShore = false;
   for (unsigned level = 1; level <= 30; ++level)
     for (uint32_t seed = 1; seed <= 150; ++seed) {
       CrabJourney w;
       w.start(level, seed);
+      assert(w.shoreY(24) < 50 && w.shoreY(w.worldWidth - 24) < 50);
+      for (float xx = 0; xx <= w.worldWidth; xx += 1) {
+        float coast = w.shoreY(xx);
+        assert(coast >= 38 && coast <= 138);
+        deepBay |= coast > 135;
+        variedShore |= coast > w.shoreY(24) + 60;
+      }
       assert(w.count > 0 && w.count <= w.Capacity);
       assert(w.spent <= std::min(w.BudgetMax, w.BudgetBase + int(level - 1) * w.BudgetGrowth));
       for (int i = 0; i < w.count; ++i) {
@@ -19,6 +27,14 @@ int main() {
           assert(w.distance(e.x, e.y, w.elements[j].x, w.elements[j].y) >=
                  e.envelope() + w.elements[j].envelope() + 5);
         assert(unsigned(e.type) <= std::min(5u, level - 1));
+        if (w.aquatic(e.type)) {
+          float swept = w.waterRadius(e) + e.amplitude;
+          assert(e.y - swept >= w.WaterTop + w.ShoreMargin);
+          // Independently sample the entire swept graphic/influence footprint, not just its centre.
+          for (float xx = e.x - swept; xx <= e.x + swept; xx += .5f)
+            assert(e.y + swept + w.ShoreMargin <= w.shoreY(xx) + .001f);
+          assert(e.y + swept + w.ShoreMargin <= w.shoreY(e.x + swept) + .001f);
+        }
       }
       if (level >= 2 && level <= 6) {
         bool introduced = false;
@@ -47,12 +63,41 @@ int main() {
       }
       assert(w.complete);
     }
+  assert(deepBay && variedShore);
   for (auto n : seen)
     assert(n > 0);
   CrabJourney a, b;
   a.start(5, 1);
   b.start(5, 2);
   assert(a.route[1] != b.route[1]);
+  assert(a.shore[2] != b.shore[2]);
+  // Reusing the same seed across levels must still produce visibly different coastlines.
+  for (unsigned level = 1; level < 30; ++level) {
+    a.start(level, 734);
+    b.start(level + 1, 734);
+    float difference = 0;
+    for (int xx = 0; xx <= a.ViewWidth; ++xx)
+      difference += std::abs(a.shoreY(xx) - b.shoreY(xx));
+    assert(difference / a.ViewWidth > 3);
+    CrabJourney repeat;
+    repeat.start(level, 734);
+    for (int xx = 0; xx <= a.ViewWidth; ++xx)
+      assert(a.shoreY(xx) == repeat.shoreY(xx));
+  }
+  // A shoreline dip inside a footprint must be checked, even when both ends are water.
+  for (auto &height : a.shore)
+    height = 138;
+  a.shore[3] = 40;
+  a.shoreX[2] = a.shoreX[3] - 24;
+  a.shoreX[4] = a.shoreX[3] + 24;
+  CrabJourney::Element waterAnimal;
+  waterAnimal.type = CrabJourney::Whirlpool;
+  waterAnimal.x = a.shoreX[3];
+  waterAnimal.y = 45;
+  waterAnimal.radius = 16;
+  assert(waterAnimal.y + waterAnimal.radius + a.ShoreMargin < a.shoreY(waterAnimal.x - 16));
+  assert(waterAnimal.y + waterAnimal.radius + a.ShoreMargin < a.shoreY(waterAnimal.x + 16));
+  assert(!a.waterPlacement(waterAnimal));
   a.start(1, 22);
   a.count = 0;
   a.x = 60;

@@ -16,6 +16,8 @@ struct CrabJourney {
   inline static constexpr Feature Features[] = {{1, 7, 0, 0},   {1, 5, 3, .22f}, {3, 7, 9, .7f},
                                                 {2, 7, 2, .6f}, {3, 13, 0, .7f}, {5, 16, 0, .7f}};
   static constexpr float SuccessSeconds = 2.5f, ProtectionSeconds = 1.8f;
+  static constexpr int ShorePoints = 8, WaterTop = 16;
+  static constexpr float ShoreMargin = 3;
 
   struct Element {
     Type type = Urchin;
@@ -32,7 +34,8 @@ struct CrabJourney {
   };
   Element elements[Capacity]{};
   Shell shells[3]{};
-  float route[6]{}, x = 24, y = 78, worldWidth = ViewWidth, cameraX = 0;
+  float shore[ShorePoints]{}, shoreX[ShorePoints]{}, route[6]{},
+      x = 24, y = 78, worldWidth = ViewWidth, cameraX = 0;
   uint32_t seed = 1;
   unsigned level = 1;
   int count = 0, collected = 0, spent = 0;
@@ -49,6 +52,40 @@ struct CrabJourney {
   }
   static float distance(float ax, float ay, float bx, float by) {
     return std::hypot(ax - bx, ay - by);
+  }
+  // Smooth, monotone interpolation keeps coves rounded without overshooting their bounds.
+  float shoreY(float xx) const {
+    xx = std::clamp(xx, 0.0f, worldWidth);
+    int i = 0;
+    while (i < ShorePoints - 2 && xx > shoreX[i + 1])
+      ++i;
+    float t = (xx - shoreX[i]) / (shoreX[i + 1] - shoreX[i]);
+    t = t * t * (3 - 2 * t);
+    return shore[i] + (shore[i + 1] - shore[i]) * t;
+  }
+  bool waterAt(float xx, float yy) const {
+    return yy >= WaterTop && yy < shoreY(xx);
+  }
+  static bool aquatic(Type type) {
+    return type == Jelly || type == Whirlpool || type == Current;
+  }
+  static float waterRadius(const Element &e) {
+    // Includes the widest pulsing bell, tentacles, current arrows and whirlpool influence.
+    return e.type == Jelly ? 14 : e.type == Current ? 18 : e.radius;
+  }
+  float waterBottom(float x, float radius) const {
+    float minShore = std::min(shoreY(x - radius), shoreY(x + radius));
+    // A monotone shore segment has its minimum at an endpoint or a control point.
+    for (int i = 0; i < ShorePoints; ++i) {
+      float xx = shoreX[i];
+      if (xx >= x - radius && xx <= x + radius)
+        minShore = std::min(minShore, shore[i]);
+    }
+    return minShore;
+  }
+  bool waterPlacement(const Element &e) const {
+    float r = waterRadius(e) + e.amplitude;
+    return e.y - r >= WaterTop + ShoreMargin && e.y + r + ShoreMargin <= waterBottom(e.x, r);
   }
   float routeY(float xx) const {
     float p = std::clamp((xx - 24) / (worldWidth - 48) * 5, 0.0f, 5.0f);
@@ -69,6 +106,8 @@ struct CrabJourney {
   }
   bool placement(const Element &e) const {
     float r = e.envelope();
+    if (aquatic(e.type) && !waterPlacement(e))
+      return false;
     if (e.x - r < 62 || e.x + r > worldWidth - 44 || e.y - r < 25 || e.y + r > 138 ||
         routeDistance(e.x, e.y) < r + CrabRadius + CorridorHalf)
       return false;
@@ -91,6 +130,52 @@ struct CrabJourney {
       route[i] = random(56, 110);
     x = 24;
     y = route[0];
+    // Mix the level into the coastline seed: even a reused preview seed gets a new coast.
+    seed ^= level * 0x9e3779b9u;
+    if (!seed)
+      seed = 1;
+    shoreX[0] = 0;
+    shoreX[1] = worldWidth * .16f;
+    shoreX[2] = worldWidth * random(.22f, .28f);
+    shoreX[3] = worldWidth * random(.43f, .50f);
+    shoreX[4] = worldWidth * random(.57f, .63f);
+    shoreX[5] = worldWidth * random(.77f, .80f);
+    shoreX[6] = worldWidth * .87f;
+    shoreX[7] = worldWidth;
+    shore[0] = shore[ShorePoints - 1] = 38;
+    shore[1] = random(38, 48);
+    shore[6] = random(38, 48);
+    // Shift both bay location and width, with headlands instead of a fixed central bowl.
+    // A broad deep section leaves room for aquatic features beside the protected route.
+    float bayMin = level == 3 || level >= 5 ? 136 : 84;
+    // Cycle the profile family per level; the seed chooses the initial family.
+    switch ((randomSeed + level) % 4) {
+    case 0: // Left bay.
+      shore[2] = random(bayMin, 138);
+      shore[3] = random(bayMin, 138);
+      shore[4] = random(60, 95);
+      shore[5] = random(50, 95);
+      break;
+    case 1: // Right bay.
+      shore[2] = random(50, 95);
+      shore[3] = random(60, 95);
+      shore[4] = random(bayMin, 138);
+      shore[5] = random(bayMin, 138);
+      break;
+    case 2: // Two bays separated by a headland.
+      shore[2] = random(bayMin, 138);
+      shore[3] = random(bayMin, 138);
+      shore[4] = random(65, 95);
+      shore[5] = random(110, 138);
+      break;
+    default: // Broad, asymmetric bay.
+      shore[2] = random(100, 130);
+      shore[3] = random(bayMin, 138);
+      shore[4] = random(bayMin, 138);
+      shore[5] = random(80, 118);
+      break;
+    }
+
     Type pool[3] = {Urchin, Urchin, Urchin};
     int types = 1;
     // Introduce each feature, then select only two or three types in later worlds.
@@ -106,7 +191,7 @@ struct CrabJourney {
     int budget = std::min(BudgetMax, BudgetBase + int(std::min(level, 100u) - 1) * BudgetGrowth);
     for (int attempt = 0; attempt < 600 && count < Capacity; ++attempt) {
       // Prioritize the newly introduced type so it is actually visible when space permits.
-      Type t = attempt < 120 && types > 1 && count == 0 ? pool[1] : pool[next() % types];
+      Type t = attempt < 400 && types > 1 && count == 0 ? pool[1] : pool[next() % types];
       if (spent + cost(t) > budget)
         continue;
       Element e;
@@ -120,6 +205,16 @@ struct CrabJourney {
         e.speed += random(-.15f, .15f) + std::min(level, 12u) * .025f;
       e.phase = random(0, 6.28f);
       e.horizontal = next() % 2;
+      if (aquatic(t)) {
+        float r = waterRadius(e) + e.amplitude;
+        float low = std::max(25 + e.envelope(), WaterTop + r + ShoreMargin);
+        float high = std::min(138 - e.envelope(), waterBottom(e.x, r) - r - ShoreMargin - .01f);
+        if (high < low)
+          continue;
+        // Favor the upper/lower side of a bay, away from the protected crossing.
+        float inset = random(0, std::min(2.0f, (high - low) * .5f));
+        e.y = next() % 2 ? low + inset : high - inset;
+      }
       if (!placement(e))
         continue;
       e.px = e.x;
