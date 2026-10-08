@@ -10,6 +10,7 @@ public:
   inline static std::map<std::string, std::vector<uint8_t>> bytes;
   inline static std::map<std::string, int> ints;
   inline static bool failWrites = false;
+  inline static std::map<std::string, unsigned> writes;
   bool begin(const char *name, bool) {
     space = name;
     return true;
@@ -25,6 +26,7 @@ public:
     return n;
   }
   size_t putBytes(const char *key, const void *source, size_t n) {
+    ++writes[space + key];
     if (failWrites) return 0;
     auto p = static_cast<const uint8_t *>(source);
     bytes[space + key] = {p, p + n};

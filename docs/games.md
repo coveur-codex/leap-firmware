@@ -170,7 +170,8 @@ pro 40-ms-Frame), ohne Bewegungsraster; diagonale Bewegung ist normalisiert.
 Die entprellten gehaltenen Richtungen werden unabhängig von der Ereignisqueue
 übergeben. Loslassen stoppt die Bewegung. Linke Navigation, Zurück, Sperren und
 Konfigurationswechsel behalten ihren bisherigen Ablauf. Rechts Mitte ist nicht
-zum Bewegen erforderlich. Bei einem neuen Spiel beginnt die Reise auf Level 1.
+zum Bewegen erforderlich. Beim ersten Start beginnt die Reise auf Level 1;
+später wird das gespeicherte Level fortgesetzt.
 
 Die volle Fläche rechts der unveränderten 86-Pixel-Sidebar wird genutzt: 342×142.
 Grafiken entstehen ausschließlich aus Zeichencode: Comic-Krabbe, gewölbte Quallen
@@ -220,7 +221,7 @@ Parameter (Tempo, Budget, Kapazität, Elementkosten, Radien, Bewegung, Schutzzei
 `CrabJourneyDraw.cpp` enthält die Darstellung. Weltbreite und Kameraversatz sind
 von den Bildschirmkoordinaten getrennt. Feste Arrays begrenzen Speicher und
 Renderaufwand; kein
-Grafikpaket, keine neue Speicherung und keine Netzwerkabhängigkeit.
+Grafikpaket und keine Netzwerkabhängigkeit.
 
 Automatisch geprüft: 4.500 Karten auf 30 Stufen mit echtem Durchlaufen des freien
 Wegs, Budget/Abstände, Zufallsvariation, kontinuierliche Bewegung, Sammeln,
@@ -275,3 +276,20 @@ eine helle Pfeilfläche und ein kräftiger Pfosten heben sie vom Sand ab. Sie si
 rein dekorativ und blockieren den Weg nicht. Die Zielmuschel steht ausschließlich
 am Ende der aktuellen Welt. Nur sichtbare Landschaftsabschnitte und Wegweiser
 werden gezeichnet, sodass ihre Anzahl pro Bild begrenzt bleibt.
+
+### Fortschritt speichern und Reise zurücksetzen
+
+Level und Kartenseed werden in NVS (`leap-games`, Schlüssel `crab`) gespeichert.
+Beim Wiederöffnen oder nach einem Neustart beginnt das zuletzt erreichte Level
+von vorn auf derselben Karte; Position und Muscheln innerhalb des Levels beginnen
+neu. Ein erfolgreich abgeschlossenes Level speichert sofort das nächste Level,
+noch während der Erfolgsanimation. Der Spielstand benötigt 16 Byte, mit
+Formatversion und Prüfsumme. Ungültige Daten starten eine neue Reise. Gespeichert
+wird beim ersten Start, bei Levelabschluss und beim bestätigten Rücksetzen.
+Fehlgeschlagene Schreibversuche bleiben ausstehend, werden nach fünf Sekunden
+und beim Schließen erneut versucht; bis dahin erscheint „Speichern...“.
+
+Rechts Mitte öffnet eine pausierte Rücksetz-Abfrage, zunächst mit „Nein“ ausgewählt.
+Rechts/Runter wählt „Ja“, Links/Hoch wählt „Nein“, rechts Mitte bestätigt.
+Links Mitte bricht die Abfrage ab. Nur das bestätigte „Ja“ speichert Level 1 mit
+neuer Karte. Linke Seitennavigation und langes Halten zum Sperren bleiben verfügbar.

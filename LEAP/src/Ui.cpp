@@ -832,6 +832,8 @@ void Ui::input(const InputEvent &e) {
     }
     return;
   }
+  if (!locked && !menu && gameOpen && game.isCrabJourney() && game.crabInput(e))
+    return;
   // Only the kitchen uses the additional hold; other pages keep one long action.
   if (e.longPress && e.heldMs >= Input::ExtendedCenterHoldMs)
     return;
