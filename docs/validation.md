@@ -4,6 +4,24 @@ Stand: 2026-10-08. Krabbenreise und bisherige Firmwaremodule.
 
 
 
+## Krabbenreise: gespeicherter Fortschritt und Reset (beta.23)
+
+- Vollständige native Firmware-Regressionssuite bestanden. Die echte Games-Klasse
+  speichert das nächste Level bereits beim Erfolg und lädt nach simuliertem
+  Neustart die identische Kartenzeichnung aus Level und Seed. Bewegung und
+  normale Wiederöffnung erzeugen keine zusätzlichen NVS-Schreibvorgänge.
+- Pausierte Rücksetz-Abfrage mit „Nein“ als Vorauswahl, Bestätigung, Abbruch,
+  dauerhaft gespeicherter Neustart bei Level 1, unveränderte linke Navigation
+  und Zuständigkeit des globalen langen Mitteltastendrucks geprüft.
+- Verkürzte, beschädigte, unbekannte und semantisch ungültige Spielstände werden
+  verworfen. Fehlgeschlagene Erst-/Reset-Schreibvorgänge behalten ihre Änderung
+  im RAM und werden nach fünf Sekunden erneut versucht, auch nach Schließen.
+- ESP32-S3-N16R8-Build: 1.501.939 Byte Programm, 126.588 Byte statischer RAM;
+  App-Image 1.502.080 Byte, S3-Header, SHA-256 und OTA-Slotgrenze bestanden.
+  `1.0.0-beta.23` im erzeugten Image bestätigt. Physischer NVS-/Tasten-/Neustarttest
+  und Spielgefühl bleiben am Gerät zu prüfen.
+
+
 ## Krabbenreise: anspruchsvollere Hindernisse (beta.23)
 
 - Vollständige native Firmware-Regressionssuite bestanden. Seeigel setzen die
