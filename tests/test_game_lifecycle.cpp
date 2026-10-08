@@ -50,6 +50,12 @@ static PetState savedPet() {
   memcpy(&p, data.data(), sizeof(p));
   return p;
 }
+static CrabJourneyProgress savedCrab() {
+  CrabJourneyProgress progress;
+  const auto &bytes = Preferences::bytes["leap-gamescrab"];
+  assert(progress.decode(bytes.data(), bytes.size()));
+  return progress;
+}
 int main() {
   Arduino_GFX gfx;
   // Real integration: continuous held input, safe exit/re-entry and full-height viewport.
@@ -69,10 +75,43 @@ int main() {
     witness.update(.04f, mask);
   }
   assert(witness.complete);
+  assert(savedCrab().level == 2); // Persist success before the celebration finishes.
+  unsigned checkpointWrites = Preferences::writes["leap-gamescrab"];
+  assert(checkpointWrites == 2); // First map + next level; no writes during movement.
+  Games powerCycle;
+  powerCycle.begin();
+  powerCycle.start("crab_journey");
+  Arduino_GFX restored;
+  restored.recordAll = true;
+  powerCycle.draw(restored, 94, 10);
+  assert(restored.text.find("Krabbenreise 2") != std::string::npos);
+  CrabJourney expectedMap;
+  expectedMap.start(savedCrab().level, savedCrab().seed);
+  Arduino_GFX expectedFrame;
+  expectedFrame.recordAll = true;
+  drawCrabJourney(expectedFrame, expectedMap, 86);
+  assert(restored.rects.size() == expectedFrame.rects.size());
+  for (size_t i = 0; i < restored.rects.size(); ++i) {
+    auto actual = restored.rects[i], expected = expectedFrame.rects[i];
+    assert(actual.x == expected.x && actual.y == expected.y && actual.w == expected.w &&
+           actual.h == expected.h && actual.color == expected.color);
+  }
+  powerCycle.close();
   Arduino_GFX journeyGfx;
   journeyGfx.recordAll = true;
   journey.draw(journeyGfx, 94, 10);
   assert(journeyGfx.text.find("Krabbenreise 1") != std::string::npos);
+  // Opening the reset dialog pauses even the success timer; default confirmation cancels.
+  auto checkpoint = Preferences::bytes["leap-gamescrab"];
+  assert(journey.crabInput({true, Key::Center, false}));
+  fakeNow += 5000;
+  journey.tick();
+  journeyGfx.text.clear();
+  journey.draw(journeyGfx, 94, 10);
+  assert(journeyGfx.text.find("Krabbenreise 1") != std::string::npos);
+  assert(journeyGfx.text.find("> Nein") != std::string::npos);
+  assert(journey.crabInput({true, Key::Center, false}));
+  assert(Preferences::bytes["leap-gamescrab"] == checkpoint);
   for (int i = 0; i < 65; ++i) {
     fakeNow += 40;
     journey.tick();
@@ -80,11 +119,84 @@ int main() {
   journeyGfx.text.clear();
   journey.draw(journeyGfx, 94, 10);
   assert(journeyGfx.text.find("Krabbenreise 2") != std::string::npos);
+  assert(Preferences::writes["leap-gamescrab"] == checkpointWrites);
   journey.close();
   assert(!journey.active());
   fakeNow += 5000;
   journey.tick();
   journey.start("crab_journey");
+  // Reopening in the same session preserves both level and the exact generated map seed.
+  assert(savedCrab().level == 2);
+  journeyGfx.text.clear();
+  journey.draw(journeyGfx, 94, 10);
+  assert(journeyGfx.text.find("Krabbenreise 2") != std::string::npos);
+  assert(journey.crabInput({true, Key::Center, false}));
+  assert(journey.crabInput({true, Key::Right, false}));
+  assert(journey.crabInput({false, Key::Center, false})); // Cancel after choosing Yes.
+  assert(Preferences::bytes["leap-gamescrab"] == checkpoint);
+  assert(!journey.crabInput({false, Key::Center, true, 900})); // Global lock still owns this.
+  assert(!journey.crabInput({false, Key::Right, false})); // Sidebar navigation still owns this.
+  assert(journey.crabInput({true, Key::Center, false}));
+  assert(journey.crabInput({true, Key::Down, false}));
+  assert(journey.crabInput({true, Key::Center, false}));
+  assert(savedCrab().level == 1 && savedCrab().seed != CrabJourneyProgress::read(checkpoint.data() + 8));
+  Games resetReboot;
+  resetReboot.begin();
+  resetReboot.start("crab_journey");
+  restored.text.clear();
+  resetReboot.draw(restored, 94, 10);
+  assert(restored.text.find("Krabbenreise 1") != std::string::npos);
+  resetReboot.close();
+  // Invalid/truncated/unknown-version data and invalid semantic fields fall back safely.
+  for (int corruption = 0; corruption < 6; ++corruption) {
+    auto damaged = checkpoint;
+    if (corruption == 0) damaged.pop_back();
+    if (corruption == 1) damaged[2] = 2;
+    if (corruption == 2) damaged[8] ^= 1;
+    if (corruption >= 3) {
+      CrabJourneyProgress invalid;
+      invalid.level = corruption == 3 ? 0 : corruption == 4 ? 70000 : 1;
+      invalid.seed = corruption == 5 ? 0 : 42;
+      invalid.encode(damaged.data());
+    }
+    Preferences::bytes["leap-gamescrab"] = damaged;
+    Games invalidSave;
+    invalidSave.begin();
+    invalidSave.start("crab_journey");
+    assert(savedCrab().level == 1);
+    invalidSave.close();
+  }
+  // Failed reset writes retain the old flash save, then retry even after closing the game.
+  Preferences::bytes["leap-gamescrab"] = checkpoint;
+  Games retry;
+  retry.begin();
+  retry.start("crab_journey");
+  Preferences::failWrites = true;
+  retry.crabInput({true, Key::Center, false});
+  retry.crabInput({true, Key::Right, false});
+  retry.crabInput({true, Key::Center, false});
+  assert(Preferences::bytes["leap-gamescrab"] == checkpoint);
+  restored.text.clear();
+  retry.draw(restored, 94, 10);
+  assert(restored.text.find("Krabbenreise 1") != std::string::npos);
+  assert(restored.text.find("Speichern...") != std::string::npos);
+  retry.close();
+  Preferences::failWrites = false;
+  fakeNow += 5000;
+  retry.tick();
+  assert(savedCrab().level == 1);
+  Preferences::bytes["leap-gamescrab"].clear();
+  Preferences::failWrites = true;
+  Games freshRetry;
+  freshRetry.begin();
+  freshRetry.start("crab_journey");
+  assert(Preferences::bytes["leap-gamescrab"].empty());
+  Preferences::failWrites = false;
+  fakeNow += 5000;
+  freshRetry.tick();
+  assert(savedCrab().level == 1 && savedCrab().seed != 0);
+  freshRetry.close();
+  std::cout << "PASS: crab checkpoint, reboot, confirmed reset, pause, invalid saves and NVS retry\n";
   // Exercise every sprite and camera clipping with the real renderer.
   for (unsigned level : {1u, 2u, 3u, 4u, 5u, 6u, 7u, 12u, 31u, 100u, 300u}) {
     CrabJourney world;

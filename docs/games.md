@@ -170,7 +170,8 @@ pro 40-ms-Frame), ohne Bewegungsraster; diagonale Bewegung ist normalisiert.
 Die entprellten gehaltenen Richtungen werden unabhängig von der Ereignisqueue
 übergeben. Loslassen stoppt die Bewegung. Linke Navigation, Zurück, Sperren und
 Konfigurationswechsel behalten ihren bisherigen Ablauf. Rechts Mitte ist nicht
-zum Bewegen erforderlich. Bei einem neuen Spiel beginnt die Reise auf Level 1.
+zum Bewegen erforderlich. Beim ersten Start beginnt die Reise auf Level 1;
+später wird das gespeicherte Level fortgesetzt.
 
 Die volle Fläche rechts der unveränderten 86-Pixel-Sidebar wird genutzt: 342×142.
 Grafiken entstehen ausschließlich aus Zeichencode: Comic-Krabbe, gewölbte Quallen
@@ -198,10 +199,17 @@ Das Budget wächst von 3 um 2 je Level bis maximal 28. Seeigel/Schnecke kosten 1
 Seetang 2, Qualle/Strömung 3, Strudel 5. Anzahl, Kombinationen, Bewegungsachsen,
 Wegverlauf und leicht wachsendes Quallentempo erzeugen die Schwierigkeit.
 
-Seeigel-/Quallenberührung löst ein kurzes Erschrecken aus und setzt 23 Pixel auf
-den sicheren Weg zurück. Schnecken und Seetang schieben freundlich zur Seite.
-Strömungen versetzen die Krabbe langsam; die Strudelanziehung steigt zum Zentrum
-hin. Im Zentrum folgt eine Wirbelanimation und ein Rücksetzen um 38 Pixel.
+Seeigelberührung löst ein kurzes Erschrecken aus und setzt die Krabbe horizontal
+um 45 Pixel auf den sicheren Weg zurück. Quallen behalten den Rückstoß von
+23 Pixeln. Schnecken schieben freundlich zur Seite. Seetang lässt die Krabbe
+passieren, reduziert ihr Tempo im berührten Bereich aber auf 35 Prozent; danach
+läuft sie sofort wieder normal schnell. Die Verlangsamung gilt auch während
+der Schutzzeit und verstärkt sich bei mehreren Pflanzen nicht zusätzlich.
+Strömungen versetzen die Krabbe langsam. Meeresstrudel ziehen mit bis zu
+44 Pixeln/Sekunde zum Zentrum und versetzen die Krabbe zusätzlich im Uhrzeigersinn
+mit bis zu 30 Pixeln/Sekunde. Beide Kräfte nehmen nach innen zu. Gegensteuern
+kann den Strudel verlassen; im Zentrum folgen Wirbelanimation und 38 Pixel
+Rücksetzen. Die Schutzzeit unterdrückt Sog und Kreisbewegung.
 Nach Rücksetzen gelten 1,8 Sekunden Schutz. Kleine Kollisionsradien erlauben
 knappe sichtbare Berührungen. Keine Leben, kein Zeitlimit, kein Game Over.
 Das Ziel bestätigt den Erfolg und zeigt die gesammelten Muscheln; nach 2,5 Sekunden
@@ -213,7 +221,7 @@ Parameter (Tempo, Budget, Kapazität, Elementkosten, Radien, Bewegung, Schutzzei
 `CrabJourneyDraw.cpp` enthält die Darstellung. Weltbreite und Kameraversatz sind
 von den Bildschirmkoordinaten getrennt. Feste Arrays begrenzen Speicher und
 Renderaufwand; kein
-Grafikpaket, keine neue Speicherung und keine Netzwerkabhängigkeit.
+Grafikpaket und keine Netzwerkabhängigkeit.
 
 Automatisch geprüft: 4.500 Karten auf 30 Stufen mit echtem Durchlaufen des freien
 Wegs, Budget/Abstände, Zufallsvariation, kontinuierliche Bewegung, Sammeln,
@@ -268,3 +276,20 @@ eine helle Pfeilfläche und ein kräftiger Pfosten heben sie vom Sand ab. Sie si
 rein dekorativ und blockieren den Weg nicht. Die Zielmuschel steht ausschließlich
 am Ende der aktuellen Welt. Nur sichtbare Landschaftsabschnitte und Wegweiser
 werden gezeichnet, sodass ihre Anzahl pro Bild begrenzt bleibt.
+
+### Fortschritt speichern und Reise zurücksetzen
+
+Level und Kartenseed werden in NVS (`leap-games`, Schlüssel `crab`) gespeichert.
+Beim Wiederöffnen oder nach einem Neustart beginnt das zuletzt erreichte Level
+von vorn auf derselben Karte; Position und Muscheln innerhalb des Levels beginnen
+neu. Ein erfolgreich abgeschlossenes Level speichert sofort das nächste Level,
+noch während der Erfolgsanimation. Der Spielstand benötigt 16 Byte, mit
+Formatversion und Prüfsumme. Ungültige Daten starten eine neue Reise. Gespeichert
+wird beim ersten Start, bei Levelabschluss und beim bestätigten Rücksetzen.
+Fehlgeschlagene Schreibversuche bleiben ausstehend, werden nach fünf Sekunden
+und beim Schließen erneut versucht; bis dahin erscheint „Speichern...“.
+
+Rechts Mitte öffnet eine pausierte Rücksetz-Abfrage, zunächst mit „Nein“ ausgewählt.
+Rechts/Runter wählt „Ja“, Links/Hoch wählt „Nein“, rechts Mitte bestätigt.
+Links Mitte bricht die Abfrage ab. Nur das bestätigte „Ja“ speichert Level 1 mit
+neuer Karte. Linke Seitennavigation und langes Halten zum Sperren bleiben verfügbar.

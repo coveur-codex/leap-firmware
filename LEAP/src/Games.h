@@ -4,6 +4,7 @@
 #include "ConnectFour.h"
 #include "Maze.h"
 #include "CrabJourney.h"
+#include "CrabJourneyProgress.h"
 #include "Input.h"
 #include "Media.h"
 #include <Arduino_GFX_Library.h>
@@ -19,6 +20,11 @@ class Games {
   MazeState maze;
   CrabJourney crab;
   uint8_t crabDirections = 0;
+  CrabJourneyProgress crabProgress;
+  bool crabDirty = false, crabResetOpen = false, crabResetYes = false;
+  uint32_t crabSavedAt = 0;
+  void saveCrab();
+  void checkpointCrab(uint32_t level);
   int snakeSpeed = 0;
   bool snakeSetup = true;
   inline static constexpr uint32_t snakeIntervals[] = {450, 300, 220};
@@ -65,6 +71,7 @@ public:
     return kind == "kitchen";
   }
   bool kitchenInput(const InputEvent &event);
+  bool crabInput(const InputEvent &event);
   void input(Key key);
   void tick();
   void draw(Arduino_GFX &gfx, int left, int top);

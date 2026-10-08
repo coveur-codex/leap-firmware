@@ -225,7 +225,7 @@ int main() {
   float ox = a.x, oy = a.y;
   a.update(.04f, 15);
   assert(a.x == ox && a.y == oy);
-  for (auto type : {CrabJourney::Jelly, CrabJourney::Snail, CrabJourney::Kelp}) {
+  for (auto type : {CrabJourney::Urchin, CrabJourney::Jelly, CrabJourney::Snail}) {
     a.start(4, 88);
     a.count = 1;
     a.x = 100;
@@ -237,9 +237,11 @@ int main() {
     animal.y = 78;
     animal.radius = 7;
     a.update(.04f, 0);
-    if (type == CrabJourney::Jelly)
+    if (type == CrabJourney::Urchin || type == CrabJourney::Jelly) {
       assert(a.reaction > 0 && a.protection > 0);
-    else
+      assert(a.x == (type == CrabJourney::Urchin ? 55 : 77));
+      assert(a.y == a.routeY(a.x));
+    } else
       assert(a.reaction == 0 && a.protection == 0 && a.x < 100);
   }
   // Pull grows closer to the centre, and the sampled animation stays inside its envelope.
@@ -254,8 +256,66 @@ int main() {
     v.radius = 16;
     a.x = 100 + radius;
     a.update(.04f, 0);
-    assert(std::abs((100 + radius - a.x) - 18 * (1 - radius / 16) * .04f) < .001f);
+    assert(std::abs((100 + radius - a.x) - 44 * (1 - radius / 16) * .04f) < .001f);
+    assert(std::abs((a.y - 78) - 30 * (1 - radius / 16) * .04f) < .001f);
   }
+  // Kelp allows passage at 35% speed, also diagonally, and releases immediately outside.
+  for (uint8_t directions : {uint8_t(8), uint8_t(10)}) {
+    a.start(4, 123);
+    a.count = 1;
+    a.elements[0] = {};
+    auto &kelp = a.elements[0];
+    kelp.type = CrabJourney::Kelp;
+    kelp.x = a.x = 150;
+    kelp.y = a.y = 78;
+    kelp.radius = 7;
+    a.protection = 1; // Protection from setbacks does not remove the slowdown.
+    a.update(.04f, directions);
+    assert(std::abs(a.distance(150, 78, a.x, a.y) - 92 * .35f * .04f) < .001f);
+    assert(a.reaction == 0);
+  }
+  a.start(4, 123);
+  a.count = 1;
+  a.elements[0] = {};
+  a.elements[0].type = CrabJourney::Kelp;
+  a.elements[0].x = a.x = 150;
+  a.elements[0].y = a.y = 78;
+  a.elements[0].radius = 7;
+  for (int step = 0; step < 20; ++step)
+    a.update(.04f, 8);
+  assert(a.x > 170 && a.reaction == 0); // The patch is traversable, not a wall.
+  ox = a.x;
+  a.update(.04f, 8);
+  assert(std::abs(a.x - ox - 92 * .04f) < .001f);
+  // Countersteering escapes the spiral; without input it pulls into the soft setback.
+  for (bool steering : {false, true}) {
+    a.start(6, 123);
+    a.count = 1;
+    a.elements[0] = {};
+    auto &v = a.elements[0];
+    v.type = CrabJourney::Whirlpool;
+    v.x = 150;
+    v.y = a.y = 78;
+    v.radius = 16;
+    a.x = 156;
+    for (int step = 0; step < 20 && !a.reaction; ++step)
+      a.update(.04f, steering ? 8 : 0);
+    if (steering)
+      assert(a.x > 166 && a.reaction == 0);
+    else
+      assert(a.spinning && a.protection > 0 && a.x < 150);
+  }
+  a.start(6, 123);
+  a.count = 1;
+  a.elements[0] = {};
+  a.elements[0].type = CrabJourney::Whirlpool;
+  a.elements[0].x = 150;
+  a.elements[0].y = a.y = 78;
+  a.elements[0].radius = 16;
+  a.x = 156;
+  a.protection = 1;
+  a.update(.04f, 0);
+  assert(a.x == 156 && a.y == 78 && a.reaction == 0);
   a.start(3, 111);
   for (int step = 0; step < 250; ++step) {
     a.update(.04f, 0);

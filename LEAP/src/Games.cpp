@@ -13,6 +13,10 @@ void Games::begin() {
   if ((kitchenSize == sizeof(kitchenBytes) || kitchenSize == KitchenState::LegacySaveSize) &&
       gamePrefs.getBytes("kitchen", kitchenBytes, kitchenSize) == kitchenSize)
     kitchen.state.decode(kitchenBytes, kitchenSize);
+  uint8_t crabBytes[CrabJourneyProgress::SaveSize];
+  if (gamePrefs.getBytesLength("crab") == sizeof(crabBytes) &&
+      gamePrefs.getBytes("crab", crabBytes, sizeof(crabBytes)) == sizeof(crabBytes))
+    crabProgress.decode(crabBytes, sizeof(crabBytes));
   PetState saved;
   if (gamePrefs.getBytesLength("pet") == sizeof(saved) &&
       gamePrefs.getBytes("pet", &saved, sizeof(saved)) == sizeof(saved) && saved.valid())
@@ -35,6 +39,46 @@ bool Games::kitchenInput(const InputEvent &event) {
   }
   return kitchen.wantsExit();
 }
+void Games::saveCrab() {
+  uint8_t bytes[CrabJourneyProgress::SaveSize];
+  crabProgress.encode(bytes);
+  crabDirty = gamePrefs.putBytes("crab", bytes, sizeof(bytes)) != sizeof(bytes);
+  crabSavedAt = millis();
+}
+void Games::checkpointCrab(uint32_t level) {
+  crabProgress.level = std::min(level, CrabJourneyProgress::MaxLevel);
+  crabProgress.seed = esp_random();
+  if (!crabProgress.seed)
+    crabProgress.seed = 1;
+  crabDirty = true;
+  saveCrab();
+}
+bool Games::crabInput(const InputEvent &e) {
+  if (!opened || !isCrabJourney() || e.longPress)
+    return false;
+  if (!crabResetOpen) {
+    if (!e.right || e.key != Key::Center)
+      return false;
+    crabResetOpen = true;
+    crabResetYes = false;
+  } else if (e.key == Key::Center) {
+    if (e.right && crabResetYes) {
+      checkpointCrab(1);
+      crab.start(crabProgress.level, crabProgress.seed);
+    }
+    crabResetOpen = crabResetYes = false;
+  } else if (e.right) {
+    if (e.key == Key::Right || e.key == Key::Down)
+      crabResetYes = true;
+    if (e.key == Key::Left || e.key == Key::Up)
+      crabResetYes = false;
+  } else {
+    return false;
+  }
+  crabDirections = 0;
+  last = millis();
+  return true;
+}
 void Games::savePet() {
   petDirty = gamePrefs.putBytes("pet", &pet, sizeof(pet)) != sizeof(pet);
   petSavedAt = millis();
@@ -54,6 +98,9 @@ String Games::petBlob(const String &path) const {
   return "";
 }
 void Games::close() {
+  if (crabDirty)
+    saveCrab();
+  crabResetOpen = crabResetYes = false;
   if (kitchenDirty)
     saveKitchen();
   if (opened && petDirty)
@@ -67,7 +114,10 @@ void Games::start(const String &id) {
     close();
   kind = id;
   if (isCrabJourney()) {
-    crab.start(1, esp_random());
+    if (!crabProgress.seed)
+      checkpointCrab(1);
+    crab.start(crabProgress.level, crabProgress.seed);
+    crabResetOpen = crabResetYes = false;
     crabDirections = 0;
   }
   if (isKitchen())
@@ -197,6 +247,8 @@ void Games::input(Key key) {
 }
 void Games::tick() {
   uint32_t now = millis();
+  if (crabDirty && elapsed(now, crabSavedAt, 5000))
+    saveCrab();
   if (kitchenDirty && elapsed(now, kitchenSavedAt, 5000))
     saveKitchen();
   if (uint32_t(now - petLast) >= PetState::DecayIntervalMs) {
@@ -230,13 +282,20 @@ void Games::tick() {
   if (!opened || !running)
     return;
   if (isCrabJourney()) {
+    if (crabResetOpen) {
+      last = now;
+      return;
+    }
     float dt = uint32_t(now - last) / 1000.0f;
     last = now;
     int event = crab.update(dt, crabDirections);
     if (event)
       audio.tone(event == 2 ? 1047 : 784, event == 2 ? 180 : 65);
+    // Save success before the celebration so a power-off cannot lose the completed level.
+    if (event == 2)
+      checkpointCrab(crab.level + 1);
     if (crab.complete && crab.celebration >= CrabJourney::SuccessSeconds)
-      crab.start(crab.level + 1, esp_random());
+      crab.start(crabProgress.level, crabProgress.seed);
     return;
   }
   if (isConnectFour() && fourThinking && elapsed(now, last, 300)) {
@@ -273,6 +332,20 @@ void Games::tick() {
 void Games::draw(Arduino_GFX &gfx, int left, int top) {
   if (isCrabJourney()) {
     drawCrabJourney(gfx, crab, 86);
+    if (crabResetOpen) {
+      gfx.fillRoundRect(134, 44, 246, 60, 6, 0xff9b);
+      gfx.setTextColor(0x194b);
+      gfx.setTextSize(1);
+      gfx.setCursor(146, 52);
+      gfx.print("Reise ab Level 1 beginnen?");
+      gfx.setCursor(146, 69);
+      gfx.print(crabResetYes ? "  Nein    > Ja" : "> Nein      Ja");
+      gfx.setCursor(146, 87);
+      gfx.print("R: waehlen/OK  L OK: zurueck");
+    } else {
+      gfx.setCursor(92, 34);
+      gfx.print(crabDirty ? "Speichern..." : "R OK: Reise zuruecksetzen");
+    }
     return;
   }
   if (isKitchen()) {

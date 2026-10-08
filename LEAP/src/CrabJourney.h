@@ -19,6 +19,8 @@ struct CrabJourney {
   static constexpr int ShorePoints = 8, WaterTop = 16, LevelsPerExpansion = 2, ExpansionWidth = 80;
   static constexpr int SignSpacing = 275;
   static constexpr float ShoreMargin = 3;
+  static constexpr float UrchinRetreat = 45, KelpSpeedFactor = .35f;
+  static constexpr float WhirlpoolPull = 44, WhirlpoolSwirl = 30;
 
   struct Element {
     Type type = Urchin;
@@ -267,8 +269,8 @@ struct CrabJourney {
       }
     }
   }
-  void setback(bool whirl) {
-    x = std::max(24.0f, x - (whirl ? 38 : 23));
+  void setback(bool whirl, float retreat = 23) {
+    x = std::max(24.0f, x - (whirl ? 38 : retreat));
     y = routeY(x);
     reaction = whirl ? 0.75f : 0.45f;
     protection = ProtectionSeconds;
@@ -297,8 +299,16 @@ struct CrabJourney {
     float dx = bool(directions & 8) - bool(directions & 4),
           dy = bool(directions & 2) - bool(directions & 1);
     float norm = std::max(1.0f, std::hypot(dx, dy));
-    x += dx / norm * Speed * dt;
-    y += dy / norm * Speed * dt;
+    float moveSpeed = Speed;
+    for (int i = 0; i < count; ++i) {
+      const auto &e = elements[i];
+      if (e.type == Kelp && distance(x, y, e.px, e.py) < e.radius + CrabRadius) {
+        moveSpeed *= KelpSpeedFactor;
+        break;
+      }
+    }
+    x += dx / norm * moveSpeed * dt;
+    y += dy / norm * moveSpeed * dt;
     for (int i = 0; i < count; ++i) {
       const auto &e = elements[i];
       float d = distance(x, y, e.px, e.py);
@@ -310,12 +320,14 @@ struct CrabJourney {
           setback(true);
           break;
         }
-        float pull = 18 * (1 - d / e.radius) * dt;
-        x += (e.px - x) / d * pull;
-        y += (e.py - y) / d * pull;
-      } else if (e.type != Whirlpool && e.type != Current && d < e.radius + CrabRadius &&
-                 protection <= 0) {
-        if (e.type == Snail || e.type == Kelp) {
+        float strength = (1 - d / e.radius) * dt;
+        float ux = (e.px - x) / d, uy = (e.py - y) / d;
+        // Clockwise drift matches the drawn spiral; full-speed steering can beat the current.
+        x += (ux * WhirlpoolPull + uy * WhirlpoolSwirl) * strength;
+        y += (uy * WhirlpoolPull - ux * WhirlpoolSwirl) * strength;
+      } else if (e.type != Whirlpool && e.type != Current && e.type != Kelp &&
+                 d < e.radius + CrabRadius && protection <= 0) {
+        if (e.type == Snail) {
           if (d < 0.01f) {
             x = e.px + e.radius + CrabRadius + 1;
             continue;
@@ -324,7 +336,7 @@ struct CrabJourney {
           x = e.px + (x - e.px) / n * (e.radius + CrabRadius + 1);
           y = e.py + (y - e.py) / n * (e.radius + CrabRadius + 1);
         } else {
-          setback(false);
+          setback(false, e.type == Urchin ? UrchinRetreat : 23);
           break;
         }
       }
