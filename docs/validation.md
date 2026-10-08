@@ -1,7 +1,25 @@
 # Durchgeführte Prüfungen
 
-Stand: 2026-10-07. Krabbenreise und bisherige Firmwaremodule.
+Stand: 2026-10-08. Krabbenreise und bisherige Firmwaremodule.
 
+
+
+## Krabbenreise: anspruchsvollere Hindernisse (beta.23)
+
+- Vollständige native Firmware-Regressionssuite bestanden. Seeigel setzen die
+  Krabbe 45 Pixel horizontal zurück; Quallen bleiben bei 23 Pixeln. Der Rückstoß
+  setzt jeweils auf den sicheren Weg zurück.
+- Seetang lässt sich mit 35 Prozent Tempo durchlaufen. Geprüft: gerade/diagonale
+  Bewegung, keine Blockade, sofortiges normales Tempo außerhalb des Bereichs
+  und Verlangsamung trotz Schutzzeit.
+- Stärkerer Strudelsog mit Kreisbewegung geprüft: Kräfte steigen zum Zentrum,
+  Gegensteuern ermöglicht das Verlassen, ohne Eingabe folgt der weiche Rückstoß,
+  Schutzzeit unterdrückt beide Kräfte.
+- 4.500 generierte Karten und Durchläufe bis Level 300 bleiben frei durchquerbar.
+- ESP32-S3-N16R8-Build: 1.500.795 Byte Programm, 126.572 Byte statischer RAM;
+  App-Image 1.500.944 Byte, S3-Header, SHA-256 und OTA-Slotgrenze bestanden.
+  `1.0.0-beta.23` im erzeugten Image bestätigt. Spielgefühl und Schwierigkeit
+  bleiben am Gerät zu prüfen.
 
 
 ## Krabbenreise: 80-Pixel-Wachstum nach zwei Leveln (beta.22)

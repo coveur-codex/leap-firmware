@@ -198,10 +198,17 @@ Das Budget wächst von 3 um 2 je Level bis maximal 28. Seeigel/Schnecke kosten 1
 Seetang 2, Qualle/Strömung 3, Strudel 5. Anzahl, Kombinationen, Bewegungsachsen,
 Wegverlauf und leicht wachsendes Quallentempo erzeugen die Schwierigkeit.
 
-Seeigel-/Quallenberührung löst ein kurzes Erschrecken aus und setzt 23 Pixel auf
-den sicheren Weg zurück. Schnecken und Seetang schieben freundlich zur Seite.
-Strömungen versetzen die Krabbe langsam; die Strudelanziehung steigt zum Zentrum
-hin. Im Zentrum folgt eine Wirbelanimation und ein Rücksetzen um 38 Pixel.
+Seeigelberührung löst ein kurzes Erschrecken aus und setzt die Krabbe horizontal
+um 45 Pixel auf den sicheren Weg zurück. Quallen behalten den Rückstoß von
+23 Pixeln. Schnecken schieben freundlich zur Seite. Seetang lässt die Krabbe
+passieren, reduziert ihr Tempo im berührten Bereich aber auf 35 Prozent; danach
+läuft sie sofort wieder normal schnell. Die Verlangsamung gilt auch während
+der Schutzzeit und verstärkt sich bei mehreren Pflanzen nicht zusätzlich.
+Strömungen versetzen die Krabbe langsam. Meeresstrudel ziehen mit bis zu
+44 Pixeln/Sekunde zum Zentrum und versetzen die Krabbe zusätzlich im Uhrzeigersinn
+mit bis zu 30 Pixeln/Sekunde. Beide Kräfte nehmen nach innen zu. Gegensteuern
+kann den Strudel verlassen; im Zentrum folgen Wirbelanimation und 38 Pixel
+Rücksetzen. Die Schutzzeit unterdrückt Sog und Kreisbewegung.
 Nach Rücksetzen gelten 1,8 Sekunden Schutz. Kleine Kollisionsradien erlauben
 knappe sichtbare Berührungen. Keine Leben, kein Zeitlimit, kein Game Over.
 Das Ziel bestätigt den Erfolg und zeigt die gesammelten Muscheln; nach 2,5 Sekunden
