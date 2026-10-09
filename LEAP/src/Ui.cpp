@@ -773,7 +773,7 @@ void Ui::drawPage(const String &id) {
       text("Runter: Speicher", 94, 104, 1, Muted);
     }
     if (selection == 3)
-      notice = String(LEAP_DEVICE_ID) + " | " + FirmwareVersion +
+      notice = String(deviceSettings.deviceId) + " | " + FirmwareVersion +
                (motion.available ? " | IMU OK" : " | IMU fehlt");
   }
 }

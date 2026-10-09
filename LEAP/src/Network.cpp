@@ -62,7 +62,7 @@ bool Network::begin() {
   if (!quizTracking.begin()) log("QUIZ", "Tracking storage unavailable; queued data retained");
   aircraftMutex = xSemaphoreCreateMutex();
   if (!aircraftMutex) return false;
-  base = "/api/v1/devices/" + Transport::encode(LEAP_DEVICE_ID);
+  base = "/api/v1/devices/" + Transport::encode(deviceSettings.deviceId);
   requests = xQueueCreate(3, sizeof(KnowledgeRequest));
   if (!requests)
     return false;
@@ -199,6 +199,7 @@ bool Network::sync() {
   }
   body["firmwareVersion"] = FirmwareVersion;
   body["installedAssets"] = state["assets"];
+  body["deviceConfigSchema"] = deviceSettings.schema;
   body["freeFlash"] = storage.freeBytes();
   if (!net.json(base + "/sync", plan, &body) || !plan["syncId"].is<const char *>() ||
       !plan["desiredAssets"].is<JsonObject>() || plan["desiredAssets"].size() > MaxPackages)
@@ -208,7 +209,7 @@ bool Network::sync() {
     return false;
   JsonDocument config(&jsonRam);
   if (!net.json(plan["configUrl"].as<String>(), config) ||
-      !deviceConfig(config.as<JsonVariantConst>(), LEAP_DEVICE_ID, plan["configVersion"] | 0))
+      !deviceConfig(config.as<JsonVariantConst>(), deviceSettings.deviceId, plan["configVersion"] | 0))
     return false;
   state["config"] = config;
   // Server flags (especially disabling communication) take effect even when a
@@ -301,7 +302,7 @@ void Network::run() {
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
   WiFi.setAutoReconnect(true);
-  if (!strlen(LEAP_WIFI_SSID))
+  if (!strlen(deviceSettings.ssid))
     log("WIFI", "No SSID configured; check LEAP/LocalConfig.h");
   // Validate cached assets off the UI thread. Input/rendering can start immediately.
   JsonDocument bootState(&jsonRam);
@@ -340,9 +341,9 @@ void Network::run() {
                       wifiStatus);
       }
     }
-    if (!connected && strlen(LEAP_WIFI_SSID) && elapsed(millis(), lastConnect, 30000)) {
+    if (!connected && strlen(deviceSettings.ssid) && elapsed(millis(), lastConnect, 30000)) {
       lastConnect = millis();
-      WiFi.begin(LEAP_WIFI_SSID, LEAP_WIFI_PASSWORD);
+      WiFi.begin(deviceSettings.ssid, deviceSettings.password);
       log("WIFI", "Connection attempt");
     }
     const char *block = !storage.ready ? "Blocked: LittleFS unavailable; see STORE recovery message"

@@ -17,15 +17,23 @@ void setup() {
   Serial.begin(115200); // Never wait for a USB host.
   Serial.printf("\n[BOOT] LEAP %s reset=%d flash=%u psram=%u\n", FirmwareVersion,
                 esp_reset_reason(), unsigned(ESP.getFlashChipSize()), unsigned(ESP.getPsramSize()));
-  input.begin();
+  if (!beginDeviceConfig()) {
+    log("CONFIG", "Missing/invalid NVS configuration; install via USB with LocalConfig.h. "
+                  "For corrupt records use deliberate NVS erase and reprovision.");
+    ota.begin();
+    ota.confirm(false); // Pending OTA must roll back if its schema is incompatible.
+    for (;;)
+      delay(1000);
+  }
+  input.begin(deviceSettings.leftKeys, deviceSettings.rightKeys);
   ui.beginDisplay(); // Show LEAP before filesystem validation or WiFi/radio setup.
   ota.begin();
   // Explicit destructive recovery requires BOTH centres held throughout 3s.
-  bool format = digitalRead(hw::LeftKeys[4]) == LOW && digitalRead(hw::RightKeys[4]) == LOW;
+  bool format = digitalRead(deviceSettings.leftKeys[4]) == LOW && digitalRead(deviceSettings.rightKeys[4]) == LOW;
   if (format) {
     log("RECOVERY", "Release either centre within 3s to cancel filesystem format");
     for (int i = 0; i < 300; i++) {
-      if (digitalRead(hw::LeftKeys[4]) || digitalRead(hw::RightKeys[4])) {
+      if (digitalRead(deviceSettings.leftKeys[4]) || digitalRead(deviceSettings.rightKeys[4])) {
         format = false;
         break;
       }
@@ -35,7 +43,7 @@ void setup() {
   uint32_t phaseAt = millis();
   bool mounted = storage.begin(format);
   Serial.printf("[BOOT] storage init %lu ms\n", millis() - phaseAt);
-  setenv("TZ", LEAP_TIMEZONE, 1);
+  setenv("TZ", deviceSettings.timezone, 1);
   tzset();
   JsonDocument state(&jsonRam);
   phaseAt = millis();

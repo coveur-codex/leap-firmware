@@ -41,11 +41,13 @@ void Ota::clearReport() {
   prefs.remove("version");
 }
 bool Ota::offered(JsonObjectConst release, const String &sync, Transport &net) {
-#if !LEAP_OTA_ENABLED || !defined(CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE) ||                        \
+#if !defined(CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE) ||                        \
     !CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE
   log("OTA", "Offer deferred: tested rollback bootloader is required");
   return false;
 #else
+  if (!deviceSettings.otaEnabled)
+    return false;
   const esp_partition_t *target = esp_ota_get_next_update_partition(nullptr);
   size_t size = release["size"] | 0;
   String version = release["version"] | "";

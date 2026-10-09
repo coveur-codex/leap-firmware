@@ -21,7 +21,7 @@ bool Transport::open(HTTPClient &http, WiFiClient &plain, WiFiClientSecure &tls,
   if (!path.startsWith("/api/") || path.indexOf("..") >= 0 || path.indexOf('\r') >= 0 ||
       path.indexOf('\n') >= 0 || path.indexOf('\\') >= 0)
     return false;
-  String base = LEAP_SERVER;
+  String base = deviceSettings.server;
   while (base.endsWith("/"))
     base.remove(base.length() - 1);
   http.setConnectTimeout(HttpTimeout);
@@ -29,9 +29,9 @@ bool Transport::open(HTTPClient &http, WiFiClient &plain, WiFiClientSecure &tls,
   http.setFollowRedirects(HTTPC_DISABLE_FOLLOW_REDIRECTS);
   http.useHTTP10(true);
   if (base.startsWith("https://")) {
-    if (!strlen(LEAP_TLS_CA))
+    if (!strlen(deviceSettings.tlsCa))
       return false;
-    tls.setCACert(LEAP_TLS_CA);
+    tls.setCACert(deviceSettings.tlsCa);
     return http.begin(tls, base + path);
   }
   return base.startsWith("http://") && http.begin(plain, base + path);

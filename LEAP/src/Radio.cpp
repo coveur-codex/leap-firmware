@@ -21,7 +21,7 @@ bool Radio::begin() {
   boot = esp_random();
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
-  esp_wifi_set_channel(LEAP_RADIO_CHANNEL, WIFI_SECOND_CHAN_NONE);
+  esp_wifi_set_channel(deviceSettings.radioChannel, WIFI_SECOND_CHAN_NONE);
   esp_wifi_get_mac(WIFI_IF_STA, mac);
   if (esp_now_init() != ESP_OK || esp_now_register_recv_cb(receive) != ESP_OK)
     return false;
