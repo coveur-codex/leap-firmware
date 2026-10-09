@@ -42,8 +42,14 @@ class Ui {
   bool bootLogoVisible = false;
   bool frameRequested = true;
   bool locked = true, menu = false, answered = false, gameOpen = false, dirtySettings = false;
+  bool inputDiagnostics = false;
+  uint16_t heldButtons = 0;
+  bool diagnosticsVisible() const {
+    return inputDiagnostics && !locked && !menu && !pages.empty() && pages[page].id == "settings";
+  }
+  void drawInputDiagnostics();
   int brightness = 170;
-  String query, notice;
+  String query, notice, diagnosticLastKey;
   bool reload(bool initial = false);
   void render();
   void sidebar();
@@ -62,8 +68,11 @@ public:
   bool begin(JsonDocument *bootState = nullptr);
   void input(const InputEvent &event);
   void tick();
-  void heldDirections(uint8_t mask) {
-    game.heldDirections(mask);
+  void heldInputs(uint16_t mask) {
+    if (heldButtons != mask && diagnosticsVisible())
+      frameRequested = true;
+    heldButtons = mask;
+    game.heldDirections(uint8_t((mask >> 5) & 0x0f));
   }
   bool healthy = false;
 };

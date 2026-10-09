@@ -17,13 +17,13 @@ struct InputEvent {
 };
 class Input {
   Debouncer keys[10];
-  std::atomic<uint8_t> rightDirections{0};
+  std::atomic<uint16_t> heldKeys{0};
   void publishDirections() {
-    uint8_t mask = 0;
-    for (int i = 0; i < 4; ++i)
-      if (keys[i + 5].stable)
-        mask |= uint8_t(1u << i);
-    rightDirections.store(mask);
+    uint16_t mask = 0;
+    for (int i = 0; i < 10; ++i)
+      if (keys[i].stable)
+        mask |= uint16_t(1u << i);
+    heldKeys.store(mask);
   }
   int pins[10];
   QueueHandle_t events = nullptr;
@@ -74,7 +74,10 @@ public:
     return true;
   }
   uint8_t heldRightDirections() const {
-    return rightDirections.load();
+    return uint8_t((heldKeys.load() >> 5) & 0x0f);
+  }
+  uint16_t heldButtons() const {
+    return heldKeys.load();
   }
   bool poll(InputEvent &e) {
     if (events)

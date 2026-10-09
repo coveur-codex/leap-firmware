@@ -387,6 +387,25 @@ und per Kabel neu provisionieren. Die Zwei-Mitteltaster-Recovery löscht nur
 LittleFS-Inhalte; die Gerätekonfiguration bleibt in NVS erhalten. **NVS oder den
 gesamten Flash zu löschen entfernt auch die Gerätekonfiguration.**
 
+## Taster- und MPU-Diagnose (ab beta.25)
+
+Unter **Einstellungen → Taster / MPU** mit der rechten Mitteltaste öffnen.
+Die Ansicht zeigt beide Fünfwege-Taster mit der logischen Richtung und dem aus
+NVS geladenen GPIO. Gedrückte Tasten werden hervorgehoben, auch mehrere
+gleichzeitig. `Ob`, `Un`, `Li`, `Re`, `Mi` stehen für oben, unten, links,
+rechts und Mitte. Die Anzeige nutzt den entprellten Zustand und aktualisiert
+sich laufend. Alle Richtungen und kurzen Mitteltastendrücke bleiben in der
+Diagnose; zum Verlassen **eine der Mitteltasten zwei Sekunden halten**.
+
+`A` zeigt Beschleunigung in g, `G` die Drehrate in Grad/Sekunde (`d/s`).
+`roh` sind die Sensorachsen vor der Montagekorrektur, `cfg` die Werte nach
+Achsentausch und Vorzeichen aus NVS. Darunter stehen die geladenen
+XY-Tausch-/XYZ-Vorzeichen. Bei flach liegendem Gerät sollte `A cfg` für X/Y
+ungefähr 0 und Z ungefähr +1 g anzeigen, sofern die Montage entsprechend
+konfiguriert ist. Bei fehlendem MPU erscheint eine Statusmeldung; Tastertests
+bleiben verfügbar. Dimmen und automatische Sperre sind während der Diagnose
+pausiert. Die Ansicht ändert keine Gerätekonfiguration.
+
 ## OTA und Recovery
 
 Der festgelegte Core 3.3.0 liefert `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=1`.

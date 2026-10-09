@@ -53,13 +53,12 @@ void Motion::poll() {
     return;
   }
   auto signed16 = [&](int i) { return int16_t((uint16_t(bytes[i]) << 8) | bytes[i + 1]); };
-  float ax = signed16(0) / 16384.0f, ay = signed16(2) / 16384.0f;
-  x = ax;
-  y = ay;
-  z = signed16(4) / 16384.0f;
-  gx = signed16(8) / 131.0f;
-  gy = signed16(10) / 131.0f;
-  gz = signed16(12) / 131.0f;
+  x = rawX = signed16(0) / 16384.0f;
+  y = rawY = signed16(2) / 16384.0f;
+  z = rawZ = signed16(4) / 16384.0f;
+  gx = rawGx = signed16(8) / 131.0f;
+  gy = rawGy = signed16(10) / 131.0f;
+  gz = rawGz = signed16(12) / 131.0f;
   deviceSettings.orient(x, y, z);
   deviceSettings.orient(gx, gy, gz);
 }

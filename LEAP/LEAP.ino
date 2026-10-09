@@ -81,7 +81,7 @@ void loop() {
   for (int i = 0; i < 10 && input.poll(e); i++)
     ui.input(e);
   motion.poll();
-  ui.heldDirections(input.heldRightDirections());
+  ui.heldInputs(input.heldButtons());
   ui.tick();
   esp_task_wdt_reset();
   if (!bootConfirmed &&

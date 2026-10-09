@@ -38,7 +38,7 @@ static_assert(LEAP_PROVISION_DEVICE == 0 || LEAP_PROVISION_DEVICE == 1,
               "Provisioning mode must be 0 or 1");
 #include "DeviceConfig.h"
 namespace leap {
-constexpr char FirmwareVersion[] = "1.0.0-beta.24";
+constexpr char FirmwareVersion[] = "1.0.0-beta.25";
 constexpr size_t ReserveBytes = 128 * 1024;
 constexpr uint32_t SyncInterval = 15 * 60 * 1000, HttpTimeout = 5000;
 constexpr size_t MaxPackages = 64, MaxFiles = 256;
