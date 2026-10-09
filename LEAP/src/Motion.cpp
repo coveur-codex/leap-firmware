@@ -54,12 +54,14 @@ void Motion::poll() {
   }
   auto signed16 = [&](int i) { return int16_t((uint16_t(bytes[i]) << 8) | bytes[i + 1]); };
   float ax = signed16(0) / 16384.0f, ay = signed16(2) / 16384.0f;
-  x = (hw::ImuSwapAxes ? ay : ax) * hw::ImuXSign;
-  y = (hw::ImuSwapAxes ? ax : ay) * hw::ImuYSign;
+  x = ax;
+  y = ay;
   z = signed16(4) / 16384.0f;
   gx = signed16(8) / 131.0f;
   gy = signed16(10) / 131.0f;
   gz = signed16(12) / 131.0f;
+  deviceSettings.orient(x, y, z);
+  deviceSettings.orient(gx, gy, gz);
 }
 int Motion::direction(bool requireNeutral) {
   static bool armed = true;

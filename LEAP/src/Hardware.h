@@ -12,7 +12,5 @@ constexpr int Rotation = 1;
 constexpr int ColumnOffset1 = 12, ColumnOffset2 = 14;
 constexpr int SpiHz = 20000000, BacklightHz = 20000;
 constexpr int ImuSda = 17, ImuScl = 18;
-constexpr bool ImuSwapAxes = false;
-constexpr int ImuXSign = 1, ImuYSign = 1; // Match assembly orientation during acceptance.
 // GPIO1 ADC remains unused: no confirmed voltage-divider wiring.
 } // namespace leap::hw

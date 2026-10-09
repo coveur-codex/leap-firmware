@@ -7,6 +7,7 @@ class Preferences {
   std::string space;
 
 public:
+  void end() {}
   inline static std::map<std::string, std::vector<uint8_t>> bytes;
   inline static std::map<std::string, int> ints;
   inline static bool failWrites = false;

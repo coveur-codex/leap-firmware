@@ -52,10 +52,10 @@ class Input {
 
 public:
   static constexpr uint32_t ExtendedCenterHoldMs = 2000;
-  void begin() {
+  void begin(const uint8_t *left = nullptr, const uint8_t *right = nullptr) {
     for (int i = 0; i < 5; i++) {
-      pins[i] = hw::LeftKeys[i];
-      pins[i + 5] = hw::RightKeys[i];
+      pins[i] = left ? left[i] : hw::LeftKeys[i];
+      pins[i + 5] = right ? right[i] : hw::RightKeys[i];
     }
     for (int p : pins)
       pinMode(p, INPUT_PULLUP);

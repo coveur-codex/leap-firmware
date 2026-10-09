@@ -113,6 +113,23 @@ int main() {
   assert(centreFallback.poll(event) && event.heldMs == Input::ExtendedCenterHoldMs);
   fakeNow = 3025;
   assert(!centreFallback.poll(event));
+  // Runtime pin arrays must control both task sampling and polling fallback.
+  const uint8_t left[] = {47, 21, 16, 15, 2}, right[] = {8, 7, 6, 5, 4};
+  Input mapped;
+  fakeTaskFailure = false;
+  mapped.begin(left, right); assert(mapped.start());
+  fakeNow = 0; fakeUntil = 100;
+  fakeDown = [](int pin, uint32_t now) { return pin == 47 && now >= 10 && now < 60; };
+  try { fakeTask(fakeContext); } catch (SamplingFinished &) {}
+  assert(mapped.poll(event) && !event.right && event.key == Key::Up);
+  assert(!mapped.poll(event));
+  Input mappedFallback;
+  mappedFallback.begin(left, right); fakeTaskFailure = true;
+  assert(!mappedFallback.start());
+  fakeDown = [](int pin, uint32_t) { return pin == 4; };
+  fakeNow = 0; assert(!mappedFallback.poll(event));
+  fakeNow = 25;
+  assert(mappedFallback.poll(event) && event.right && event.key == Key::Center);
   puts("PASS: short simultaneous presses during UI stall, bounded queue, 900 ms/2 s centre holds "
        "and polling fallback");
 }

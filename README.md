@@ -34,7 +34,8 @@ in einer Cloud-Umgebung nicht gemessen werden. Siehe [Abnahme](docs/acceptance.m
 4. `LEAP/LocalConfig.example.h` nach `LEAP/LocalConfig.h` kopieren und WLAN,
    Homeserver-URL und **exakt die im Homeserver angelegte Geräte-ID** eintragen.
    `LocalConfig.h` ist von Git ausgeschlossen. Ohne diese Datei lässt sich der
-   Sketch bauen, startet aber ohne WLAN-Zugangsdaten.
+   Sketch als universelle OTA-Firmware bauen; ohne zuvor gespeicherte NVS-Konfiguration
+   startet das Gerät nicht. Die Beispielwerte werden dabei nicht verwendet.
 5. `LEAP/LEAP.ino` öffnen. Board **ESP32S3 Dev Module**, Flash **16MB**,
    Flash-Modus **QIO**, Flash-Frequenz **80MHz**, PSRAM **OPI PSRAM**,
    USB CDC On Boot **Enabled**, USB Mode **Hardware CDC and JTAG**,
@@ -335,6 +336,57 @@ Paketdaten werden synchronisiert, besitzen aber ohne eindeutige Server-Metadaten
 noch keine automatische Zuordnung zu jedem UI-Element. Details und konkrete
 API-Ergänzungen: [Serverabgleich](docs/server-contract.md).
 
+## Gerätekonfiguration und universelle OTA-Builds
+
+`LocalConfig.h` enthält die Installationswerte. Bei einer **Kabelinstallation**
+mit `LEAP_PROVISION_DEVICE=1` schreibt die Firmware beim ersten Start einen
+versionierten, prüfsummengeschützten Datensatz in die NVS-Namespace `leap-device`.
+Er wird **vor** Taster-, MPU-, Funk- und Netzwerkstart geladen. Geräte-ID, WLAN,
+Server-URL, Zeitzone, TLS-CA, Funkkanal, OTA-Freigabe, Taster-Pins und MPU-Ausrichtung
+werden anschließend ausschließlich aus diesem Datensatz verwendet. Keine
+Zugangsdaten in Logs. Der Datensatz benötigt etwa 4,7 KiB im 20-KiB-NVS-Bereich.
+
+- `LEAP_LEFT_KEYS` und `LEAP_RIGHT_KEYS`: jeweils fünf GPIOs in der Reihenfolge
+  **oben, unten, links, rechts, Mitte**, aus Sicht des Nutzers. Für vertauschte
+  Taster die beiden Arrays tauschen; bei gedrehten Tastern die Richtungs-Pins
+  passend zuordnen. Alle zehn GPIOs müssen verschieden sein. Zulässig sind
+  1–8, 15, 16, 21, 38, 42–45, 47, 48; Pins für Display, USB, Audio, I²C und
+  Flash/PSRAM sowie GPIO46 ohne Pull-up sind ausgeschlossen.
+- `LEAP_IMU_SWAP_XY`: zuerst Sensor-X/Y vertauschen, dann
+  `LEAP_IMU_X_SIGN`, `LEAP_IMU_Y_SIGN`, `LEAP_IMU_Z_SIGN` (je +1 oder −1)
+  anwenden. Beispiel Z nach unten, um X gedreht: **+1, −1, −1**, kein Achsentausch.
+  Um Y gedreht: **−1, +1, −1**. Die Z-Richtung allein bestimmt X/Y nicht;
+  die tatsächliche Einbaulage entscheidet. Eine 90°-Drehung mit Z nach oben
+  benötigt Achsentausch und ein negatives X- oder Y-Vorzeichen. Die Kombination
+  muss eine räumliche Rotation ergeben. Beschleunigung und Gyroskop werden
+  identisch transformiert. Beim Abnahmetest Neigen und Schütteln prüfen.
+- `LEAP_CONFIG_REVISION`: positive Zahl, anfangs 1. Für spätere Änderungen
+  **erhöhen und per Kabel installieren**. Gleiche oder ältere Revisionen ändern
+  einen vorhandenen Datensatz nicht, auch nach einem Firmware-Rollback.
+
+**Gemeinsame OTA-Firmware:** ohne `LocalConfig.h` bauen (wie CI) oder darin
+`LEAP_PROVISION_DEVICE=0` setzen. Nur dieser Build enthält den Marker
+`LEAP_UNIVERSAL_NVS_V1`; er liest NVS ausschließlich und enthält keine benutzten
+Installationswerte. Niemals die gerätespezifische Installations-Binary auf dem
+Homeserver hochladen. `tools/check_image.py` und der Homeserver prüfen den
+Build-Modus und die Slotgröße. Der Marker ist keine Firmware-Signatur.
+
+**Umstieg bestehender Geräte:** jedes Gerät einmal mit ergänzter LocalConfig
+per USB installieren, starten lassen und im seriellen Log
+`Device configuration loaded from NVS` prüfen. `Erase All Flash: Disabled`
+lassen. Erst danach universelle OTA-Releases verteilen. Der Sync meldet
+`deviceConfigSchema=1`; der neue Homeserver bietet älteren Clients ohne diese
+Meldung keine OTA-Firmware an. Das NVS-Format ist Schema 1; zukünftige
+Formatänderungen brauchen eine explizite Migration, keine neuen Standardwerte.
+
+Fehlender, beschädigter oder unbekannter Datensatz verhindert den Start von
+Eingaben/Netzwerk. Eine unbestätigte OTA-Firmware wird dann zurückgerollt.
+Beschädigte Datensätze werden niemals automatisch überschrieben: bewusst NVS
+löschen (alternativ vollständiges Flash-Erase, dabei gehen auch Inhalte verloren)
+und per Kabel neu provisionieren. Die Zwei-Mitteltaster-Recovery löscht nur
+LittleFS-Inhalte; die Gerätekonfiguration bleibt in NVS erhalten. **NVS oder den
+gesamten Flash zu löschen entfernt auch die Gerätekonfiguration.**
+
 ## OTA und Recovery
 
 Der festgelegte Core 3.3.0 liefert `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=1`.
@@ -350,7 +402,7 @@ bei Hängen einen Neustart aus; ein unbestätigtes Image wird vom Bootloader ver
 Bestätigung bzw. Rollback wird bei erreichbarem Server nachgemeldet. Danach erfolgt
 ein neuer Plan mit der tatsächlich laufenden Firmwareversion.
 
-Ein frei konfiguriertes `LEAP_OTA_ENABLED=0` verhindert automatische App-Wechsel.
+Ein als Installationswert gespeichertes `LEAP_OTA_ENABLED=0` verhindert automatische App-Wechsel.
 Eine App allein kann einen alten Bootloader oder falsche Partitionierung nicht
 reparieren. Initialer USB-Upload der richtigen Basis ist zwingend. Bei defektem
 Dateisystem bleibt USB-Recovery möglich; beide Mitteltasten formatieren nur nach
