@@ -15,6 +15,7 @@
 namespace leap {
 Ui ui;
 constexpr uint16_t Background = 0x10e5, Panel = 0x18e7, Accent = 0x06b8, Muted = 0x9d35;
+static constexpr const char *DiagnosticKeys[] = {"Ob", "Un", "Li", "Re", "Mi"};
 static String displayText(String s) {
   // Built-in 6x8 font: predictable wrapping, German transliteration, no broken UTF-8.
   const char *from[] = {"ä", "ö", "ü", "Ä", "Ö", "Ü", "ß", "é", "è", "–", "—", "’", "„", "“", "°"};
@@ -171,6 +172,8 @@ bool Ui::reload(bool initial) {
     pages.push_back({"home", "LEAP", 0});
   page = std::min(page, int(pages.size()) - 1);
   selection = item = scroll = 0;
+  if (!same)
+    inputDiagnostics = false;
   if (!same) quizDetail = 0;
   answered = false;
   gameOpen = false;
@@ -759,23 +762,64 @@ void Ui::drawPage(const String &id) {
       list(labels);
     }
   } else if (id == "settings") {
-    if (selection == 4) {
+    if (diagnosticsVisible()) {
+      drawInputDiagnostics();
+    } else if (selection == 4) {
       const auto memory = memorySnapshot();
       text("Speicher (belegt / gesamt)", 122, 12, 1, Accent);
       text("Flash (Firmware): " + memoryLabel(memory.flash), 122, 38);
       text("LittleFS: " + memoryLabel(memory.littlefs), 122, 62);
       text("PSRAM: " + memoryLabel(memory.psram), 122, 86);
-      notice = "Hoch: zurueck zu Einstellungen";
+      notice = "Hoch: Einstellungen | Runter: Taster / MPU";
     } else {
       list({"Licht: " + String(brightness * 100 / 255) + "%",
             "Lautstaerke: " + String(audio.volume.load()) + "%", "Jetzt synchronisieren",
-            "Info / Geraete-ID", "Speicher"});
-      text("Runter: Speicher", 94, 104, 1, Muted);
+            "Info / Geraete-ID", "Speicher", "Taster / MPU (Mitte oeffnet)"});
+      text("Runter: Speicher / Taster / MPU", 94, 104, 1, Muted);
     }
     if (selection == 3)
       notice = String(deviceSettings.deviceId) + " | " + FirmwareVersion +
                (motion.available ? " | IMU OK" : " | IMU fehlt");
   }
+}
+void Ui::drawInputDiagnostics() {
+  text("Taster / MPU", 94, 8, 1, Accent);
+  if (diagnosticLastKey.length())
+    text("Zuletzt: " + diagnosticLastKey, 184, 8, 1, Muted);
+  text(motion.available ? "IMU OK" : "IMU fehlt", 348, 8, 1,
+       motion.available ? Accent : Muted);
+  for (int side = 0; side < 2; ++side) {
+    int y = 28 + side * 18;
+    text(side ? "R:" : "L:", 94, y);
+    for (int key = 0; key < 5; ++key) {
+      bool held = heldButtons & (uint16_t(1) << (side * 5 + key));
+      int x = 116 + key * 60;
+      if (held)
+        canvas->fillRoundRect(x - 2, y - 3, 56, 15, 3, Accent);
+      int pin = side ? deviceSettings.rightKeys[key] : deviceSettings.leftKeys[key];
+      text(String(DiagnosticKeys[key]) + ":" + String(pin), x, y, 1, held ? Background : 0xffff);
+    }
+  }
+  auto axes = [&](const char *label, float x, float y, float z, int yPos) {
+    char line[56];
+    snprintf(line, sizeof(line), "%s X%+.2f Y%+.2f Z%+.2f", label, double(x), double(y), double(z));
+    text(line, 94, yPos);
+  };
+  if (motion.available) {
+    axes("A roh g:", motion.rawX, motion.rawY, motion.rawZ, 64);
+    axes("A cfg g:", motion.x, motion.y, motion.z, 77);
+    axes("G roh d/s:", motion.rawGx, motion.rawGy, motion.rawGz, 90);
+    axes("G cfg d/s:", motion.gx, motion.gy, motion.gz, 103);
+  } else {
+    text("MPU nicht erreichbar (I2C)", 94, 70, 1, Muted);
+    text("Taster bleiben pruefbar.", 94, 88, 1, Muted);
+  }
+  char mounting[48];
+  snprintf(mounting, sizeof(mounting), "XY-Tausch:%u XYZ:%+d,%+d,%+d",
+           unsigned(deviceSettings.swapXY), int(deviceSettings.xSign), int(deviceSettings.ySign),
+           int(deviceSettings.zSign));
+  text(mounting, 94, 119, 1, Muted);
+  notice = "Mitte 2s halten: zurueck";
 }
 void Ui::render() {
   if (!healthy)
@@ -822,6 +866,19 @@ void Ui::input(const InputEvent &e) {
   lastInput = millis();
   frameRequested = true;
   notice = "";
+  if (diagnosticsVisible()) {
+    // Directions and short/900-ms centre presses are diagnostic input, not
+    // navigation. Handle the explicit exit before the global long-press lock.
+    if (e.key == Key::Center && e.longPress && e.heldMs >= Input::ExtendedCenterHoldMs) {
+      inputDiagnostics = false;
+      selection = 5;
+    } else {
+      int key = int(e.key);
+      int pin = e.right ? deviceSettings.rightKeys[key] : deviceSettings.leftKeys[key];
+      diagnosticLastKey = String(e.right ? "R " : "L ") + DiagnosticKeys[key] + ":" + String(pin);
+    }
+    return;
+  }
   if (!locked && !menu && gameOpen && game.isKitchen()) {
     // Kitchen consumes both the regular hold and the two-second hold, so the
     // global lock handler cannot swallow its exit or act on the first 900 ms.
@@ -1036,7 +1093,11 @@ void Ui::action(const InputEvent &e) {
       }
     }
   } else if (id == "settings") {
-    selection = constrain(selection + direction, 0, 4);
+    selection = constrain(selection + direction, 0, 5);
+    if (selection == 5 && e.key == Key::Center) {
+      inputDiagnostics = true;
+      diagnosticLastKey = "";
+    }
     int delta = (e.key == Key::Right) - (e.key == Key::Left);
     if (selection == 0 && delta) {
       brightness = constrain(brightness + delta * 15, 20, 255);
@@ -1077,9 +1138,10 @@ void Ui::tick() {
   game.tick();
   chill.tick(millis());
   bool chillVisible = !locked && !menu && !pages.empty() && pages[page].id == "chill";
-  bool dim = !chillVisible && elapsed(millis(), lastInput, 60000);
+  bool diagnosticVisible = diagnosticsVisible();
+  bool dim = !chillVisible && !diagnosticVisible && elapsed(millis(), lastInput, 60000);
   ledcWrite(hw::Backlight, dim ? 20 : brightness);
-  if (!chillVisible && elapsed(millis(), lastInput, 180000)) {
+  if (!chillVisible && !diagnosticVisible && elapsed(millis(), lastInput, 180000)) {
     locked = true;
     game.close();
     gameOpen = false;

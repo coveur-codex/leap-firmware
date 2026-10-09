@@ -123,6 +123,17 @@ int main() {
   try { fakeTask(fakeContext); } catch (SamplingFinished &) {}
   assert(mapped.poll(event) && !event.right && event.key == Key::Up);
   assert(!mapped.poll(event));
+  assert(mapped.heldButtons() == 0); // Released physical pin clears the diagnostic highlight.
+  Input simultaneous;
+  simultaneous.begin(left, right); assert(simultaneous.start());
+  fakeNow = 0; fakeUntil = 100;
+  fakeDown = [](int pin, uint32_t) { return pin == 47 || pin == 2 || pin == 4 || pin == 5; };
+  try { fakeTask(fakeContext); } catch (SamplingFinished &) {}
+  assert(simultaneous.heldButtons() == ((1u << 0) | (1u << 4) | (1u << 8) | (1u << 9)));
+  assert(simultaneous.heldRightDirections() == 8); // Centre bits never become game directions.
+  fakeUntil = 200; fakeDown = [](int, uint32_t) { return false; };
+  try { fakeTask(fakeContext); } catch (SamplingFinished &) {}
+  assert(simultaneous.heldButtons() == 0);
   Input mappedFallback;
   mappedFallback.begin(left, right); fakeTaskFailure = true;
   assert(!mappedFallback.start());
@@ -130,6 +141,7 @@ int main() {
   fakeNow = 0; assert(!mappedFallback.poll(event));
   fakeNow = 25;
   assert(mappedFallback.poll(event) && event.right && event.key == Key::Center);
+  assert(mappedFallback.heldButtons() == (1u << 9));
   puts("PASS: short simultaneous presses during UI stall, bounded queue, 900 ms/2 s centre holds "
        "and polling fallback");
 }

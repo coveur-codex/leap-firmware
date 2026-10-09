@@ -12,6 +12,8 @@ public:
   bool available = false;
   float x = 0, y = 0, z = 1;
   float gx = 0, gy = 0, gz = 0;
+  // Sensor coordinates before the saved mounting rotation, for assembly checks.
+  float rawX = 0, rawY = 0, rawZ = 0, rawGx = 0, rawGy = 0, rawGz = 0;
   bool begin();
   void poll();
   int direction(bool requireNeutral = false);
