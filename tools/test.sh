@@ -35,6 +35,8 @@ build/tests/pet-assets
 build/tests/quiz-questions
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/input_fakes -I LEAP/src tests/test_input.cpp -o build/tests/input
 build/tests/input
+c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_motion_calibration.cpp -o build/tests/motion-calibration
+build/tests/motion-calibration
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/motion_fakes -I tests/storage_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_motion.cpp LEAP/src/Motion.cpp -o build/tests/motion
 build/tests/motion
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_games.cpp -o build/tests/games

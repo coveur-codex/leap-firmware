@@ -1,10 +1,13 @@
 #pragma once
 #include "Input.h"
+#include "MotionCalibration.h"
 namespace leap {
 // Fixed MPU6050 hardware, no generic sensor framework. Main/UI task owns I2C.
 class Motion {
   uint8_t address = 0;
   uint32_t sampled = 0, lastDirection = 0, lastShake = 0;
+  MotionOrientation orientation;
+  bool calibrated = false;
   bool write(uint8_t reg, uint8_t value);
   bool read(uint8_t reg, uint8_t *data, size_t size);
 
@@ -14,10 +17,15 @@ public:
   float gx = 0, gy = 0, gz = 0;
   // Sensor coordinates before the saved mounting rotation, for assembly checks.
   float rawX = 0, rawY = 0, rawZ = 0, rawGx = 0, rawGy = 0, rawGz = 0;
+  MotionCalibration calibration;
+  bool calibrationActive = false, calibrationSaved = false;
   bool begin();
+  void startCalibration();
+  bool saveCalibration();
   void poll();
   int direction(bool requireNeutral = false);
   bool shake();
+  bool hasCalibration() const { return calibrated; }
 };
 extern Motion motion;
 } // namespace leap

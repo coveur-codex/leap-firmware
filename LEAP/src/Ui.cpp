@@ -10,7 +10,9 @@
 #include "Protocol.h"
 #include "GameSelection.h"
 #include "Radio.h"
+#include "ChatSymbols.h"
 #include <algorithm>
+#include <font/glcdfont.h>
 #include <time.h>
 namespace leap {
 Ui ui;
@@ -172,8 +174,11 @@ bool Ui::reload(bool initial) {
     pages.push_back({"home", "LEAP", 0});
   page = std::min(page, int(pages.size()) - 1);
   selection = item = scroll = 0;
-  if (!same)
+  if (!same) {
     inputDiagnostics = false;
+    calibrationVisible = false;
+    motion.calibrationActive = false;
+  }
   if (!same) quizDetail = 0;
   answered = false;
   gameOpen = false;
@@ -226,33 +231,43 @@ void Ui::text(const String &s, int x, int y, int size, uint16_t color) {
   canvas->setTextColor(color);
   canvas->print(displayText(s));
 }
-void Ui::body(const String &raw, int x, int y, int width, int height) {
-  String s = displayText(raw);
-  int columns = width / 6, line = 0, drawn = 0, rows = height / 10;
+void Ui::body(const String &raw, int x, int y, int width, int height, const String &heading) {
+  String title = displayText(heading);
+  String s = (title.length() ? title + "\n\n" : String()) + displayText(raw);
+  int line = 0, drawn = 0, used = 0;
   unsigned pos = 0;
-  while (pos < s.length() && drawn < rows) {
-    unsigned end = std::min(pos + columns, unsigned(s.length()));
+  while (pos < s.length()) {
+    bool emphasized = pos < title.length();
+    int advance = emphasized ? 8 : 6, lineHeight = emphasized ? 13 : 10;
+    if (line >= scroll && used + lineHeight > height) break;
+    unsigned end = std::min(pos + width / advance, unsigned(s.length()));
     int nl = s.indexOf('\n', pos);
-    if (nl >= 0 && unsigned(nl) < end)
-      end = nl;
+    if (nl >= 0 && unsigned(nl) < end) end = nl;
     else if (end < s.length()) {
       int space = s.lastIndexOf(' ', end);
-      if (space > int(pos))
-        end = space;
+      if (space > int(pos)) end = space;
     }
     if (line++ >= scroll) {
-      text(s.substring(pos, end), x, y + drawn * 10);
+      if (emphasized) {
+        // Enlarge the built-in glyphs to 7x10 and thicken by one pixel.
+        // No external font asset; title wrapping and scrolling stay complete.
+        for (unsigned i = pos; i < end; ++i)
+          for (int xx = 0; xx < 6; ++xx)
+            for (int yy = 0; yy < 10; ++yy)
+              if (font[uint8_t(s[i]) * 5 + xx * 5 / 6] & (1 << (yy * 7 / 10))) {
+                int px = x + (i - pos) * advance + xx;
+                canvas->drawPixel(px, y + used + yy, Accent);
+                canvas->drawPixel(px + 1, y + used + yy, Accent);
+              }
+      } else text(s.substring(pos, end), x, y + used);
+      used += lineHeight;
       drawn++;
     }
     pos = end;
-    if (pos < s.length() && (s[pos] == ' ' || s[pos] == '\n'))
-      pos++;
+    if (pos < s.length() && (s[pos] == ' ' || s[pos] == '\n')) pos++;
   }
-  // Clamp overscroll by allowing only one extra screen; empty scroll resets.
-  if (!drawn && scroll > 0)
-    scroll = std::max(0, scroll - 1);
-  if (pos < s.length())
-    text("v", x + width - 6, y + height - 8, 1, Accent);
+  if (!drawn && scroll > 0) scroll = std::max(0, scroll - 1);
+  if (pos < s.length()) text("v", x + width - 6, y + height - 8, 1, Accent);
 }
 void Ui::list(const std::vector<String> &labels, int x, int y, int width) {
   if (labels.empty()) {
@@ -517,9 +532,9 @@ void Ui::drawPage(const String &id) {
     auto a = rows[item];
     String image = a["image"] | "", hash = state["images"][image] | "";
     bool shown = hash.length() && picture.draw(*canvas, storage.blob(hash), image, 320, 12, 96, 80);
-    body(String(a["title"] | "") + "\n\n" + String(a["summary"] | "") + "\n" +
+    body(String(a["summary"] | "") + "\n" +
              String(a["source"] | "") + " | " + String(a["published"] | ""),
-         94, 12, shown ? 216 : 326, 112);
+         94, 12, shown ? 216 : 326, 112, a["title"] | "");
   } else if (id == "weather") {
     auto w = content["weather"];
     if (w["current"].isNull()) {
@@ -559,29 +574,28 @@ void Ui::drawPage(const String &id) {
       text("Vorhersage fehlt", 139, 101, 1, Muted);
     }
     String weatherUpdated = w["updated"] | "";
-    text((w["stale"] == true || !network.connected ? "Wetter alt | " : "Stand ") + weatherUpdated.substring(11, 16) + " UTC",
-         94, 124, 1, Muted);
     auto radar = content["weatherRadar"];
     String hash = radar["hash"] | "";
-    bool shown = digestValid(hash.c_str()) &&
+    bool shown = radar["mapWidthKm"] == RadarWidthKm && digestValid(hash.c_str()) &&
                  picture.draw(*canvas, "/radar/" + hash, "radar.png", 308, 8, 112, 112);
+    bool radarStale = radar["stale"] == true || !network.connected;
     if (!shown) {
       canvas->drawRect(308, 8, 112, 112, Muted);
       text("Regenradar", 314, 43, 1, Muted);
-      text("nicht verfuegbar", 314, 58, 1, Muted);
+      text(hash.length() && radar["mapWidthKm"] != RadarWidthKm ? "Server-Update" : "nicht verfuegbar", 314, 58, 1, Muted);
     } else {
       String updated = radar["updated"] | "";
-      bool stale = radar["stale"] == true || !network.connected;
       tm observed{};
       if (strptime(updated.c_str(), "%Y-%m-%dT%H:%M:%S", &observed)) {
         time_t stamp = utcTimestamp(observed.tm_year + 1900, observed.tm_mon + 1,
                                     observed.tm_mday, observed.tm_hour, observed.tm_min, observed.tm_sec);
-        stale = stale || !network.timeSynced || time(nullptr) - stamp > 1800;
+        radarStale = radarStale || !network.timeSynced || time(nullptr) - stamp > 1800;
       }
-      text("Radar " + updated.substring(11, 16) + " UTC" + (stale ? " alt" : ""),
-           94, 115, 1, stale ? Muted : Accent);
     }
-    text("RainViewer", 308, 122, 1, Muted);
+    text(String("Stand ") + weatherUpdated.substring(11, 16) +
+         (w["stale"] == true || !network.connected ? " alt" : "") +
+         (shown ? " | Radar " + String(radar["updated"] | "").substring(11, 16) + (radarStale ? " alt" : "") : "") + " UTC",
+         94, 124, 1, Muted);
   } else if (id == "aircraft") {
     if (aircraftFrame.isNull() || elapsed(millis(), lastAircraftFrame, 2000)) {
       if (!network.copyAircraft(aircraftFrame)) aircraftFrame.set(content["aircraft"]);
@@ -611,13 +625,12 @@ void Ui::drawPage(const String &id) {
                     snapshot["center"]["longitude"].is<double>();
     double lat = snapshot["center"]["latitude"] | 0.0;
     double lon = snapshot["center"]["longitude"] | 0.0;
-    double radius = snapshot["radiusNm"] | 25.0;
-    centered = centered && std::isfinite(lat) && std::isfinite(lon) && std::abs(lat) <= 90 &&
-               std::abs(lon) <= 180 && std::isfinite(radius) && radius > 0;
-    constexpr int cx = 364, cy = 64, pixels = 46;
+    centered = centered && std::isfinite(lat) && std::isfinite(lon) && std::abs(lat) <= 85 &&
+               std::abs(lon) <= 180;
+    constexpr int cx = 364, cy = 64, pixels = 55;
     canvas->fillRect(308, 8, 112, 112, Panel);
     if (centered) {
-      for (int r : {23, 46}) canvas->drawCircle(cx, cy, r, Muted);
+      for (int r : {28, 55}) canvas->drawCircle(cx, cy, r, Muted);
       canvas->drawFastVLine(cx, cy - pixels, 2 * pixels + 1, Muted);
       canvas->drawFastHLine(cx - pixels, cy, 2 * pixels + 1, Muted);
       canvas->fillCircle(cx, cy, 2, 0xffff);
@@ -628,21 +641,21 @@ void Ui::drawPage(const String &id) {
         int dx, dy;
         bool selected = index++ == item;
         if (!plane["latitude"].is<double>() || !plane["longitude"].is<double>() ||
-            !aircraftOffset(lat, lon, plane["latitude"], plane["longitude"], radius, pixels, dx, dy))
+            !radarOffset(lat, lon, plane["latitude"], plane["longitude"], pixels, dx, dy))
           continue;
         int x = cx + dx, y = cy + dy;
+        int mark = std::min(6, std::min(55 - std::abs(dx), 55 - std::abs(dy)));
         uint16_t color = selected ? 0xffe0 : Accent;
         if (plane["trackDegrees"].is<double>() && std::isfinite(plane["trackDegrees"].as<double>())) {
           double heading = plane["trackDegrees"].as<double>() * 3.141592653589793 / 180;
-          int hx = std::lround(4 * std::sin(heading)), hy = -std::lround(4 * std::cos(heading));
+          int hx = std::lround(std::min(4, mark) * std::sin(heading)), hy = -std::lround(std::min(4, mark) * std::cos(heading));
           canvas->drawLine(x - hx, y - hy, x + hx, y + hy, color);
           canvas->drawLine(x - hy, y + hx, x + hy, y - hx, color);
-          canvas->fillCircle(x + hx, y + hy, 1, color);
+          canvas->drawPixel(x + hx, y + hy, color);
         } else
-          canvas->fillCircle(x, y, 2, color);
-        if (selected) canvas->drawCircle(x, y, 6, color);
+          canvas->fillCircle(x, y, std::min(2, mark), color);
+        if (selected) canvas->drawCircle(x, y, mark, color);
       }
-      text(String(radius * 1.852, 0) + " km | ADSB.lol", 308, 122, 1, Muted);
     } else {
       text("Standort fehlt", 314, 52, 1, Muted);
       text("Server-Sync", 320, 66, 1, Muted);
@@ -658,11 +671,10 @@ void Ui::drawPage(const String &id) {
     if (!a["destinationName"].isNull()) route += "\nZiel: " + String(a["destinationName"].as<const char *>());
     String altitude = a["altitudeFeet"].isNull() ? String("?") : String(a["altitudeFeet"].as<double>() * 0.3048, 0);
     String speed = a["groundSpeedKnots"].isNull() ? String("?") : String(a["groundSpeedKnots"].as<double>() * 1.852, 0);
-    body(String(a["callsign"] | a["registration"] | a["hex"] | "Flugzeug") +
-         "\n" + String(a["typeName"] | "Unbekannter Flugzeugtyp") +
+    body(String(a["typeName"] | "Unbekannter Flugzeugtyp") +
          "\nEntfernung: " + String(a["distanceKm"].isNull() ? a["distanceNm"].as<double>() * 1.852 : a["distanceKm"].as<double>(), 1) +
          " km\nHoehe: " + altitude + " m\nTempo: " + speed + " km/h" + route,
-         94, 8, 204, 110);
+         94, 8, 204, 110, a["callsign"] | a["registration"] | a["hex"] | "Flugzeug");
     text(a["oldPosition"] == true ? "Alte Position" : a["predicted"] == true ? "Position geschaetzt" : "Gemeldete Position",
          94, 124, 1, Muted);
   } else if (id == "quiz") {
@@ -720,7 +732,8 @@ void Ui::drawPage(const String &id) {
     auto messages = radio.messages();
     if (messages.size()) {
       selection = constrain(selection, 0, int(messages.size()) - 1);
-      body(messages[selection]["text"] | "", 94, 72, 326, 35);
+      chatSymbol(messages[selection]["symbol"] | "", 94, 72);
+      body(messages[selection]["text"] | "", 112, 72, 308, 35);
     } else
       text("Keine Vorlagen", 94, 78, 1, Muted);
     if (radio.count) {
@@ -729,7 +742,8 @@ void Ui::drawPage(const String &id) {
       text(displayText(last.name).substring(0, 40), 94, 10, 1, Accent);
       int old = scroll;
       scroll = 0;
-      body(last.text, 94, 26, 326, 28);
+      chatSymbol(last.symbol, 94, 26);
+      body(last.text, 112, 26, 308, 28);
       scroll = old;
     } else
       text("Gemeinsamer Gruppenchat", 94, 15, 1, Muted);
@@ -742,10 +756,10 @@ void Ui::drawPage(const String &id) {
       String image = k["image"] | "", hash = state["images"][image] | "";
       bool shown = hash.length() &&
                    picture.draw(*canvas, storage.blob(hash), image, 308, 12, 112, 100, true);
-      body(String(k["title"] | "Noch kein Artikel") + "\n" + String(k["text"] | "") +
+      body(String(k["text"] | "") +
            "\n\nQuelle: " + String(k["sourceName"] | k["source"] | "") + "\n" +
            String(k["originalUrl"] | "") + "\n" + String(k["license"] | ""),
-           94, 12, shown ? 204 : 326, 110);
+           94, 12, shown ? 204 : 326, 110, k["title"] | "Noch kein Artikel");
     }
     if (knowledgeMode == 2) {
       text(query, 94, 20, 2, Accent);
@@ -762,7 +776,9 @@ void Ui::drawPage(const String &id) {
       list(labels);
     }
   } else if (id == "settings") {
-    if (diagnosticsVisible()) {
+    if (calibrationVisible) {
+      drawCalibration();
+    } else if (diagnosticsVisible()) {
       drawInputDiagnostics();
     } else if (selection == 4) {
       const auto memory = memorySnapshot();
@@ -774,13 +790,39 @@ void Ui::drawPage(const String &id) {
     } else {
       list({"Licht: " + String(brightness * 100 / 255) + "%",
             "Lautstaerke: " + String(audio.volume.load()) + "%", "Jetzt synchronisieren",
-            "Info / Geraete-ID", "Speicher", "Taster / MPU (Mitte oeffnet)"});
+            "Info / Geraete-ID", "Speicher", "Taster / MPU (Mitte oeffnet)", "MPU kalibrieren"});
       text("Runter: Speicher / Taster / MPU", 94, 104, 1, Muted);
     }
     if (selection == 3)
       notice = String(deviceSettings.deviceId) + " | " + FirmwareVersion +
                (motion.available ? " | IMU OK" : " | IMU fehlt");
   }
+}
+void Ui::chatSymbol(const String &symbol, int x, int y) {
+  const uint16_t *rows = chatSymbolRows(symbol.c_str());
+  if (!rows) return;
+  for (int yy = 0; yy < 12; ++yy)
+    for (int xx = 0; xx < 12; ++xx)
+      if (rows[yy] & (1 << (11 - xx))) canvas->drawPixel(x + xx, y + yy, Accent);
+}
+void Ui::drawCalibration() {
+  text("MPU kalibrieren", 94, 10, 1, Accent);
+  if (!motion.available) { body("MPU nicht erreichbar (I2C).", 94, 35); }
+  else if (motion.calibration.step == 3) {
+    body(motion.calibrationSaved ? "Ausrichtung im NVS gespeichert.\nAuch nach Neustart und OTA aktiv." :
+        "Speichern fehlgeschlagen.\nMitte: erneut speichern.", 94, 35);
+  } else {
+    static const char *poses[] = {
+      "Geraet flach ablegen, Display oben.",
+      "Rechte Geraetekante nach unten.\nLinke Kante senkrecht darueber.",
+      "Untere Geraetekante nach unten.\nObere Kante senkrecht darueber."};
+    text("Position " + String(motion.calibration.step + 1) + " / 3", 94, 28, 1, Accent);
+    body(poses[motion.calibration.step], 94, 46, 326, 44);
+    text(motion.calibration.collecting ? "Ruhig halten: misst automatisch..." :
+         motion.calibration.rejected ? "Position passt nicht. Mitte: erneut." :
+         "Mitte: messen (1 Sekunde ruhig halten)", 94, 98, 1, Muted);
+  }
+  notice = "Links Mitte: zurueck";
 }
 void Ui::drawInputDiagnostics() {
   text("Taster / MPU", 94, 8, 1, Accent);
@@ -818,7 +860,7 @@ void Ui::drawInputDiagnostics() {
   snprintf(mounting, sizeof(mounting), "XY-Tausch:%u XYZ:%+d,%+d,%+d",
            unsigned(deviceSettings.swapXY), int(deviceSettings.xSign), int(deviceSettings.ySign),
            int(deviceSettings.zSign));
-  text(mounting, 94, 119, 1, Muted);
+  text(motion.hasCalibration() ? "Ausrichtung: Kalibrierung aus NVS" : mounting, 94, 119, 1, Muted);
   notice = "Mitte 2s halten: zurueck";
 }
 void Ui::render() {
@@ -866,6 +908,18 @@ void Ui::input(const InputEvent &e) {
   lastInput = millis();
   frameRequested = true;
   notice = "";
+  if (calibrationVisible && !locked && !menu) {
+    if (!e.right && e.key == Key::Center) {
+      calibrationVisible = false;
+      motion.calibrationActive = false;
+      selection = 6;
+    } else if (e.right && e.key == Key::Center && !e.longPress && motion.available) {
+      if (motion.calibration.step == 3) {
+        if (!motion.calibrationSaved) motion.calibrationSaved = motion.saveCalibration();
+      } else if (!motion.calibration.collecting) motion.calibration.capture();
+    }
+    return;
+  }
   if (diagnosticsVisible()) {
     // Directions and short/900-ms centre presses are diagnostic input, not
     // navigation. Handle the explicit exit before the global long-press lock.
@@ -924,6 +978,21 @@ void Ui::input(const InputEvent &e) {
     }
     return;
   }
+  if (menu) {
+    if (e.key == Key::Up)
+      selection--;
+    if (e.key == Key::Down)
+      selection++;
+    selection = constrain(selection, 0, int(pages.size()) - 1);
+    if (e.key == Key::Center) {
+      page = selection;
+      selection = item = scroll = 0;
+      if (pages[page].id == "quiz")
+        startQuiz();
+      menu = false;
+    }
+    return;
+  }
   if (!e.right) {
     if (e.key == Key::Center) {
       if (gameOpen) {
@@ -949,21 +1018,6 @@ void Ui::input(const InputEvent &e) {
       audio.stop();
       return;
     }
-  }
-  if (menu) {
-    if (e.key == Key::Up)
-      selection--;
-    if (e.key == Key::Down)
-      selection++;
-    selection = constrain(selection, 0, int(pages.size()) - 1);
-    if (e.key == Key::Center) {
-      page = selection;
-      selection = item = scroll = 0;
-      if (pages[page].id == "quiz")
-        startQuiz();
-      menu = false;
-    }
-    return;
   }
   if (e.right)
     action(e);
@@ -1093,10 +1147,14 @@ void Ui::action(const InputEvent &e) {
       }
     }
   } else if (id == "settings") {
-    selection = constrain(selection + direction, 0, 5);
+    selection = constrain(selection + direction, 0, 6);
     if (selection == 5 && e.key == Key::Center) {
       inputDiagnostics = true;
       diagnosticLastKey = "";
+    }
+    if (selection == 6 && e.key == Key::Center) {
+      motion.startCalibration();
+      calibrationVisible = true;
     }
     int delta = (e.key == Key::Right) - (e.key == Key::Left);
     if (selection == 0 && delta) {
@@ -1138,7 +1196,7 @@ void Ui::tick() {
   game.tick();
   chill.tick(millis());
   bool chillVisible = !locked && !menu && !pages.empty() && pages[page].id == "chill";
-  bool diagnosticVisible = diagnosticsVisible();
+  bool diagnosticVisible = diagnosticsVisible() || calibrationVisible;
   bool dim = !chillVisible && !diagnosticVisible && elapsed(millis(), lastInput, 60000);
   ledcWrite(hw::Backlight, dim ? 20 : brightness);
   if (!chillVisible && !diagnosticVisible && elapsed(millis(), lastInput, 180000)) {

@@ -42,7 +42,9 @@ class Ui {
   bool bootLogoVisible = false;
   bool frameRequested = true;
   bool locked = true, menu = false, answered = false, gameOpen = false, dirtySettings = false;
-  bool inputDiagnostics = false;
+  bool inputDiagnostics = false, calibrationVisible = false;
+  void drawCalibration();
+  void chatSymbol(const String &symbol, int x, int y);
   uint16_t heldButtons = 0;
   bool diagnosticsVisible() const {
     return inputDiagnostics && !locked && !menu && !pages.empty() && pages[page].id == "settings";
@@ -53,7 +55,7 @@ class Ui {
   bool reload(bool initial = false);
   void render();
   void sidebar();
-  void body(const String &text, int x = 94, int y = 12, int width = 326, int height = 110);
+  void body(const String &text, int x = 94, int y = 12, int width = 326, int height = 110, const String &heading = "");
   void text(const String &text, int x, int y, int size = 1, uint16_t color = 0xffff);
   void list(const std::vector<String> &labels, int x = 94, int y = 18, int width = 326);
   void nextQuestion(int delta);
