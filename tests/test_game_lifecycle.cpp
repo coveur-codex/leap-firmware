@@ -1,3 +1,4 @@
+#include "DisplayText.h"
 #include "Audio.h"
 #include "Games.h"
 #include "Motion.h"
@@ -582,10 +583,10 @@ int main() {
     assert(requests[0].blob == storage.blob(String(std::string(64, 'b'))));
     assert(requests[0].x == 86 && requests[0].w == 256 && requests[0].h == 142);
     assert(requests[1].transparent);
-    assert(gfx.text.find("SattSpassSauberKraft") != std::string::npos);
+    assert(gfx.text.find(leap::displayGlyphs("SattSpaßSauberKraft")) != std::string::npos);
   };
   const char *moods[] = {"hungry", "sad", "dirty", "tired", "idle", "happy"};
-  const char *messages[] = {"Hunger", "Spiel mit mir", "wasch mich", "muede", "gut", "gluecklich"};
+  const char *messages[] = {"Hunger", "Spiel mit mir", "wasch mich", "müde", "gut", "glücklich"};
   for (int i = 0; i < 6; ++i) {
     PetState needs;
     if (i == 0)
@@ -605,7 +606,7 @@ int main() {
     petGame.start("tamagotchi");
     render(petGame);
     assert(requests[1].path.find("/" + std::string(moods[i]) + "/") != std::string::npos);
-    assert(gfx.text.find(messages[i]) != std::string::npos);
+    assert(gfx.text.find(leap::displayGlyphs(messages[i])) != std::string::npos);
     if (i < 4) {
       bool warningBar = false;
       for (auto r : gfx.rects)
@@ -642,7 +643,7 @@ int main() {
   bool ground = false;
   for (auto r : gfx.rects)
     ground |= r.x == 86 && r.y == 113 && r.w == 256 && r.h == 29;
-  assert(ground && gfx.text.find("Fuettern") != std::string::npos);
+  assert(ground && gfx.text.find(leap::displayGlyphs("Füttern")) != std::string::npos);
   imagesAvailable = true;
   Games four;
   four.begin();

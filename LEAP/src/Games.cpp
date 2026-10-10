@@ -1,3 +1,4 @@
+#include "DisplayText.h"
 #include "Games.h"
 #include "Audio.h"
 #include "CrabJourneyDraw.h"
@@ -393,14 +394,14 @@ void Games::draw(Arduino_GFX &gfx, int left, int top) {
       gfx.setTextColor(0x194b);
       gfx.setTextSize(1);
       gfx.setCursor(146, 52);
-      gfx.print("Reise ab Level 1 beginnen?");
+      printDisplayText(gfx, "Reise ab Level 1 beginnen?");
       gfx.setCursor(146, 69);
-      gfx.print(crabResetYes ? "  Nein    > Ja" : "> Nein      Ja");
+      printDisplayText(gfx, crabResetYes ? "  Nein    > Ja" : "> Nein      Ja");
       gfx.setCursor(146, 87);
-      gfx.print("R: waehlen/OK  L OK: zurueck");
+      printDisplayText(gfx, "R: wählen/OK  L OK: zurück");
     } else {
       gfx.setCursor(92, 34);
-      gfx.print(crabDirty ? "Speichern..." : "R OK: Reise zuruecksetzen");
+      printDisplayText(gfx, crabDirty ? "Speichern..." : "R OK: Reise zurücksetzen");
     }
     return;
   }
@@ -422,18 +423,18 @@ void Games::draw(Arduino_GFX &gfx, int left, int top) {
       gfx.setTextSize(1);
       gfx.setTextColor(0xffff);
       gfx.setCursor(left, top);
-      gfx.print("Snake: Geschwindigkeit waehlen");
+      printDisplayText(gfx, "Snake: Geschwindigkeit wählen");
       for (int i = 0; i < 3; ++i) {
         int yy = top + 28 + i * 23;
         if (i == snakeSpeed)
           gfx.fillRoundRect(left, yy - 4, 150, 19, 4, 0x06b8);
         gfx.setTextColor(i == snakeSpeed ? 0x10e5 : 0xffff);
         gfx.setCursor(left + 6, yy);
-        gfx.print(speeds[i]);
+        printDisplayText(gfx, speeds[i]);
       }
       gfx.setTextColor(0xffff);
       gfx.setCursor(left, top + 105);
-      gfx.print("R Oben/Unten: Wahl  R Mitte: Start");
+      printDisplayText(gfx, "R Oben/Unten: Wahl  R Mitte: Start");
       return;
     }
     gfx.setTextColor(0xffff);
@@ -451,9 +452,9 @@ void Games::draw(Arduino_GFX &gfx, int left, int top) {
     if (!running) {
       gfx.fillRoundRect(left + 42, boardY + 30, 236, 43, 5, 0x10e5);
       gfx.setCursor(left + 55, boardY + 38);
-      gfx.print(snake.won ? "Geschafft!" : "Spielende");
+      printDisplayText(gfx, snake.won ? "Geschafft!" : "Spielende");
       gfx.setCursor(left + 55, boardY + 55);
-      gfx.print("R Mitte: Neustart  L Mitte: Zurueck");
+      printDisplayText(gfx, "R Mitte: Neustart  L Mitte: Zurück");
     }
     return;
   }
@@ -461,14 +462,14 @@ void Games::draw(Arduino_GFX &gfx, int left, int top) {
   gfx.setTextSize(2);
   gfx.setCursor(left, top);
   if (kind == "hot_potato") {
-    gfx.print("Heisse Kartoffel");
+    printDisplayText(gfx, "Heiße Kartoffel");
     gfx.setCursor(left, top + 25);
     gfx.printf("%d Treffer", score);
     gfx.setTextSize(1);
     gfx.setCursor(left, top + 55);
-    gfx.print(running ? "Rechts Mitte: weitergeben!" : "Fertig! Mitte: neue Runde");
+    printDisplayText(gfx, running ? "Rechts Mitte: weitergeben!" : "Fertig! Mitte: neue Runde");
   } else if (kind == "simon_motion") {
-    gfx.print("Simon");
+    printDisplayText(gfx, "Simon");
     gfx.setTextSize(1);
     gfx.setCursor(left, top + 25);
     gfx.printf("Runde %d: %s", length, showing ? "Merken" : "Nachspielen");
@@ -476,11 +477,11 @@ void Games::draw(Arduino_GFX &gfx, int left, int top) {
     if (showing && show > 0 && !elapsed(millis(), last, 450)) {
       gfx.setTextSize(2);
       gfx.setCursor(left, top + 45);
-      gfx.print(labels[sequence[show - 1]]);
+      printDisplayText(gfx, labels[sequence[show - 1]]);
     }
     if (!running) {
       gfx.setCursor(left, top + 70);
-      gfx.print(won ? "Geschafft!" : "Noch einmal?");
+      printDisplayText(gfx, won ? "Geschafft!" : "Noch einmal?");
     }
   } else {
     for (int row = 0; row < MazeState::Rows; row++)
@@ -493,9 +494,9 @@ void Games::draw(Arduino_GFX &gfx, int left, int top) {
                  top + (MazeState::Rows - 1) * 12, 11, 11, 0xffe0);
     gfx.setTextSize(1);
     gfx.setCursor(left + 258, top + 15);
-    gfx.print(won ? "Geschafft!" : "Zum Ziel");
+    printDisplayText(gfx, won ? "Geschafft!" : "Zum Ziel");
     gfx.setCursor(left + 258, top + 35);
-    gfx.print(motion.available ? "Kippen" : "Schalter");
+    printDisplayText(gfx, motion.available ? "Kippen" : "Schalter");
   }
 }
 void Games::drawFour(Arduino_GFX &gfx, int left, int top) {
@@ -503,23 +504,23 @@ void Games::drawFour(Arduino_GFX &gfx, int left, int top) {
   gfx.setTextSize(1);
   gfx.setTextColor(0xffff);
   gfx.setCursor(left, top);
-  gfx.print("Vier Gewinnt");
+  printDisplayText(gfx, "Vier Gewinnt");
   if (fourSetup) {
     gfx.setCursor(left, top + 18);
-    gfx.print("Schwierigkeit waehlen:");
+    printDisplayText(gfx, "Schwierigkeit wählen:");
     for (int i = 0; i < 3; ++i) {
       int y = top + 36 + i * 21;
       if (i == fourDifficulty)
         gfx.fillRoundRect(left, y - 4, 150, 18, 4, 0x06b8);
       gfx.setTextColor(i == fourDifficulty ? 0x10e5 : 0xffff);
       gfx.setCursor(left + 6, y);
-      gfx.print(levels[i]);
+      printDisplayText(gfx, levels[i]);
     }
     gfx.setTextColor(0xffff);
     gfx.setCursor(left, top + 105);
-    gfx.print("R Oben/Unten: Wahl  R Mitte: Start");
+    printDisplayText(gfx, "R Oben/Unten: Wahl  R Mitte: Start");
     gfx.setCursor(left, top + 119);
-    gfx.print("Du beginnst. L Mitte: Zurueck");
+    printDisplayText(gfx, "Du beginnst. L Mitte: Zurück");
     return;
   }
   // 126 x 108 board fits the 142-pixel display below the selection marker.
@@ -537,21 +538,21 @@ void Games::drawFour(Arduino_GFX &gfx, int left, int top) {
   gfx.printf("Stufe: %s", levels[fourDifficulty]);
   gfx.setCursor(infoX, top + 34);
   gfx.setTextColor(0xffe0);
-  gfx.print("Du: Gelb");
+  printDisplayText(gfx, "Du: Gelb");
   gfx.setCursor(infoX, top + 48);
   gfx.setTextColor(0xf800);
-  gfx.print("LEAP: Rot");
+  printDisplayText(gfx, "LEAP: Rot");
   gfx.setTextColor(0xffff);
   gfx.setCursor(infoX, top + 66);
-  gfx.print(four.finished ? (four.winner == ConnectFour::Human ? "Du gewinnst!" :
+  printDisplayText(gfx, four.finished ? (four.winner == ConnectFour::Human ? "Du gewinnst!" :
                             four.winner == ConnectFour::Device ? "LEAP gewinnt!" : "Unentschieden!") :
             fourThinking ? "LEAP denkt..." : fourFull ? "Spalte voll!" : "Du bist dran");
   gfx.setCursor(infoX, top + 84);
-  gfx.print(running ? "R Links/Rechts: Spalte" : "R Mitte: Neue Runde");
+  printDisplayText(gfx, running ? "R Links/Rechts: Spalte" : "R Mitte: Neue Runde");
   gfx.setCursor(infoX, top + 98);
-  gfx.print(running ? "R Mitte: Einwerfen" : "Stufe neu waehlen");
+  printDisplayText(gfx, running ? "R Mitte: Einwerfen" : "Stufe neu wählen");
   gfx.setCursor(infoX, top + 118);
-  gfx.print("L Mitte: Zurueck");
+  printDisplayText(gfx, "L Mitte: Zurück");
 }
 void Games::drawPet(Arduino_GFX &gfx) {
   time_t now = time(nullptr);
@@ -629,11 +630,11 @@ void Games::drawPet(Arduino_GFX &gfx) {
   }
   const char *status = "Mir geht es gut";
   if (String(mood) == "happy")
-    status = "Ich bin gluecklich!";
+    status = "Ich bin glücklich!";
   if (String(mood) == "hungry")
     status = "Ich habe Hunger!";
   if (String(mood) == "tired")
-    status = "Ich bin muede";
+    status = "Ich bin müde";
   if (String(mood) == "dirty")
     status = "Bitte wasch mich";
   if (String(mood) == "sad")
@@ -650,16 +651,16 @@ void Games::drawPet(Arduino_GFX &gfx) {
   gfx.setTextSize(1);
   gfx.setTextColor(0xffff);
   gfx.setCursor(101, 9);
-  gfx.print(status);
+  printDisplayText(gfx, status);
   if (resting) {
     gfx.setCursor(258, 38 + beat / 2);
-    gfx.print("z Z");
+    printDisplayText(gfx, "z Z");
   } else if (String(mood) == "happy" || String(mood) == "playing") {
     gfx.fillCircle(264, 53 - lift, 3, 0xfbc0);
     gfx.drawLine(258, 53 - lift, 270, 53 - lift, 0xfbc0);
     gfx.drawLine(264, 47 - lift, 264, 59 - lift, 0xfbc0);
   }
-  const char *needs[] = {"Satt", "Spass", "Sauber", "Kraft"};
+  const char *needs[] = {"Satt", "Spaß", "Sauber", "Kraft"};
   const uint8_t values[] = {pet.food, pet.joy, pet.clean, pet.energy};
   gfx.fillRect(86, 117, 256, 25, 0x18e7);
   for (int i = 0; i < 4; ++i) {
@@ -667,12 +668,12 @@ void Games::drawPet(Arduino_GFX &gfx) {
     uint16_t color = values[i] < 55 ? 0xf9a0 : values[i] < 80 ? 0xffe0 : 0x07e0;
     gfx.setTextColor(0xffff);
     gfx.setCursor(x, 120);
-    gfx.print(needs[i]);
+    printDisplayText(gfx, needs[i]);
     gfx.fillRect(x, 132, 57, 5, 0x4a69);
     gfx.fillRect(x, 132, 57 * values[i] / 100, 5, color);
   }
   gfx.fillRect(342, 0, 86, 142, 0x18e7);
-  const char *labels[] = {"Fuettern", "Spielen", "Waschen", "Schlafen"};
+  const char *labels[] = {"Füttern", "Spielen", "Waschen", "Schlafen"};
   gfx.setTextSize(1);
   for (int i = 0; i < 4; ++i) {
     int y = 13 + i * 26;
@@ -680,12 +681,12 @@ void Games::drawPet(Arduino_GFX &gfx) {
       gfx.fillRoundRect(346, y - 5, 78, 22, 4, 0x06b8);
     gfx.setTextColor(petSelection == i ? 0x10e5 : 0xffff);
     gfx.setCursor(350, y);
-    gfx.print(labels[i]);
+    printDisplayText(gfx, labels[i]);
   }
   gfx.setTextColor(0x9d35);
   gfx.setCursor(348, 121);
-  gfx.print("R Mitte: OK");
+  printDisplayText(gfx, "R Mitte: OK");
   gfx.setCursor(348, 133);
-  gfx.print("L: Zurueck");
+  printDisplayText(gfx, "L: Zurück");
 }
 } // namespace leap

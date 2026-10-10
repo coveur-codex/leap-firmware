@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.7 – 2026-10-10
+
+- ä, ö, ü, Ä, Ö, Ü und ß werden als echte Zeichen der eingebauten Displayschrift dargestellt.
+- Deutsche Menü-, Spiel-, Status- und Küchentexte verwenden normale Umlaute und ß.
+- UTF-8-Inhalte vom Homeserver werden erst für die Anzeige in Schriftzeichen umgewandelt;
+  Zeilenumbruch, Kürzung und vergrößerte Artikelüberschriften zählen sichtbare Zeichen.
+- Auch é, è und ° nutzen vorhandene Glyphen; unbekannte Unicode-Zeichen bleiben ein einzelnes Fragezeichen.
+
 ## 1.0.6 – 2026-10-10
 
 - Flugradarringe alle 10 km: 10/20 km bei gleicher 50-km-Kartenbreite wie Regenradar.

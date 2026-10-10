@@ -1,3 +1,4 @@
+#include "DisplayText.h"
 #include "KitchenEditor.h"
 #include <algorithm>
 #include <cstdlib>
@@ -418,12 +419,14 @@ bool KitchenEditor::input(const InputEvent &e) {
   return false;
 }
 void KitchenEditor::draw(Arduino_GFX &g, int left, int top, bool savePending) {
-  static const char *actions[] = {"Scrollen", "Bauen", "Verschieben", "Abreissen", "Farbe", "Menue"};
+  static const char *actions[] = {"Scrollen", "Bauen", "Verschieben", "Abreißen", "Farbe", "Menü"};
   g.fillRect(left, top, 324, 142, 0xff9a);
   g.setTextSize(1); g.setTextColor(Ink); g.setCursor(left + 4, top + 2);
-  g.printf("%s: %s", actions[int(action)], action == KitchenAction::Menu ?
-           (menuChoice ? "Kueche leeren" : "Zurueck") :
-           action == KitchenAction::Build || action == KitchenAction::Move ? KitchenCatalog[choice].name : "");
+  const char *detail = action == KitchenAction::Menu ? (menuChoice ? "Küche leeren" : "Zurück") :
+      action == KitchenAction::Build || action == KitchenAction::Move ? KitchenCatalog[choice].name : "";
+  printDisplayText(g, actions[int(action)]);
+  printDisplayText(g, ": ");
+  printDisplayText(g, detail);
   for (int i = 0; i < 4; ++i) {
     g.fillRect(left + 268 + i * 13, top + 1, 10, 9, Fronts[i]);
     if (variant == i) g.drawRect(left + 267 + i * 13, top, 12, 11, Ink);
@@ -447,12 +450,12 @@ void KitchenEditor::draw(Arduino_GFX &g, int left, int top, bool savePending) {
   if (resetConfirm) {
     g.fillRoundRect(left + 22, top + 30, 280, 65, 5, White);
     g.drawRect(left + 22, top + 30, 280, 65, Ink);
-    g.setCursor(left + 38, top + 38); g.print("Kueche leeren?");
-    g.setCursor(left + 38, top + 50); g.print("Alle Gegenstaende entfernen.");
+    g.setCursor(left + 38, top + 38); printDisplayText(g, "Küche leeren?");
+    g.setCursor(left + 38, top + 50); printDisplayText(g, "Alle Gegenstände entfernen.");
     g.fillRoundRect(left + 36, top + 67, 118, 18, 3, confirmClear ? Steel : 0x05a8);
     g.fillRoundRect(left + 169, top + 67, 118, 18, 3, confirmClear ? 0xfeb2 : Steel);
-    g.setCursor(left + 46, top + 72); g.print("Abbrechen");
-    g.setCursor(left + 185, top + 72); g.print("Leeren");
+    g.setCursor(left + 46, top + 72); printDisplayText(g, "Abbrechen");
+    g.setCursor(left + 185, top + 72); printDisplayText(g, "Leeren");
   } else if (action != KitchenAction::Menu && action != KitchenAction::Scroll) {
     int target = state.at(layer, position);
     bool building = action == KitchenAction::Build || (action == KitchenAction::Move && moving >= 0);
@@ -477,12 +480,12 @@ void KitchenEditor::draw(Arduino_GFX &g, int left, int top, bool savePending) {
   g.printf("%s %d/24  Sicht %d-%d %s", layers[int(layer)], position + 1, viewport + 1,
            viewport + VisibleColumns, savePending ? "Speichern..." : blocked ? "Geht nicht!" : "");
   g.setCursor(left + 4, top + 121);
-  if (resetConfirm) g.print("R: waehlen/OK  L OK: abbrechen");
-  else if (action == KitchenAction::Build) g.print("L: Modus/Objekt  R: Ort/Ebene/OK");
-  else if (action == KitchenAction::Color) g.print("L: Modus/Farbe  R: Ort/Ebene/OK");
-  else if (action == KitchenAction::Scroll) g.print("L hoch/runter: Modus  R: scrollen");
-  else if (action == KitchenAction::Menu) g.print("L: Modus  R: waehlen/OK");
-  else g.print(moving >= 0 ? "L: abbrechen  R: Ort/OK absetzen" : "L: Modus  R: Ort/Ebene/OK");
-  g.setCursor(left + 4, top + 131); g.print("L OK 2s halten: zur Spieleauswahl");
+  if (resetConfirm) printDisplayText(g, "R: wählen/OK  L OK: abbrechen");
+  else if (action == KitchenAction::Build) printDisplayText(g, "L: Modus/Objekt  R: Ort/Ebene/OK");
+  else if (action == KitchenAction::Color) printDisplayText(g, "L: Modus/Farbe  R: Ort/Ebene/OK");
+  else if (action == KitchenAction::Scroll) printDisplayText(g, "L hoch/runter: Modus  R: scrollen");
+  else if (action == KitchenAction::Menu) printDisplayText(g, "L: Modus  R: wählen/OK");
+  else printDisplayText(g, moving >= 0 ? "L: abbrechen  R: Ort/OK absetzen" : "L: Modus  R: Ort/Ebene/OK");
+  g.setCursor(left + 4, top + 131); printDisplayText(g, "L OK 2s halten: zur Spieleauswahl");
 }
 } // namespace leap

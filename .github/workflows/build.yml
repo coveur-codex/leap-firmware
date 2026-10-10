@@ -21,6 +21,10 @@ jobs:
         env:
           ARDUINOJSON_INCLUDE: /home/runner/Arduino/libraries/ArduinoJson/src
         run: tools/test.sh
+      - name: German glyphs in the pinned display font
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Werror -DLEAP_GFX_FONT_TEST -I LEAP/src -I '/home/runner/Arduino/libraries/GFX_Library_for_Arduino/src' tests/test_display_text.cpp -o build/tests/display-font
+          build/tests/display-font
       - name: PNG decoder regression (real pinned library)
         env:
           ARDUINOJSON_INCLUDE: /home/runner/Arduino/libraries/ArduinoJson/src

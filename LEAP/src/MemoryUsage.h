@@ -26,7 +26,7 @@ inline MemorySnapshot memorySnapshot() {
   return result;
 }
 inline String memoryLabel(const MemoryUsage &usage) {
-  if (!usage.total) return "nicht verfuegbar";
+  if (!usage.total) return "nicht verfügbar";
   String used = String(usage.used / 1048576.0, 1);
   String total = String(usage.total / 1048576.0, 1);
   used.replace(".", ",");

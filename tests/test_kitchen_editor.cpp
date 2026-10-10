@@ -1,3 +1,4 @@
+#include "DisplayText.h"
 #include "KitchenEditor.h"
 #include <cassert>
 #include <iostream>
@@ -98,7 +99,7 @@ int main() {
   editor.state.encode(before);
   assert(!key(true, Key::Center));
   gfx.text.clear(); editor.draw(gfx, 94, 0, false);
-  assert(gfx.text.find("Kueche leeren?") != std::string::npos);
+  assert(gfx.text.find(leap::displayGlyphs("Küche leeren?")) != std::string::npos);
   assert(!key(true, Key::Center)); // Default Abbrechen.
   editor.state.encode(after); assert(std::equal(before, before + sizeof(before), after));
   key(true, Key::Center); key(true, Key::Down); key(false, Key::Center);

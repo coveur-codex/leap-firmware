@@ -17,18 +17,18 @@ struct KitchenSpec {
 };
 inline constexpr KitchenSpec KitchenCatalog[] = {
     {"Unterschrank", KitchenLayer::Floor, 1}, {"Schubladen", KitchenLayer::Floor, 1},
-    {"Spuele", KitchenLayer::Floor, 2}, {"Herd + Ofen", KitchenLayer::Floor, 2},
-    {"Geschirrspueler", KitchenLayer::Floor, 1}, {"Kuehlschrank", KitchenLayer::Floor, 2},
-    {"Hochschrank", KitchenLayer::Floor, 2}, {"Haengeschrank", KitchenLayer::Upper, 1},
+    {"Spüle", KitchenLayer::Floor, 2}, {"Herd + Ofen", KitchenLayer::Floor, 2},
+    {"Geschirrspüler", KitchenLayer::Floor, 1}, {"Kühlschrank", KitchenLayer::Floor, 2},
+    {"Hochschrank", KitchenLayer::Floor, 2}, {"Hängeschrank", KitchenLayer::Upper, 1},
     {"Breiter Schrank", KitchenLayer::Upper, 2}, {"Regal", KitchenLayer::Upper, 2},
     {"Abzugshaube", KitchenLayer::Upper, 2}, {"Mikrowelle", KitchenLayer::Counter, 2},
     {"Kaffeemaschine", KitchenLayer::Counter, 1}, {"Toaster", KitchenLayer::Counter, 1},
     {"Pflanze", KitchenLayer::Counter, 1}, {"Esstisch", KitchenLayer::Floor, 3},
     {"Stuhl", KitchenLayer::Floor, 1}, {"Wasserkocher", KitchenLayer::Counter, 1},
     {"Messerblock", KitchenLayer::Counter, 1}, {"Obstschale", KitchenLayer::Counter, 2},
-    {"Gewuerzregal", KitchenLayer::Upper, 2}, {"Wanduhr", KitchenLayer::Upper, 1},
-    {"Schmaler Tisch", KitchenLayer::Floor, 2}, {"Kuechenmaschine", KitchenLayer::Counter, 2},
-    {"Tellerregal", KitchenLayer::Upper, 2}, {"Kerzenstaender", KitchenLayer::Counter, 1},
+    {"Gewürzregal", KitchenLayer::Upper, 2}, {"Wanduhr", KitchenLayer::Upper, 1},
+    {"Schmaler Tisch", KitchenLayer::Floor, 2}, {"Küchenmaschine", KitchenLayer::Counter, 2},
+    {"Tellerregal", KitchenLayer::Upper, 2}, {"Kerzenständer", KitchenLayer::Counter, 1},
     {"Stuhl nach links", KitchenLayer::Floor, 1}, {"Stuhl nach rechts", KitchenLayer::Floor, 1}};
 struct KitchenObject {
   KitchenType type = KitchenType::Cabinet;
