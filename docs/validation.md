@@ -1,8 +1,30 @@
 # Durchgeführte Prüfungen
 
-Stand: 2026-10-08. Krabbenreise und bisherige Firmwaremodule.
+Stand: 2026-10-10. Dragon Run und bisherige Firmwaremodule.
 
+## Dragon Run (1.0.4)
 
+- Hostsimulation: Sprungbogen/Landung, gehaltenes Ducken und kleinere Hitbox,
+  gleichzeitiger Sprung/Feuer, Cooldown, alle Hindernisse, Münzen/Edelsteine,
+  Game Over und verzögerte Updates geprüft.
+- Erreichbarkeit: ganze Hitboxen von Felsen, Säulen und kleinem Holz bei 78/150
+  Pixel/s mit ±90 ms Timingabweichung übersprungen; 64 Seeds je 200 Sekunden mit automatisch ausgeführten
+  Sprung-/Duck-/Feueraktionen in allen drei Landschaften ohne Kollision.
+- Renderer: echte Zeichenprimitive einschließlich Objekten am linken/rechten
+  Rand bleiben innerhalb x=86…427 und y=0…141. Prozedurale Vorschau aus diesen
+  Primitiven erzeugt und visuell kontrolliert (Host-Fake zeichnet keinen Text).
+- Echte Games-Integration: ausschließlich rechte Eingaben, Spielende/Neustart,
+  Speichern nur am Rundenende, Laden nach Neustart, Schreibfehler/Retry und
+  geschlossenes Spiel getestet. Bestehende Hostregressionen bestanden.
+- Arduino CLI 1.3.1, Core 3.3.0 und die festgelegten Bibliotheksversionen:
+  ESP32-S3 N16R8 / OPI-PSRAM / Custom-Partitionen erfolgreich kompiliert;
+  universelle App-Binary 1.525.376 Bytes, ESP32-S3-/SHA-256-/Slotprüfung bestanden.
+  Statische globale Daten: 139.140 Bytes. Die Toolchain kam aus den offiziellen
+  GitHub-Releases; nur Compiler/SDK/Image-Tools für diesen Build installiert.
+  Bestehende Warnungen aus Core/Bibliotheken und der unveränderten Quiz-UI.
+  Reale PNGdec- und Media-Regressionen ebenfalls bestanden.
+- Gerätebildrate, Displayfarben, reale GPIO-Kombinationen und Stromausfall
+  während eines NVS-Schreibvorgangs bleiben Teil der Hardware-Abnahme.
 
 ## Krabbenreise: gespeicherter Fortschritt und Reset (beta.23)
 

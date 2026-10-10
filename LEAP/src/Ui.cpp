@@ -36,6 +36,8 @@ static String displayText(String s) {
   return out;
 }
 static String gameTitle(const String &id) {
+  if (id == "dragon_run")
+    return "Dragon Run";
   if (id == "crab_journey")
     return "Krabbenreise";
   if (id == "kitchen")
@@ -918,7 +920,8 @@ void Ui::render() {
     drawPage(pages[page].id);
   }
   if (!locked && !menu && gameOpen &&
-      (game.isPet() || game.isConnectFour() || game.isKitchen() || game.isCrabJourney())) {
+      (game.isPet() || game.isConnectFour() || game.isKitchen() || game.isCrabJourney() ||
+       game.isDragonRun())) {
     canvas->flush();
     return;
   }
@@ -972,6 +975,8 @@ void Ui::input(const InputEvent &e) {
     }
     return;
   }
+  if (!locked && !menu && gameOpen && game.isDragonRun() && game.dragonInput(e))
+    return;
   if (!locked && !menu && gameOpen && game.isCrabJourney() && game.crabInput(e))
     return;
   // Only the kitchen uses the additional hold; other pages keep one long action.
@@ -1256,14 +1261,16 @@ void Ui::tick() {
     dirtySettings = false;
     lastSave = millis();
   }
-  uint32_t frameInterval = gameOpen && game.isCrabJourney() ? CrabJourney::FrameMs : 100;
+  uint32_t frameInterval = gameOpen && game.isDragonRun()   ? DragonRun::FrameMs
+                           : gameOpen && game.isCrabJourney() ? CrabJourney::FrameMs
+                                                              : 100;
   if ((frameRequested && elapsed(millis(), lastFrame, 25)) ||
       elapsed(millis(), lastFrame, frameInterval)) {
     frameRequested = false;
     uint32_t frameAt = millis();
     render();
     // Animated gameplay measures cadence from frame start, including display transfer time.
-    lastFrame = gameOpen && game.isCrabJourney() ? frameAt : millis();
+    lastFrame = gameOpen && (game.isCrabJourney() || game.isDragonRun()) ? frameAt : millis();
   }
 }
 } // namespace leap

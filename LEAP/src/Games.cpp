@@ -1,6 +1,7 @@
 #include "Games.h"
 #include "Audio.h"
 #include "CrabJourneyDraw.h"
+#include "DragonRunDraw.h"
 #include "Motion.h"
 #include "PetAssets.h"
 #include "Protocol.h"
@@ -17,12 +18,36 @@ void Games::begin() {
   if (gamePrefs.getBytesLength("crab") == sizeof(crabBytes) &&
       gamePrefs.getBytes("crab", crabBytes, sizeof(crabBytes)) == sizeof(crabBytes))
     crabProgress.decode(crabBytes, sizeof(crabBytes));
+  dragonBest = constrain(gamePrefs.getInt("dragon-best", 0), 0, DragonRun::MaxScore);
   PetState saved;
   if (gamePrefs.getBytesLength("pet") == sizeof(saved) &&
       gamePrefs.getBytes("pet", &saved, sizeof(saved)) == sizeof(saved) && saved.valid())
     pet = saved;
   highscore = constrain(gamePrefs.getInt("snake-best", 0), 0, SnakeState::Capacity - 3);
   petLast = petSavedAt = millis();
+}
+void Games::saveDragon() {
+  dragonDirty = gamePrefs.putInt("dragon-best", dragonBest) != sizeof(int32_t);
+  dragonSavedAt = millis();
+}
+bool Games::dragonInput(const InputEvent &e) {
+  if (!opened || !isDragonRun() || !e.right)
+    return false;
+  if (e.longPress)
+    return true;
+  if (!dragon.alive) {
+    if (e.key == Key::Center && dragon.restartReady()) {
+      dragon.start(esp_random());
+      running = true;
+      dragonJumpHeld = false;
+      last = millis();
+    }
+  } else if (e.key == Key::Up && !dragonJumpHeld) {
+    dragonJumpHeld = true;
+    dragon.jump();
+  } else if (e.key == Key::Center)
+    dragon.fire();
+  return true;
 }
 void Games::saveKitchen() {
   uint8_t bytes[KitchenState::SaveSize];
@@ -98,6 +123,9 @@ String Games::petBlob(const String &path) const {
   return "";
 }
 void Games::close() {
+  if (dragonDirty)
+    saveDragon();
+  dragonJumpHeld = false;
   if (crabDirty)
     saveCrab();
   crabResetOpen = crabResetYes = false;
@@ -113,6 +141,11 @@ void Games::start(const String &id) {
   if (opened)
     close();
   kind = id;
+  if (isDragonRun()) {
+    dragon.start(esp_random());
+    dragonJumpHeld = false;
+    crabDirections = 0;
+  }
   if (isCrabJourney()) {
     if (!crabProgress.seed)
       checkpointCrab(1);
@@ -149,6 +182,8 @@ void Games::start(const String &id) {
     s = esp_random() % 4;
 }
 void Games::input(Key key) {
+  if (isDragonRun())
+    return; // Only full right-switch events enter this game.
   if (isCrabJourney())
     return;
   if (isKitchen())
@@ -247,6 +282,8 @@ void Games::input(Key key) {
 }
 void Games::tick() {
   uint32_t now = millis();
+  if (dragonDirty && elapsed(now, dragonSavedAt, 5000))
+    saveDragon();
   if (crabDirty && elapsed(now, crabSavedAt, 5000))
     saveCrab();
   if (kitchenDirty && elapsed(now, kitchenSavedAt, 5000))
@@ -278,6 +315,21 @@ void Games::tick() {
     if (!running) {
       audio.tone(snake.won ? 880 : 220, 200);
     }
+  }
+  if (opened && isDragonRun()) {
+    bool wasAlive = dragon.alive;
+    dragon.update(uint32_t(now - last) / 1000.0f, crabDirections & 2);
+    last = now;
+    running = dragon.alive;
+    if (wasAlive && !dragon.alive) {
+      audio.tone(220, 100);
+      if (dragon.score() > dragonBest) {
+        dragonBest = dragon.score();
+        dragonDirty = true;
+        saveDragon();
+      }
+    }
+    return;
   }
   if (!opened || !running)
     return;
@@ -330,6 +382,10 @@ void Games::tick() {
   }
 }
 void Games::draw(Arduino_GFX &gfx, int left, int top) {
+  if (isDragonRun()) {
+    drawDragonRun(gfx, dragon, dragonBest, dragonDirty);
+    return;
+  }
   if (isCrabJourney()) {
     drawCrabJourney(gfx, crab, 86);
     if (crabResetOpen) {
