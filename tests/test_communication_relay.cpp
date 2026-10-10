@@ -28,6 +28,7 @@ bool Transport::json(const String &, JsonDocument &, JsonDocument *) { return fa
 struct Server {
   int status = 200, posts = 0;
   bool losePostResponse = false, deny = false, invalid = false;
+  std::string expectedTemplate = "template";
   std::vector<bool> mine;
   std::map<std::string,uint64_t> accepted;
   std::function<void()> onGet;
@@ -38,7 +39,7 @@ struct Server {
     if (body) {
       ++posts;
       std::string event = (*body)["eventId"].as<std::string>();
-      assert(event.size() == 32 && (*body)["templateId"] == "template");
+      assert(event.size() == 32 && (*body)["templateId"].as<std::string>() == expectedTemplate);
       if (!accepted.count(event)) { add(true); accepted[event] = mine.size(); }
       if (losePostResponse) { losePostResponse = false; status = 502; return false; }
       out["ok"] = true; out["eventId"] = event;
@@ -117,6 +118,19 @@ int main() {
   s.deny=false;
   s.onGet=[&] { c.configure(disabled); };
   step(c,s,31010); assert(!c.poll() && !c.unread && c.count==0); // In-flight disable discards stale responses.
+
+  // Icon-only messages use the same actual bounded queue and idempotent retry.
+  c.configure(state); step(c,s,32010); c.poll();
+  s.expectedTemplate = "icon:help";
+  assert(!c.sendIcon(48));
+  assert(c.sendIcon(20));
+  assert(!c.sendIcon(0)); // Shared text/icon send throttling.
+  s.losePostResponse = true;
+  step(c,s,32020); assert(c.sendStatus == RelaySendStatus::Retrying);
+  auto iconEvents = s.accepted.size();
+  step(c,s,34020); assert(c.sendStatus == RelaySendStatus::Sent);
+  assert(s.accepted.size() == iconEvents);
+  c.configure(disabled); assert(!c.sendIcon(20));
 
   Communication blocked;
   blocked.configure(state); assert(blocked.begin());

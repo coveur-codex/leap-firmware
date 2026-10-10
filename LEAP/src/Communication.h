@@ -23,6 +23,7 @@ class Communication : public RelayInbox {
   RelayRequest request;
   bool deliver(JsonDocument &response, uint32_t generation);
   void run();
+  bool enqueue(const char *id);
 public:
   std::atomic<bool> enabled{false}, online{false};
   std::atomic<RelaySendStatus> sendStatus{RelaySendStatus::Idle};
@@ -30,6 +31,7 @@ public:
   void configure(JsonDocument &state);
   bool poll(); // Consume messages and return true for a new incoming notification.
   bool send(size_t index);
+  bool sendIcon(size_t index);
   JsonArrayConst messages() const { return templates["messages"].as<JsonArrayConst>(); }
   // One bounded worker step; injection makes the actual retry/queue path testable.
   void service(uint32_t now, bool connected,

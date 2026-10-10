@@ -1,6 +1,7 @@
 #include "Communication.h"
 #include "Assets.h"
 #include "Core.h"
+#include "ChatSymbols.h"
 #include "Transport.h"
 #include <WiFi.h>
 namespace leap {
@@ -34,12 +35,19 @@ void Communication::configure(JsonDocument &state) {
   }
 }
 bool Communication::send(size_t index) {
-  if (!ready || !enabled || index >= messages().size() || !elapsed(millis(), lastSend, 1000)) {
+  if (index >= messages().size()) { sendStatus = RelaySendStatus::LocalBlocked; return false; }
+  return enqueue(messages()[index]["id"] | "");
+}
+bool Communication::sendIcon(size_t index) {
+  if (index >= ChatIconCount) { sendStatus = RelaySendStatus::LocalBlocked; return false; }
+  return enqueue(ChatIcons[index].id);
+}
+bool Communication::enqueue(const char *id) {
+  if (!ready || !enabled || !id[0] || strlen(id) >= sizeof(request.templateId) ||
+      !elapsed(millis(), lastSend, 1000)) {
     sendStatus = RelaySendStatus::LocalBlocked;
     return false;
   }
-  const char *id = messages()[index]["id"] | "";
-  if (!id[0] || strlen(id) >= sizeof(request.templateId)) return false;
   RelayRequest message;
   message.epoch = epoch.load();
   strlcpy(message.templateId, id, sizeof(message.templateId));

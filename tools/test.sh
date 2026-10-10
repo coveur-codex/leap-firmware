@@ -25,6 +25,8 @@ c++ -std=c++17 -Wall -Wextra -Werror -I tests/storage_fakes -I "$ARDUINOJSON_INC
 build/tests/memory-usage
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/storage_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_quiz_tracking.cpp LEAP/src/QuizTracking.cpp LEAP/src/Storage.cpp -o build/tests/quiz-tracking
 build/tests/quiz-tracking
+c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_chat_selection.cpp -o build/tests/chat-selection
+build/tests/chat-selection
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_maze.cpp -o build/tests/maze
 build/tests/maze
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_kitchen.cpp -o build/tests/kitchen

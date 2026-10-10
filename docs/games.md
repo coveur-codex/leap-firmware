@@ -47,14 +47,14 @@ nur der gefressene wird ersetzt. Bei zwei/einem freien Feld gibt es entsprechend
 weniger Futter. Rekord und bisherige Gegenrichtungs-/Kollisionseigenschaften bleiben.
 
 Das Kipp-Labyrinth generiert beim Start per randomisiertem Tiefensuchverfahren
-ein zusammenhängendes 9×9-Labyrinth (25 Räume und 24 Verbindungsgänge). Start
-(0,0), Ziel (8,8), Kipp- und Schaltersteuerung. Die 12-Pixel-Zellen passen ins
+ein zusammenhängendes 9×21-Labyrinth mit 9 Zeilen und 21 Spalten (55 Räume und 54 Verbindungsgänge). Start
+(0,0), Ziel (20,8), Kipp- und Schaltersteuerung. Die 12-Pixel-Zellen passen ins
 Display. Keine gespeicherten Runden, keine zusätzlichen Assets oder WLAN-Abhängigkeit.
 
 `test_games.cpp` prüft alle drei Futterplätze, Ersatz, überlappungsfreie Platzierung
 und beinahe volle Spielfelder. `test_game_lifecycle.cpp` prüft alle drei Intervalle
 mit der echten Games-Implementierung und Stillstand bei Auswahl/Verlassen.
-`test_maze.cpp` prüft 100 Seeds: unterschiedliche Layouts, alle Gänge verbunden,
+`test_maze.cpp` prüft 100 Seeds für 9 Zeilen × 21 Spalten: unterschiedliche Layouts, alle Gänge verbunden,
 Ziel mit regulären Spielzügen erreichbar, Ränder und Neustart.
 
 Am Gerät prüfen: alle Geschwindigkeiten mit Kindern, Futterdarstellung, Rekord,

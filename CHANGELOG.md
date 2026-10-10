@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.6 – 2026-10-10
+
+- Flugradarringe alle 10 km: 10/20 km bei gleicher 50-km-Kartenbreite wie Regenradar.
+- Kommunikation: 48 Kinder-Icons als 3×16-Raster, über rechts HOCH/RUNTER erreichbar; LINKS/RECHTS wählt die Spalte, MITTE sendet ein einzelnes Icon.
+- Vergrößerte Einzel-Icons im Verlauf, lokale Glyphen ohne zusätzliche Assets.
+- Kipp-Labyrinth mit 9 Zeilen × 21 Spalten, entsprechend größerem Generatorstack und Ziel unten rechts.
+- Homeserver 1.0.3 ergänzt Einzel-Icon-Relay und korrigierte Regenradarringe; zuerst den Server aktualisieren.
+
 ## 1.0.5 – 2026-10-10
 
 - **Dragon Run** heißt jetzt **Drachenrennen**. Spiel-ID und gespeicherter Rekord bleiben erhalten.

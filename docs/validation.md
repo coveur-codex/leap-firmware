@@ -2,6 +2,23 @@
 
 Stand: 2026-10-10. Dragon Run und bisherige Firmwaremodule.
 
+## Radarringe, Einzel-Icons und Kipp-Labyrinth (1.0.6)
+
+- Vollständige native Firmware-Regressionssuite bestanden.
+- 100 deterministische 9×21-Labyrinthe: 109 verbundene offene Zellen,
+  Ziel (20,8) durch normale Spielzüge erreichbar, Randbedingungen und Neustart.
+  Echte Games-Zeichnung enthält 189 Zellen innerhalb des Displaybereichs.
+- Raster-/Textwechsel, Spaltenumlauf, leere/geänderte Vorlagen und 48 eindeutige
+  lokale Glyphen geprüft. Echter Kommunikationsworker sendet `icon:help` über
+  denselben begrenzten Queue-/Retrypfad; Text und Icons teilen das Sendelimit.
+- Radar-Projektion und Ringradien 22/44 Pixel für 10/20 km geprüft.
+- Homeserver-Relay-/Radarregression: alle 48 Einzel-Icons, leerer Text,
+  Gruppenverteilung, idempotente Bestätigung, ID-Konflikte, deaktivierte Geräte,
+  unbekannte Icons und tatsächliche Ringpixel im Regenradarbild bestanden.
+- ESP32-S3-Cross-Build wird über den GitHub-PR-Workflow geprüft.
+  Displaylesbarkeit, Kippgefühl und physischer Nachrichtenaustausch bleiben
+  Teil der Geräteabnahme. Homeserver 1.0.3 zuerst installieren.
+
 ## Drachenrennen (1.0.5)
 
 - Sprungdauer 1,6 s bei unveränderten 72 Pixeln Höhe, Starttempo 60 Pixel/s,

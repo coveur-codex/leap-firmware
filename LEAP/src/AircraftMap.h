@@ -30,6 +30,10 @@ inline double aircraftDistanceKm(double lat, double lon, double planeLat, double
 }
 // Same centred Mercator square as the RainViewer crop on the homeserver.
 constexpr double RadarWidthKm = 50;
+constexpr int RadarRingStepKm = 10;
+inline int radarRingPixels(int distanceKm, int halfPixels) {
+  return std::lround(distanceKm * halfPixels / (RadarWidthKm / 2));
+}
 inline bool radarOffset(double lat, double lon, double planeLat, double planeLon,
                         int halfPixels, int &x, int &y) {
   if (!std::isfinite(lat) || !std::isfinite(lon) || !std::isfinite(planeLat) ||
