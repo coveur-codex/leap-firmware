@@ -293,3 +293,71 @@ Rechts Mitte öffnet eine pausierte Rücksetz-Abfrage, zunächst mit „Nein“ 
 Rechts/Runter wählt „Ja“, Links/Hoch wählt „Nein“, rechts Mitte bestätigt.
 Links Mitte bricht die Abfrage ab. Nur das bestätigte „Ja“ speichert Level 1 mit
 neuer Karte. Linke Seitennavigation und langes Halten zum Sperren bleiben verfügbar.
+
+## Dragon Run (1.0.4)
+
+`dragon_run` erscheint als **Dragon Run**, wenn der Homeserver es in
+`config.games` freigibt. Auf bestehenden Geräten im Homeserver unter **Spiele**
+aktivieren und synchronisieren. Anschließend funktionieren Start, Spiel und
+Highscore vollständig offline. Der Homeserver benötigt den zugehörigen
+Katalogeintrag; ältere Firmware ignoriert die unbekannte ID.
+
+Das Spiel startet direkt mit einem langsam laufenden, freundlichen Drachen.
+**Rechts HOCH** springt einmal pro Tastendruck (kein Dauerspringen), **Rechts
+RUNTER** duckt nur während des Haltens am Boden, **Rechts MITTE** speit Feuer.
+Springen und Feuer lassen sich kombinieren. Links Mitte, Seitenwechsel und
+Sperren benutzen die normale Navigation. Nach einem Treffer bleibt der
+Punktestand sichtbar; rechts Mitte startet nach 0,65 Sekunden eine frische Runde.
+Diese kurze Pause verhindert einen versehentlichen sofortigen Neustart.
+
+| Objekt | Aktion / Punkte |
+| --- | --- |
+| Felsen und Steinsäulen | Überspringen, feuerfest |
+| Niedrige Fledermäuse | Ducken oder Feuer, +15 beim Verbrennen |
+| Holzbarrikaden | Feuer, +15; kleine Varianten auch überspringbar |
+| Goldmünzen / Edelsteine | Berühren, +10 / +30 |
+| Zurückgelegte Strecke | +1 pro 10 Pixel |
+
+Der Sprung dauert 1,2 Sekunden und erreicht 72 Pixel Höhe. Die Laufgeschwindigkeit
+steigt langsam von 78 auf maximal 150 Pixel/s. Feuer dauert 0,24 Sekunden;
+zwischen zwei Feuerstößen liegen mindestens 0,95 Sekunden. Die ersten drei
+Hindernisse sind ausschließlich Felsen oder kleines Holz; weitere Typen kommen
+schrittweise hinzu. Hindernisse werden einzeln in wechselnden Folgen erzeugt,
+mit mindestens `Geschwindigkeit × 1,45 + 36` Pixeln Abstand zwischen ihren
+Kanten. Das lässt nach einem Sprung Zeit zum Landen, Reagieren und Wiederaufladen.
+Optionale Schätze ergänzen Sprungwege oder freie Zwischenräume. Es gibt keine
+überlappenden Pflichtaktionen, bewegte Kollisionshöhen oder Sackgassen.
+
+`DragonRun.h` enthält die plattformunabhängige Simulation mit acht Objekten und
+18 Partikeln, ohne dynamische Allokationen. Körper/Kopf kollidieren in einem
+28×28-Pixel-Rechteck, beim Ducken 28×15; Schwanz, Flügel und Hornspitzen sind
+dekorativ. Die Bat-Flügel sind ebenfalls dekorativ. Alle Hindernisse besitzen
+passende, feste Rechtecke. Feuer prüft die nach vorne gerichtete Fläche vor
+der Drachenkollision. Die Simulation verwendet Schritte von höchstens 1/120 s
+und begrenzt verzögerte Updates auf 100 ms: bei einer Blockade wird das Spiel
+langsamer, Hindernisse springen nicht durch den Drachen.
+
+`DragonRunDraw.cpp` zeichnet alle Grafiken in den bestehenden Canvas, mit
+Clipping auf x=86…427 und y=0…141. Der Renderer nutzt Wolken, Berge, Burgen,
+Bäume und Boden mit unterschiedlichen Scrollgeschwindigkeiten. Bei 350/700
+Punkten wechseln die Farben zu Wald/Vulkan. HUD und Bedienhilfe bleiben im
+Spielbereich. Zielintervall: 33 ms; tatsächliche Bildrate hängt vom Paneltransfer
+und der Hardware ab. Keine zusätzlichen Bildpakete, Dateien oder Netzwerkanfragen.
+
+Der Rekord wird unter `leap-games/dragon-best` über Preferences gespeichert,
+nur bei einem neuen Rekord am Rundenende. Fehlgeschlagene Schreibvorgänge werden
+nach fünf Sekunden und beim Verlassen erneut versucht. Laufende Runden werden
+nicht gespeichert. Die Homeserver-Vorschau demonstriert Grafik und Eingaben;
+sie liest oder verändert keine Spielstände auf dem Gerät. Bestehende serverseitige
+Spielefreigaben bleiben beim Update erhalten.
+
+### Abnahme auf dem Gerät
+
+- Sidebar/Uhr/Avatar prüfen, vollständiger Spielbereich ohne Überzeichnen.
+- HOCH, RUNTER halten/loslassen, MITTE und gleichzeitiger Sprung/Feuer testen.
+- Säule/Felsen überspringen, Fledermaus ducken, beide Holzgrößen verbrennen;
+  Feuerfestigkeit, Trefferränder, Bonusobjekte und Abklingzeit prüfen.
+- Game Over, erneuter Tastendruck zum Neustart, Verlassen/Sperren/Seitenwechsel,
+  Rekord nach Stromausfall sowie Offline-Neustart prüfen.
+- Mehrere Minuten spielen: Bildrate/Flackern, RAM, Watchdog und Hintergrundsync
+  auf dem ESP32-S3 messen. Hosttests ersetzen diese Hardware-Abnahme nicht.

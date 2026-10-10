@@ -58,6 +58,37 @@ static CrabJourneyProgress savedCrab() {
 }
 int main() {
   Arduino_GFX gfx;
+  // Dragon Run consumes only the right switch and keeps its game-over screen active.
+  Games runner;
+  runner.begin(); runner.start("dragon_run");
+  assert(runner.active() && runner.isDragonRun());
+  assert(!runner.dragonInput({false, Key::Up, false}));
+  assert(runner.dragonInput({true, Key::Up, false}));
+  assert(runner.dragonInput({true, Key::Center, false}));
+  fakeNow += 33; runner.tick();
+  assert(Preferences::writes["leap-gamesdragon-best"] == 0);
+  for (int i = 0; i < 1500 && runner.active(); ++i) { fakeNow += 33; runner.tick(); }
+  assert(!runner.active());
+  int dragonRecord = Preferences::ints["leap-gamesdragon-best"];
+  assert(dragonRecord > 0 && Preferences::writes["leap-gamesdragon-best"] == 1);
+  runner.dragonInput({true, Key::Center, false}); assert(!runner.active());
+  for (int i = 0; i < 8; ++i) { fakeNow += 100; runner.tick(); }
+  runner.dragonInput({true, Key::Center, false}); assert(runner.active());
+  runner.close(); fakeNow += 10000; runner.tick(); assert(!runner.active());
+  Games runnerReboot; runnerReboot.begin(); runnerReboot.start("dragon_run");
+  gfx.text.clear(); runnerReboot.draw(gfx, 94, 10);
+  char recordText[32]; snprintf(recordText, sizeof(recordText), "Best %06d", dragonRecord);
+  assert(gfx.text.find(recordText) != std::string::npos);
+  runnerReboot.close();
+  Preferences::ints["leap-gamesdragon-best"] = 0;
+  Games runnerRetry; runnerRetry.begin(); runnerRetry.start("dragon_run");
+  Preferences::failWrites = true;
+  for (int i = 0; i < 1500 && runnerRetry.active(); ++i) { fakeNow += 33; runnerRetry.tick(); }
+  assert(!runnerRetry.active() && Preferences::ints["leap-gamesdragon-best"] == 0);
+  Preferences::failWrites = false; fakeNow += 5000; runnerRetry.tick();
+  assert(Preferences::ints["leap-gamesdragon-best"] > 0);
+  runnerRetry.close();
+  fakeNow = 0;
   // Real integration: continuous held input, safe exit/re-entry and full-height viewport.
   fakeRandom = 42;
   Games journey;

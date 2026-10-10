@@ -46,7 +46,7 @@ build/tests/motion-calibration
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/motion_fakes -I tests/storage_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_motion.cpp LEAP/src/Motion.cpp -o build/tests/motion
 build/tests/motion
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_games.cpp -o build/tests/games
-c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_game_lifecycle.cpp LEAP/src/Games.cpp LEAP/src/CrabJourneyDraw.cpp LEAP/src/KitchenEditor.cpp -o build/tests/game-lifecycle
+c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_game_lifecycle.cpp LEAP/src/Games.cpp LEAP/src/CrabJourneyDraw.cpp LEAP/src/DragonRunDraw.cpp LEAP/src/KitchenEditor.cpp -o build/tests/game-lifecycle
 build/tests/game-lifecycle
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_chill.cpp LEAP/src/Chill.cpp -o build/tests/chill
 build/tests/chill
@@ -60,3 +60,6 @@ build/tests/storage-recovery
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src -I "$ARDUINOJSON_INCLUDE" tests/test_core.cpp -o build/tests/core
 build/tests/core "${@}"
 python3 tests/test_partitions.py
+
+c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I LEAP/src tests/test_dragon_run.cpp LEAP/src/DragonRunDraw.cpp -o build/tests/dragon-run
+build/tests/dragon-run

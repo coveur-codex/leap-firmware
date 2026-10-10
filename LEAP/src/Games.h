@@ -5,6 +5,7 @@
 #include "Maze.h"
 #include "CrabJourney.h"
 #include "CrabJourneyProgress.h"
+#include "DragonRun.h"
 #include "Input.h"
 #include "Media.h"
 #include <Arduino_GFX_Library.h>
@@ -18,6 +19,11 @@ class Games {
   PetState pet;
   SnakeState snake;
   MazeState maze;
+  DragonRun dragon;
+  int dragonBest = 0;
+  bool dragonDirty = false, dragonJumpHeld = false;
+  uint32_t dragonSavedAt = 0;
+  void saveDragon();
   CrabJourney crab;
   uint8_t crabDirections = 0;
   CrabJourneyProgress crabProgress;
@@ -61,11 +67,17 @@ public:
   bool isConnectFour() const {
     return kind == "connect_four";
   }
+  bool isDragonRun() const {
+    return kind == "dragon_run";
+  }
+  bool dragonInput(const InputEvent &event);
   bool isCrabJourney() const {
     return kind == "crab_journey";
   }
   void heldDirections(uint8_t mask) {
     crabDirections = mask;
+    if (!(mask & 1))
+      dragonJumpHeld = false;
   }
   bool isKitchen() const {
     return kind == "kitchen";

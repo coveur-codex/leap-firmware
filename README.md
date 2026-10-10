@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.3`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.4`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -613,3 +613,12 @@ Muscheln. Kinderfreundliches Rücksetzen statt Leben oder Game Over; am Ziel geh
 es nach einer kurzen Feier automatisch ins nächste Level. Die 86-Pixel-Sidebar
 bleibt erhalten, Grafiken benötigen keine externen Assets. Regeln, Generierung,
 Parameter und Hardware-Abnahme: [Spiele](docs/games.md#krabbenreise).
+
+## Dragon Run
+
+Offline-Endless-Runner mit niedlichem Drachen, Sprung, Ducken und Feuer; alle
+Grafiken werden lokal gezeichnet. Rechts HOCH springt, RUNTER duckt beim Halten,
+MITTE speit Feuer oder startet nach Game Over erneut. Im Homeserver für das Gerät
+freigeben, dann synchronisieren. Rekorde bleiben lokal erhalten.
+Details und Hardware-Abnahme: [Spiele](docs/games.md#dragon-run-104).
+Änderungen: [Changelog](CHANGELOG.md).

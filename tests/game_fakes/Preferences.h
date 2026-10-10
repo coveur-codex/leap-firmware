@@ -45,6 +45,8 @@ public:
     return p == ints.end() ? fallback : p->second;
   }
   size_t putInt(const char *key, int value) {
+    ++writes[space + key];
+    if (failWrites) return 0;
     ints[space + key] = value;
     return sizeof(value);
   }
