@@ -79,6 +79,7 @@ int main() {
   gfx.text.clear(); runnerReboot.draw(gfx, 94, 10);
   char recordText[32]; snprintf(recordText, sizeof(recordText), "Best %06d", dragonRecord);
   assert(gfx.text.find(recordText) != std::string::npos);
+  assert(gfx.text.find("Drachenrennen") != std::string::npos);
   runnerReboot.close();
   Preferences::ints["leap-gamesdragon-best"] = 0;
   Games runnerRetry; runnerRetry.begin(); runnerRetry.start("dragon_run");

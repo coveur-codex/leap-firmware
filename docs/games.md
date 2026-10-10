@@ -294,9 +294,9 @@ Rechts/Runter wählt „Ja“, Links/Hoch wählt „Nein“, rechts Mitte bestä
 Links Mitte bricht die Abfrage ab. Nur das bestätigte „Ja“ speichert Level 1 mit
 neuer Karte. Linke Seitennavigation und langes Halten zum Sperren bleiben verfügbar.
 
-## Dragon Run (1.0.4)
+## Drachenrennen (1.0.5)
 
-`dragon_run` erscheint als **Dragon Run**, wenn der Homeserver es in
+`dragon_run` erscheint als **Drachenrennen**, wenn der Homeserver es in
 `config.games` freigibt. Auf bestehenden Geräten im Homeserver unter **Spiele**
 aktivieren und synchronisieren. Anschließend funktionieren Start, Spiel und
 Highscore vollständig offline. Der Homeserver benötigt den zugehörigen
@@ -318,13 +318,14 @@ Diese kurze Pause verhindert einen versehentlichen sofortigen Neustart.
 | Goldmünzen / Edelsteine | Berühren, +10 / +30 |
 | Zurückgelegte Strecke | +1 pro 10 Pixel |
 
-Der Sprung dauert 1,2 Sekunden und erreicht 72 Pixel Höhe. Die Laufgeschwindigkeit
-steigt langsam von 78 auf maximal 150 Pixel/s. Feuer dauert 0,24 Sekunden;
+Der Feuerstrahl reicht 64 Pixel nach vorne. Der Sprung dauert 1,6 Sekunden
+und erreicht 72 Pixel Höhe. Die Laufgeschwindigkeit
+steigt langsam von 60 auf maximal 150 Pixel/s. Feuer dauert 0,42 Sekunden;
 zwischen zwei Feuerstößen liegen mindestens 0,95 Sekunden. Die ersten drei
 Hindernisse sind ausschließlich Felsen oder kleines Holz; weitere Typen kommen
 schrittweise hinzu. Hindernisse werden einzeln in wechselnden Folgen erzeugt,
-mit mindestens `Geschwindigkeit × 1,45 + 36` Pixeln Abstand zwischen ihren
-Kanten. Das lässt nach einem Sprung Zeit zum Landen, Reagieren und Wiederaufladen.
+mit mindestens `Geschwindigkeit × (Sprungdauer + 0,25) + 36` Pixeln Abstand
+zwischen ihren Kanten. Das lässt nach einem Sprung Zeit zum Landen, Reagieren und Wiederaufladen.
 Optionale Schätze ergänzen Sprungwege oder freie Zwischenräume. Es gibt keine
 überlappenden Pflichtaktionen, bewegte Kollisionshöhen oder Sackgassen.
 

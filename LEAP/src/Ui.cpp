@@ -37,7 +37,7 @@ static String displayText(String s) {
 }
 static String gameTitle(const String &id) {
   if (id == "dragon_run")
-    return "Dragon Run";
+    return "Drachenrennen";
   if (id == "crab_journey")
     return "Krabbenreise";
   if (id == "kitchen")
