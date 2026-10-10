@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
     assert(!deserializeJson(fixtures, stream));
     assert(deviceConfig(fixtures["config"], "leap-test", 1));
     if (fixtures["gameConfig"].is<JsonObject>()) {
-      assert(enabledGames(fixtures["config"]).size() == 8);
+      assert(enabledGames(fixtures["config"]).size() == 9);
       assert(enabledGames(fixtures["gameConfig"]) == std::vector<std::string>{"snake"});
     }
     for (JsonVariant m : fixtures["manifests"].as<JsonArray>()) {
