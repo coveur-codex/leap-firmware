@@ -177,3 +177,14 @@ Antworten bleiben erhalten. Ein beschädigter Warteschlangendatensatz wird nicht
 bleiben gespeichert, bis der Server aktualisiert wurde oder die Grenze erreicht
 ist. Deshalb zuerst den Homeserver samt Migration aktualisieren. Frühere
 Firmwarestände haben keine historischen Antworten zum Nachsenden gespeichert.
+
+
+## Gemeinsamer Radarausschnitt (1.0.1)
+
+`GET /api/v1/devices/{id}/weather/radar` liefert zusätzlich `mapWidthKm: 50`.
+Der Server schneidet die zentrierte RainViewer-Mercator-Kachel vor der Skalierung
+auf 112×112 Pixel zu: 50 km Seitenlänge am Standort, mit Nord oben. Der Flugradar
+verwendet dieselbe Mercatorprojektion und einen quadratischen Sichtbereich;
+der Abrufradius bleibt separat. Alte Regenbilder ohne diesen Maßstab werden
+als „Server-Update“ angezeigt. Der neue serverseitige Cache-Key verhindert,
+dass bisherige Zoom-7-Bilder als 50-km-Aufnahmen ausgegeben werden.

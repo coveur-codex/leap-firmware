@@ -2,6 +2,7 @@
 #include "Config.h"
 #include "Hardware.h"
 #include <Wire.h>
+#include <Preferences.h>
 #include <math.h>
 namespace leap {
 Motion motion;
@@ -23,6 +24,15 @@ bool Motion::read(uint8_t reg, uint8_t *bytes, size_t size) {
   return true;
 }
 bool Motion::begin() {
+  calibrated = false;
+  Preferences prefs;
+  MotionOrientation stored;
+  if (prefs.begin("leap-imu", true)) {
+    calibrated = prefs.getBytesLength("orientation") == sizeof(stored) &&
+        prefs.getBytes("orientation", &stored, sizeof(stored)) == sizeof(stored) && stored.valid();
+    if (calibrated) orientation = stored;
+    prefs.end();
+  }
   Wire.begin(hw::ImuSda, hw::ImuScl, 400000);
   Wire.setTimeOut(5);
   for (uint8_t candidate : {uint8_t(0x68), uint8_t(0x69)}) {
@@ -59,8 +69,33 @@ void Motion::poll() {
   gx = rawGx = signed16(8) / 131.0f;
   gy = rawGy = signed16(10) / 131.0f;
   gz = rawGz = signed16(12) / 131.0f;
-  deviceSettings.orient(x, y, z);
-  deviceSettings.orient(gx, gy, gz);
+  if (calibrationActive && calibration.collecting) {
+    calibration.sample(rawX, rawY, rawZ, rawGx, rawGy, rawGz);
+    if (calibration.step == 3) calibrationSaved = saveCalibration();
+  }
+  if (calibrated) {
+    orientation.orient(x, y, z);
+    orientation.orient(gx, gy, gz);
+  } else {
+    deviceSettings.orient(x, y, z);
+    deviceSettings.orient(gx, gy, gz);
+  }
+}
+void Motion::startCalibration() {
+  calibration = MotionCalibration{};
+  calibrationActive = available;
+  calibrationSaved = false;
+}
+bool Motion::saveCalibration() {
+  if (calibration.step != 3 || !calibration.result.valid()) return false;
+  Preferences prefs;
+  if (!prefs.begin("leap-imu", false)) return false;
+  MotionOrientation verified;
+  bool saved = prefs.putBytes("orientation", &calibration.result, sizeof(orientation)) == sizeof(orientation) &&
+      prefs.getBytes("orientation", &verified, sizeof(verified)) == sizeof(verified) && verified.valid();
+  prefs.end();
+  if (saved) { orientation = verified; calibrated = true; }
+  return saved;
 }
 int Motion::direction(bool requireNeutral) {
   static bool armed = true;

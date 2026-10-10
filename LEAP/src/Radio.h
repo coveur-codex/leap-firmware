@@ -5,7 +5,7 @@
 #include <esp_now.h>
 namespace leap {
 struct ChatLine {
-  String name, text;
+  String name, text, symbol;
   uint32_t at = 0;
 };
 class Radio {

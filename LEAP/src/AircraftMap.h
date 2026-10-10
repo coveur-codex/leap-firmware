@@ -28,6 +28,22 @@ inline double aircraftDistanceKm(double lat, double lon, double planeLat, double
       std::cos(lat * rad) * std::cos(planeLat * rad) * std::pow(std::sin((planeLon - lon) * rad / 2), 2);
   return 6371.0088 * 2 * std::asin(std::sqrt(std::clamp(h, 0.0, 1.0)));
 }
+// Same centred Mercator square as the RainViewer crop on the homeserver.
+constexpr double RadarWidthKm = 50;
+inline bool radarOffset(double lat, double lon, double planeLat, double planeLon,
+                        int halfPixels, int &x, int &y) {
+  if (!std::isfinite(lat) || !std::isfinite(lon) || !std::isfinite(planeLat) ||
+      !std::isfinite(planeLon) || std::abs(lat) > 85 || std::abs(planeLat) > 85 ||
+      std::abs(lon) > 180 || std::abs(planeLon) > 180 || halfPixels < 1) return false;
+  constexpr double rad = 3.141592653589793 / 180;
+  double scale = 6378.137 * std::cos(lat * rad) / (RadarWidthKm / 2);
+  double east = std::remainder(planeLon - lon, 360.0) * rad * scale;
+  double north = (std::asinh(std::tan(planeLat * rad)) - std::asinh(std::tan(lat * rad))) * scale;
+  if (std::abs(east) > 1 || std::abs(north) > 1) return false;
+  x = std::lround(east * halfPixels);
+  y = -std::lround(north * halfPixels);
+  return true;
+}
 // North-up azimuthal projection: true bearing and great-circle distance from home.
 inline bool aircraftOffset(double lat, double lon, double planeLat, double planeLon,
                            double radiusNm, int radiusPixels, int &x, int &y) {

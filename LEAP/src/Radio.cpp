@@ -65,10 +65,11 @@ void Radio::poll() {
   while (budget-- && xQueueReceive(incoming, &packet, 0) == pdTRUE) {
     if (packet.templates != version || !memcmp(packet.sender, mac, 6) || !seen.accept(packet))
       continue;
-    String text;
+    String text, symbol;
     for (JsonObjectConst m : messages())
       if (m["id"] == packet.message) {
         text = m["text"].as<String>();
+        symbol = m["symbol"] | "";
         break;
       }
     if (!text.length())
@@ -78,7 +79,7 @@ void Radio::poll() {
         history[i - 1] = history[i];
       count--;
     }
-    history[count++] = {String(packet.name), text, millis()};
+    history[count++] = {String(packet.name), text, symbol, millis()};
     revision++;
   }
 }
@@ -102,7 +103,7 @@ bool Radio::send(size_t index) {
       history[i - 1] = history[i];
     count--;
   }
-  history[count++] = {"Ich (gesendet)", messages()[index]["text"].as<String>(), millis()};
+  history[count++] = {"Ich (gesendet)", messages()[index]["text"].as<String>(), messages()[index]["symbol"] | "", millis()};
   revision++;
   return true;
 }

@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.0-beta.17`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.1`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -130,7 +130,7 @@ das Logo beim nächsten Neustart. Es wird nicht bei jedem Sync erneut eingeblend
 | --- | --- |
 | Mitte am Sperrbildschirm | Entsperren / Hauptmenü |
 | Links LEFT / RIGHT | Vorige / nächste aktivierte Seite |
-| Links CENTER | Menü / zurück; laufendes Spiel verlassen |
+| Links CENTER | Im Menü Auswahl bestätigen; sonst Menü / zurück; laufendes Spiel verlassen |
 | Links CENTER 0,9 s halten | Sperren |
 | Rechts UP / DOWN | Auswahl bzw. Text scrollen |
 | Rechts LEFT / RIGHT | News/Flugzeug/Quiz wechseln, Einstellungen ändern |
@@ -146,11 +146,16 @@ kleiner Punkt rechts neben der Uhr kennzeichnet einen noch nicht bestätigten Ze
 Nach einem Check-in läuft die Uhr lokal weiter; Sommerzeit über POSIX-Zeitzone.
 
 **Gruppenchat:** Rechts UP/DOWN wählt Vorlagen, MITTE sendet, LINKS/RECHTS
-blättert durch die letzten acht Chatzeilen. Historie bleibt nur im RAM.
+blättert durch die letzten acht Chatzeilen. Historie bleibt nur im RAM. Die zehn Standardsymbole werden lokal als 12×12-Icons
+in Vorlagenauswahl und Historie gezeichnet. Eigene unbekannte Symbole bleiben ohne
+Icon; zusätzliche Assets sind nicht nötig.
 
 **Regenradar:** Die Wetterseite zeigt rechts eine 112×112-Pixel-Aufnahme von
-RainViewer, zentriert auf den im Homeserver konfigurierten Standort (Zoom 7,
-Nord oben, weißer Standortpunkt). Zeitstempel in UTC; „alt“ kennzeichnet Cache,
+RainViewer, zentriert auf den im Homeserver konfigurierten Standort (50×50 km am Standort,
+Nord oben, weißer Standortpunkt). Seit 1.0.1 wird der Ausschnitt auf dem Server
+abhängig vom Breitengrad zugeschnitten (`mapWidthKm: 50`). Ein alter Server zeigt
+statt eines abweichenden Maßstabs „Server-Update“. Wetter- und Radarzeit stehen
+gemeinsam in der Stand-Zeile; die Radaruntertitel entfallen. Zeitstempel in UTC; „alt“ kennzeichnet Cache,
 Offlinebetrieb oder Aufnahmen älter als 30 Minuten. Kein Bild wird als „kein Regen“
 ersetzt: Fehlen Daten, steht dort „nicht verfügbar“. Das letzte Bild bleibt offline
 verfügbar. Radar-Dateien werden separat gespeichert; nur die beiden aktuellen
@@ -172,8 +177,10 @@ verwendet weiterhin seine animierten Zustände. Die vorhandene Manifest-/Datei-A
 des Homeservers reicht aus; eine Serveränderung ist dafür nicht erforderlich.
 
 **Flugradar:** Rechts zeigt eine 112×112-Ansicht die gemeldeten Flugzeugpositionen
-um den Gerätestandort (`aircraft.center` aus der Server-API), Nord oben. Der äußere
-Ring entspricht `radiusNm`, der innere der halben Entfernung. Weiß markiert den
+um den Gerätestandort (`aircraft.center` aus der Server-API), Nord oben. Seit 1.0.1
+zeigt sie denselben zentrierten 50×50-km-Mercator-Ausschnitt wie das Regenradar.
+Flugzeuge in den Ecken des Quadrats bleiben sichtbar; `radiusNm` bestimmt weiterhin
+den Server-Abruf, nicht den Kartenausschnitt. Weiß markiert den
 Standort, Gelb das links ausgewählte Flugzeug. Symbole zeigen die gemeldete
 Flugrichtung; bei fehlender Richtung erscheint ein Punkt. Rechts LINKS/RECHTS
 wechselt die Auswahl. Es ist eine Positionsansicht ohne Straßenkarte; Daten
@@ -399,12 +406,35 @@ Diagnose; zum Verlassen **eine der Mitteltasten zwei Sekunden halten**.
 
 `A` zeigt Beschleunigung in g, `G` die Drehrate in Grad/Sekunde (`d/s`).
 `roh` sind die Sensorachsen vor der Montagekorrektur, `cfg` die Werte nach
-Achsentausch und Vorzeichen aus NVS. Darunter stehen die geladenen
+der gespeicherten Kalibrierung bzw. dem bisherigen Achsentausch/Vorzeichen aus NVS.
+Darunter steht, ob eine Kalibrierung aktiv ist, ansonsten die geladenen
 XY-Tausch-/XYZ-Vorzeichen. Bei flach liegendem Gerät sollte `A cfg` für X/Y
 ungefähr 0 und Z ungefähr +1 g anzeigen, sofern die Montage entsprechend
 konfiguriert ist. Bei fehlendem MPU erscheint eine Statusmeldung; Tastertests
 bleiben verfügbar. Dimmen und automatische Sperre sind während der Diagnose
 pausiert. Die Ansicht ändert keine Gerätekonfiguration.
+
+## MPU-Kalibrierung (ab 1.0.1)
+
+Unter **Einstellungen → MPU kalibrieren** öffnen. Drei geführte Positionen:
+Display oben flach ablegen, rechte Kante nach unten, untere Kante nach unten.
+Jeweils mit **rechts Mitte** die Messung starten und eine Sekunde ruhig halten.
+Bewegungen setzen das Messfenster zurück; gleiche oder nicht senkrechte Positionen
+müssen wiederholt werden. **Links Mitte** bricht ab bzw. verlässt die Ansicht.
+Die vorige Ausrichtung bleibt bis zum erfolgreichen Abschluss aktiv.
+
+Die drei Sensorvektoren bestimmen eine orthonormale Ausrichtung auch bei
+Achstausch mit Z oder einer schrägen Sensormontage. Nach erfolgreicher Prüfung
+wird sie automatisch als versionierter, prüfsummengesicherter NVS-Blob in
+`leap-imu/orientation` gespeichert und zurückgelesen. Neustart und OTA erhalten
+sie; die Schema-1-Gerätekonfiguration und Zugangsdaten werden nicht verändert.
+Bei Schreibfehler kann rechts Mitte erneut speichern. Fehlende/ungültige
+Kalibrierungen verwenden weiterhin die provisionierten Montagewerte. Dimmen und
+automatische Sperre sind während der Kalibrierung pausiert.
+
+News-/Wissenstitel und Flugkennungen erscheinen ab 1.0.1 in Akzentfarbe, etwas
+fetter und größer (8×13-Zeilenraster statt 6×10). Umbruch und Scrollen erhalten
+auch lange Titel vollständig.
 
 ## OTA und Recovery
 

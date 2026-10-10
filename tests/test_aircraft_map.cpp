@@ -22,6 +22,20 @@ int main() {
   assert(!leap::aircraftOffset(0, 0, 0, 181, 12, 48, x, y));
   assert(!leap::aircraftOffset(0, 0, 0, 0, 0, 48, x, y));
   assert(!leap::aircraftOffset(0, 0, std::numeric_limits<double>::quiet_NaN(), 0, 12, 48, x, y));
+  assert(leap::radarOffset(0,0,0,0,55,x,y) && x==0 && y==0);
+  assert(leap::radarOffset(0,0,0.22,0.22,55,x,y) && x==54 && y==-54); // Square corner beyond 25-km circle.
+  assert(!leap::radarOffset(0,0,0,0.23,55,x,y));
+  assert(leap::radarOffset(0,179.95,0,-179.95,55,x,y) && x==24 && y==0);
+  constexpr double pi=3.141592653589793;
+  for (double latitude : {0.0,52.52,-52.52,80.0,85.0}) {
+    double half = 24.99 / (6378.137 * std::cos(latitude*pi/180));
+    double top = (2*std::atan(std::exp(std::asinh(std::tan(latitude*pi/180))+half))-pi/2)*180/pi;
+    // At the poleward limit positions outside the provider's map are rejected.
+    if (top <= 85) assert(leap::radarOffset(latitude,0,top,0,55,x,y) && x==0 && y==-55);
+    assert(leap::radarOffset(latitude,0,latitude,half*180/pi,55,x,y) && x==55 && y==0);
+  }
+  assert(!leap::radarOffset(86,0,0,0,55,x,y));
+  assert(!leap::radarOffset(0,0,NAN,0,55,x,y));
   double lat = 0, lon = 0;
   assert(leap::predictAircraft(lat, lon, 360, 90, 2));
   assert(std::abs(lat) < 0.000001);
