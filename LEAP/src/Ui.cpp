@@ -772,7 +772,7 @@ void Ui::drawPage(const String &id) {
       text(displayText(last.mine ? "Ich (gesendet)" : last.name).substring(0, 40), 94, 10, 1, Accent);
       int old = scroll;
       scroll = 0;
-      chatSymbol(last.symbol, 94, 26, last.text.length() ? 1 : 2);
+      chatSymbol(last.symbol, 94, 26, last.text[0] ? 1 : 2);
       body(last.text, 112, 26, 308, 28);
       scroll = old;
     } else
