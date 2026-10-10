@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.5`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.7`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -13,6 +13,12 @@ Fehlendes WLAN unterbricht die Bedienung nicht. Es gibt keinen erfundenen Akkust
 Hardware-Abnahme ist vor einem regulären Geräte-Rollout erforderlich. Insbesondere
 Display-Offset/Farben, Audio-Verdrahtung, WLAN-Erreichbarkeit und Power-Cut-Rollback können
 in einer Cloud-Umgebung nicht gemessen werden. Siehe [Abnahme](docs/acceptance.md).
+
+Deutsche Displaytexte verwenden ä, ö, ü, Ä, Ö, Ü und ß. Die Firmware bildet
+UTF-8 erst bei der Anzeige auf die vorhandenen CP437-Glyphen der eingebauten
+6×8-Schrift ab. Dadurch funktionieren auch Kürzungen, Zeilenumbrüche und
+vergrößerte Artikelüberschriften ohne zusätzliche Schriftdatei. Gespeicherte
+Inhalte und die Kommunikation mit dem Homeserver bleiben UTF-8.
 
 ## Arduino IDE: Einrichtung und Upload
 

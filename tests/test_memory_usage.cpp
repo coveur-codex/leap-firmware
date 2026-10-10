@@ -20,9 +20,9 @@ int main() {
   ESP.psramFree = 5 * 1024 * 1024;
   assert(memorySnapshot().psram.used == 3 * 1024 * 1024);
   ESP.psramTotal = ESP.psramFree = 0;
-  assert(memoryLabel(memorySnapshot().psram) == "nicht verfuegbar");
+  assert(memoryLabel(memorySnapshot().psram) == "nicht verfügbar");
   storage.ready = false;
   storage.refreshSpace();
-  assert(memoryLabel(memorySnapshot().littlefs) == "nicht verfuegbar");
+  assert(memoryLabel(memorySnapshot().littlefs) == "nicht verfügbar");
   assert(fakeUsedCalls == scans);
 }

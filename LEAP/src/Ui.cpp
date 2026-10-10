@@ -1,4 +1,5 @@
 #include "Ui.h"
+#include "DisplayText.h"
 #include "ChillAssets.h"
 #include "AircraftMap.h"
 #include "WeatherIcon.h"
@@ -18,22 +19,8 @@ namespace leap {
 Ui ui;
 constexpr uint16_t Background = 0x10e5, Panel = 0x18e7, Accent = 0x06b8, Muted = 0x9d35;
 static constexpr const char *DiagnosticKeys[] = {"Ob", "Un", "Li", "Re", "Mi"};
-static String displayText(String s) {
-  // Built-in 6x8 font: predictable wrapping, German transliteration, no broken UTF-8.
-  const char *from[] = {"ä", "ö", "ü", "Ä", "Ö", "Ü", "ß", "é", "è", "–", "—", "’", "„", "“", "°"};
-  const char *to[] = {"ae", "oe", "ue", "Ae", "Oe", "Ue", "ss",   "e",
-                      "e",  "-",  "-",  "'",  "\"", "\"", " Grad"};
-  for (int i = 0; i < 15; i++)
-    s.replace(from[i], to[i]);
-  String out;
-  for (unsigned char c : s) {
-    if (c < 128) {
-      if (c == '\n' || c >= 32)
-        out += char(c);
-    } else if ((c & 0xc0) != 0x80)
-      out += '?';
-  }
-  return out;
+static String displayText(const String &s) {
+  return String(displayGlyphs(s.c_str()).c_str());
 }
 static String gameTitle(const String &id) {
   if (id == "dragon_run")
@@ -41,7 +28,7 @@ static String gameTitle(const String &id) {
   if (id == "crab_journey")
     return "Krabbenreise";
   if (id == "kitchen")
-    return "Meine Kueche";
+    return "Meine Küche";
   if (id == "connect_four")
     return "Vier Gewinnt";
   if (id == "tamagotchi")
@@ -49,7 +36,7 @@ static String gameTitle(const String &id) {
   if (id == "snake")
     return "Snake";
   if (id == "hot_potato")
-    return "Heisse Kartoffel";
+    return "Heiße Kartoffel";
   if (id == "simon_motion")
     return "Simon";
   if (id == "tilt_maze")
@@ -228,10 +215,13 @@ bool Ui::reload(bool initial) {
   return true;
 }
 void Ui::text(const String &s, int x, int y, int size, uint16_t color) {
+  glyphText(displayText(s), x, y, size, color);
+}
+void Ui::glyphText(const String &s, int x, int y, int size, uint16_t color) {
   canvas->setCursor(x, y);
   canvas->setTextSize(size);
   canvas->setTextColor(color);
-  canvas->print(displayText(s));
+  canvas->print(s);
 }
 void Ui::body(const String &raw, int x, int y, int width, int height, const String &heading) {
   String title = displayText(heading);
@@ -256,12 +246,12 @@ void Ui::body(const String &raw, int x, int y, int width, int height, const Stri
         for (unsigned i = pos; i < end; ++i)
           for (int xx = 0; xx < 6; ++xx)
             for (int yy = 0; yy < 10; ++yy)
-              if (font[uint8_t(s[i]) * 5 + xx * 5 / 6] & (1 << (yy * 7 / 10))) {
+              if (font[uint8_t(s[i]) * 5 + xx * 5 / 6] & (1 << (yy * 8 / 10))) {
                 int px = x + (i - pos) * advance + xx;
                 canvas->drawPixel(px, y + used + yy, Accent);
                 canvas->drawPixel(px + 1, y + used + yy, Accent);
               }
-      } else text(s.substring(pos, end), x, y + used);
+      } else glyphText(s.substring(pos, end), x, y + used);
       used += lineHeight;
       drawn++;
     }
@@ -286,7 +276,7 @@ void Ui::list(const std::vector<String> &labels, int x, int y, int width) {
     int max = width / 6 - 2;
     if (label.length() > unsigned(max))
       label = label.substring(0, max - 2) + "..";
-    text(label, x, yy, 1, i == selection ? Background : 0xffff);
+    glyphText(label, x, yy, 1, i == selection ? Background : 0xffff);
   }
 }
 String Ui::assetOfType(const char *type) {
@@ -403,10 +393,10 @@ void Ui::sidebar() {
         if (pageIcons[glyph][row] & (1 << (6 - col)))
           canvas->drawPixel(x + col, 121 + row, selected ? Background : Muted);
   }
-  String title = locked ? "Gesperrt" : menu ? "Menue" : pages[page].title;
+  String title = locked ? "Gesperrt" : menu ? "Menü" : pages[page].title;
   title = displayText(title);
   if (title.length() > 13) title = title.substring(0, 11) + "..";
-  text(title, (86 - title.length() * 6) / 2, 133, 1, Muted);
+  glyphText(title, (86 - title.length() * 6) / 2, 133, 1, Muted);
 }
 void Ui::startQuiz() {
   quizCatalog = -1;
@@ -515,7 +505,7 @@ void Ui::drawPage(const String &id) {
     String child = state["config"]["childName"] | "";
     if (!child.length())
       child = state["config"]["name"] | "du";
-    text("Hallo " + displayText(child).substring(0, 18) + "!", 94, 12, 2, Accent);
+    glyphText("Hallo " + displayText(child).substring(0, 18) + "!", 94, 12, 2, Accent);
     int row = 0;
     JsonObject slots = state["config"]["homeSlots"].as<JsonObject>();
     for (JsonPair slot : slots) {
@@ -526,12 +516,12 @@ void Ui::drawPage(const String &id) {
       if (kind == "news_count")
         label = "News: " + String(content["news"]["articles"].size());
       if (kind == "question_of_day")
-        label = "Quiz: Katalog waehlen";
+        label = "Quiz: Katalog wählen";
       if (label.length())
         text(label, 94, 44 + (row++) * 14);
     }
     if (state["config"]["deviceId"].isNull())
-      body("Willkommen! WLAN und Geraete-ID in LocalConfig.h einrichten. Danach hier offline "
+      body("Willkommen! WLAN und Geräte-ID in LocalConfig.h einrichten. Danach hier offline "
            "weiter nutzen.",
            94, 46, 290, 55);
   } else if (id == "news") {
@@ -560,7 +550,7 @@ void Ui::drawPage(const String &id) {
     auto number = [](JsonVariantConst value) -> String {
       return value.is<double>() && std::isfinite(value.as<double>()) ? String(value.as<double>(), 0) : String("?");
     };
-    text("JETZT | " + displayText(String(w["location"] | "")).substring(0, 25), 94, 8, 1, Accent);
+    glyphText("JETZT | " + displayText(String(w["location"] | "")).substring(0, 25), 94, 8, 1, Accent);
     drawWeatherIcon(*canvas, code, day, 94, 20, 48, Background);
     String temperature = number(current["temperature"]);
     text(temperature, 150, 25, 2);
@@ -594,7 +584,7 @@ void Ui::drawPage(const String &id) {
     if (!shown) {
       canvas->drawRect(308, 8, 112, 112, Muted);
       text("Regenradar", 314, 43, 1, Muted);
-      text(hash.length() && radar["mapWidthKm"] != RadarWidthKm ? "Server-Update" : "nicht verfuegbar", 314, 58, 1, Muted);
+      text(hash.length() && radar["mapWidthKm"] != RadarWidthKm ? "Server-Update" : "nicht verfügbar", 314, 58, 1, Muted);
     } else {
       String updated = radar["updated"] | "";
       tm observed{};
@@ -686,13 +676,13 @@ void Ui::drawPage(const String &id) {
     String speed = a["groundSpeedKnots"].isNull() ? String("?") : String(a["groundSpeedKnots"].as<double>() * 1.852, 0);
     body(String(a["typeName"] | "Unbekannter Flugzeugtyp") +
          "\nEntfernung: " + String(a["distanceKm"].isNull() ? a["distanceNm"].as<double>() * 1.852 : a["distanceKm"].as<double>(), 1) +
-         " km\nHoehe: " + altitude + " m\nTempo: " + speed + " km/h" + route,
+         " km\nHöhe: " + altitude + " m\nTempo: " + speed + " km/h" + route,
          94, 8, 204, 110, a["callsign"] | a["registration"] | a["hex"] | "Flugzeug");
-    text(a["oldPosition"] == true ? "Alte Position" : a["predicted"] == true ? "Position geschaetzt" : "Gemeldete Position",
+    text(a["oldPosition"] == true ? "Alte Position" : a["predicted"] == true ? "Position geschätzt" : "Gemeldete Position",
          94, 124, 1, Muted);
   } else if (id == "quiz") {
     if (quizCatalog < 0) {
-      text("Katalog auswaehlen", 94, 12, 1, Accent);
+      text("Katalog auswählen", 94, 12, 1, Accent);
       std::vector<String> labels;
       for (JsonObjectConst c : quiz["catalogs"].as<JsonArrayConst>())
         labels.push_back(c["name"] | "Quiz");
@@ -710,7 +700,7 @@ void Ui::drawPage(const String &id) {
     if (quizDetail) {
       body(quizDetail == 1 ? String(q["q"] | "") : String(q["a"][answerOrder[selection]] | ""), 94,
            12, 326, 110);
-      notice = "Oben/Unten: lesen | Mitte: zurueck";
+      notice = "Oben/Unten: lesen | Mitte: zurück";
       return;
     }
     if (answered) {
@@ -724,8 +714,8 @@ void Ui::drawPage(const String &id) {
       text(q["q"] | "", 94, 12, 2);
       text(mathAnswer.value.empty() ? "_" : mathAnswer.value.c_str(), 94, 42, 2, Accent);
       text(String("< ") + char('0' + mathAnswer.digit) + " >", 94, 72, 2);
-      text("Oben: + | Unten: loeschen", 94, 102);
-      notice = "Links/Rechts: Ziffer | Mitte: bestaetigen";
+      text("Oben: + | Unten: löschen", 94, 102);
+      notice = "Links/Rechts: Ziffer | Mitte: bestätigen";
     } else {
       body(q["q"] | "", 94, 12, 326, 30);
       std::vector<String> labels;
@@ -769,7 +759,7 @@ void Ui::drawPage(const String &id) {
     if (communication.count) {
       auto &last =
           communication.history[communication.count - 1 - std::min(size_t(std::max(0, item)), communication.count - 1)];
-      text(displayText(last.mine ? "Ich (gesendet)" : last.name).substring(0, 40), 94, 10, 1, Accent);
+      glyphText(displayText(last.mine ? "Ich (gesendet)" : last.name).substring(0, 40), 94, 10, 1, Accent);
       int old = scroll;
       scroll = 0;
       chatSymbol(last.symbol, 94, 26, last.text[0] ? 1 : 2);
@@ -779,17 +769,17 @@ void Ui::drawPage(const String &id) {
       text("Gemeinsamer Gruppenchat", 94, 15, 1, Muted);
     switch (communication.sendStatus.load()) {
     case RelaySendStatus::Queued: notice = network.connected ? "Wird an Homeserver gesendet..." : "Nachricht wartet auf WLAN"; break;
-    case RelaySendStatus::Sent: notice = "Vom Homeserver bestaetigt"; break;
+    case RelaySendStatus::Sent: notice = "Vom Homeserver bestätigt"; break;
     case RelaySendStatus::Retrying: notice = "Senden wird erneut versucht..."; break;
     case RelaySendStatus::LocalBlocked: notice = "Kurz warten / Sendewarteschlange voll"; break;
-    case RelaySendStatus::Rejected: notice = "Server abgelehnt: Update / Vorlagen pruefen"; break;
+    case RelaySendStatus::Rejected: notice = "Server abgelehnt: Update / Vorlagen prüfen"; break;
     default: notice = communication.online ? "Homeserver-Relay verbunden" : "Warte auf Homeserver"; break;
     }
   } else if (id == "knowledge") {
     auto k = content["knowledge"];
     if (knowledgeMode == 0)
-      list({"Gespeicherten Artikel lesen", "Suchen", "Zufaelligen Artikel laden",
-            "Weiterfuehrende Artikel"});
+      list({"Gespeicherten Artikel lesen", "Suchen", "Zufälligen Artikel laden",
+            "Weiterführende Artikel"});
     if (knowledgeMode == 1) {
       String image = k["image"] | "", hash = state["images"][image] | "";
       bool shown = hash.length() &&
@@ -803,7 +793,7 @@ void Ui::drawPage(const String &id) {
       text(query, 94, 20, 2, Accent);
       const char *alphabet = "abcdefghijklmnopqrstuvwxyz ";
       text(String("< ") + alphabet[character] + " >", 94, 55, 2);
-      text("Oben: + | Unten: loeschen", 94, 86);
+      text("Oben: + | Unten: löschen", 94, 86);
     }
     if (knowledgeMode == 3 || knowledgeMode == 4) {
       auto rows =
@@ -827,8 +817,8 @@ void Ui::drawPage(const String &id) {
       notice = "Hoch: Einstellungen | Runter: Taster / MPU";
     } else {
       list({"Licht: " + String(brightness * 100 / 255) + "%",
-            "Lautstaerke: " + String(audio.volume.load()) + "%", "Jetzt synchronisieren",
-            "Info / Geraete-ID", "Speicher", "Taster / MPU (Mitte oeffnet)", "MPU kalibrieren"});
+            "Lautstärke: " + String(audio.volume.load()) + "%", "Jetzt synchronisieren",
+            "Info / Geräte-ID", "Speicher", "Taster / MPU (Mitte öffnet)", "MPU kalibrieren"});
       text("Runter: Speicher / Taster / MPU", 94, 104, 1, Muted);
     }
     if (selection == 3)
@@ -852,16 +842,16 @@ void Ui::drawCalibration() {
         "Speichern fehlgeschlagen.\nMitte: erneut speichern.", 94, 35);
   } else {
     static const char *poses[] = {
-      "Geraet flach ablegen, Display oben.",
-      "Rechte Geraetekante nach unten.\nLinke Kante senkrecht darueber.",
-      "Untere Geraetekante nach unten.\nObere Kante senkrecht darueber."};
+      "Gerät flach ablegen, Display oben.",
+      "Rechte Gerätekante nach unten.\nLinke Kante senkrecht darüber.",
+      "Untere Gerätekante nach unten.\nObere Kante senkrecht darüber."};
     text("Position " + String(motion.calibration.step + 1) + " / 3", 94, 28, 1, Accent);
     body(poses[motion.calibration.step], 94, 46, 326, 44);
     text(motion.calibration.collecting ? "Ruhig halten: misst automatisch..." :
          motion.calibration.rejected ? "Position passt nicht. Mitte: erneut." :
          "Mitte: messen (1 Sekunde ruhig halten)", 94, 98, 1, Muted);
   }
-  notice = "Links Mitte: zurueck";
+  notice = "Links Mitte: zurück";
 }
 void Ui::drawInputDiagnostics() {
   text("Taster / MPU", 94, 8, 1, Accent);
@@ -893,14 +883,14 @@ void Ui::drawInputDiagnostics() {
     axes("G cfg d/s:", motion.gx, motion.gy, motion.gz, 103);
   } else {
     text("MPU nicht erreichbar (I2C)", 94, 70, 1, Muted);
-    text("Taster bleiben pruefbar.", 94, 88, 1, Muted);
+    text("Taster bleiben prüfbar.", 94, 88, 1, Muted);
   }
   char mounting[48];
   snprintf(mounting, sizeof(mounting), "XY-Tausch:%u XYZ:%+d,%+d,%+d",
            unsigned(deviceSettings.swapXY), int(deviceSettings.xSign), int(deviceSettings.ySign),
            int(deviceSettings.zSign));
   text(motion.hasCalibration() ? "Ausrichtung: Kalibrierung aus NVS" : mounting, 94, 119, 1, Muted);
-  notice = "Mitte 2s halten: zurueck";
+  notice = "Mitte 2s halten: zurück";
 }
 void Ui::render() {
   if (!healthy)
@@ -920,7 +910,7 @@ void Ui::render() {
   sidebar();
   if (locked) {
     text("LEAP", 135, 40, 4, Accent);
-    text("Mitte druecken zum Starten", 122, 99);
+    text("Mitte drücken zum Starten", 122, 99);
   } else if (menu) {
     std::vector<String> labels;
     for (auto &p : pages)
@@ -937,8 +927,8 @@ void Ui::render() {
     return;
   }
   canvas->fillRect(86, 132, 342, 10, Panel);
-  text(notice.length() ? displayText(notice).substring(0, 52)
-                       : "L: Seiten / Menue   R: Waehlen / OK",
+  glyphText(notice.length() ? displayText(notice).substring(0, 52)
+                       : displayText("L: Seiten / Menü   R: Wählen / OK"),
        94, 134, 1, Muted);
   canvas->flush();
   if (!locked && !menu && !pages.empty() && pages[page].id == "quiz" &&
@@ -1150,7 +1140,7 @@ void Ui::action(const InputEvent &e) {
     if (e.key == Key::Center) {
       bool sent = chatChoice.icons ? communication.sendIcon(chatChoice.icon)
                                    : communication.send(chatChoice.text);
-      notice = sent ? "Wird an Homeserver gesendet..." : "Senden derzeit nicht moeglich";
+      notice = sent ? "Wird an Homeserver gesendet..." : "Senden derzeit nicht möglich";
     }
   } else if (id == "knowledge") {
     if (knowledgeMode == 0) {
@@ -1189,7 +1179,7 @@ void Ui::action(const InputEvent &e) {
       if (e.key == Key::Center && query.length() >= 2) {
         notice = network.connected && network.knowledge("/knowledge/search?q=" +
                                                         Transport::encode(query) + "&limit=8")
-                     ? "Suche laeuft"
+                     ? "Suche läuft"
                      : "Offline: letzte Suchergebnisse";
         knowledgeMode = 3;
         selection = 0;

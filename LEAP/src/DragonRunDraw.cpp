@@ -1,3 +1,4 @@
+#include "DisplayText.h"
 #include "DragonRunDraw.h"
 #include <cmath>
 namespace leap {
@@ -28,7 +29,7 @@ struct Painter {
     g.setTextSize(1);
     g.setTextColor(c);
     g.setCursor(86 + x, y);
-    g.print(s);
+    printDisplayText(g, s);
   }
 };
 } // namespace
@@ -197,7 +198,7 @@ void drawDragonRun(Arduino_GFX &gfx, const DragonRun &r, int best, bool saving) 
   p.rect(0, 132, 342, 10, 0x1949);
   p.text(6, 134, "HOCH Sprung  RUNTER Ducken  MITTE Feuer", 0xdedb);
   if (r.time < 2.8f && r.alive)
-    p.text(82, 24, "Sammle Schaetze!", 0xffff);
+    p.text(82, 24, "Sammle Schätze!", 0xffff);
   if (!r.alive && r.deadTime >= .35f) {
     p.rect(63, 34, 226, 61, 0x1949);
     p.rect(65, 36, 222, 57, 0xff9b);

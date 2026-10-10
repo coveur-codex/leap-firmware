@@ -2,6 +2,19 @@
 
 Stand: 2026-10-10. Dragon Run und bisherige Firmwaremodule.
 
+## Deutsche Displayzeichen (1.0.7)
+
+- Vollständige native Firmware-Regressionssuite bestanden.
+- UTF-8-Decodierung für alle sieben deutschen Zeichen, é, è und °,
+  Satzzeichen, unbekannte Zeichen, ungültige und abgeschnittene Sequenzen geprüft.
+- Ein Zeichen pro Schriftzelle: Kürzung und Zeilenaufteilung an Umlauten und ß geprüft.
+- Pixel der sieben deutschen Glyphen gegen die echte Arduino_GFX-1.6.3-Schrift geprüft
+  und daraus eine vergrößerte Vorschau visuell kontrolliert.
+- Echte Games-/Küchenrenderer prüfen Umlaute und ß in Haustierstatus,
+  Bedürfnissen, Füttern und dem Bestätigungsdialog. Speichertexte bleiben UTF-8.
+- ESP32-S3-Cross-Build wird über den GitHub-PR-Workflow geprüft;
+  physische Displaylesbarkeit bleibt Teil der Geräteabnahme.
+
 ## Radarringe, Einzel-Icons und Kipp-Labyrinth (1.0.6)
 
 - Vollständige native Firmware-Regressionssuite bestanden.
