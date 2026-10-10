@@ -3,7 +3,7 @@
 #include "src/Input.h"
 #include "src/Motion.h"
 #include "src/Network.h"
-#include "src/Radio.h"
+#include "src/Communication.h"
 #include "src/Storage.h"
 #include "src/Ui.h"
 #include <esp_psram.h>
@@ -26,7 +26,7 @@ void setup() {
       delay(1000);
   }
   input.begin(deviceSettings.leftKeys, deviceSettings.rightKeys);
-  ui.beginDisplay(); // Show LEAP before filesystem validation or WiFi/radio setup.
+  ui.beginDisplay(); // Show LEAP before filesystem validation or WiFi/relay setup.
   ota.begin();
   // Explicit destructive recovery requires BOTH centres held throughout 3s.
   bool format = digitalRead(deviceSettings.leftKeys[4]) == LOW && digitalRead(deviceSettings.rightKeys[4]) == LOW;
@@ -58,18 +58,18 @@ void setup() {
   phaseAt = millis();
   bool displayReady = ui.begin(&state);
   Serial.printf("[BOOT] UI ready %lu ms\n", millis() - phaseAt);
-  bool radioReady = radio.begin();
+  bool chatReady = communication.begin();
   bool soundReady = audio.begin();
   motion.begin();
   bool inputReady = input.start();
   if (!inputReady)
     log("INPUT", "Sampler initialization failed; using loop polling");
   bool workerReady = network.begin();
-  bootHealthy = mounted && displayReady && workerReady &&
+  bootHealthy = mounted && displayReady && workerReady && chatReady &&
                 ESP.getFlashChipSize() == 16 * 1024 * 1024 &&
                 esp_psram_get_size() == 8 * 1024 * 1024;
   // Network task validates cached assets while this task starts rendering/input.
-  Serial.printf("[BOOT] selftest=%d radio=%d audio=%d\n", bootHealthy, radioReady, soundReady);
+  Serial.printf("[BOOT] selftest=%d relay=%d audio=%d\n", bootHealthy, chatReady, soundReady);
   esp_task_wdt_config_t watchdog{.timeout_ms = 30000, .idle_core_mask = 0, .trigger_panic = true};
   if (esp_task_wdt_reconfigure(&watchdog) == ESP_ERR_INVALID_STATE)
     esp_task_wdt_init(&watchdog);

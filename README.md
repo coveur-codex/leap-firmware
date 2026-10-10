@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.1`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.2`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -11,7 +11,7 @@ Fehlendes WLAN unterbricht die Bedienung nicht. Es gibt keinen erfundenen Akkust
 
 **Status:** Implementierung mit Arduino-Build und Host-/API-Prüfungen; eine reale
 Hardware-Abnahme ist vor einem regulären Geräte-Rollout erforderlich. Insbesondere
-Display-Offset/Farben, Audio-Verdrahtung, Funkreichweite und Power-Cut-Rollback können
+Display-Offset/Farben, Audio-Verdrahtung, WLAN-Erreichbarkeit und Power-Cut-Rollback können
 in einer Cloud-Umgebung nicht gemessen werden. Siehe [Abnahme](docs/acceptance.md).
 
 ## Arduino IDE: Einrichtung und Upload
@@ -19,7 +19,7 @@ in einer Cloud-Umgebung nicht gemessen werden. Siehe [Abnahme](docs/acceptance.m
 1. Arduino IDE 2.x installieren. Boardverwalter-URL hinzufügen:
    `https://espressif.github.io/arduino-esp32/package_esp32_index.json`.
 2. **esp32 by Espressif Systems 3.3.0** installieren. Abweichende Core-Versionen
-   müssen wegen I²S-, ESP-NOW-, LEDC- und Rollback-APIs neu geprüft werden.
+   müssen wegen I²S-, WLAN-, LEDC- und Rollback-APIs neu geprüft werden.
 3. Bibliotheken über den Library Manager installieren:
 
    | Library-Manager-Name | Version |
@@ -101,7 +101,7 @@ SPI zunächst konservativ 20 MHz.
 ## Startlogo
 
 Ab beta.16 erscheint unmittelbar nach der Displayinitialisierung ein lokaler
-LEAP-Schriftzug mit „Startet…“, bevor LittleFS, gespeicherte Inhalte und Funk
+LEAP-Schriftzug mit „Startet…“, bevor LittleFS, gespeicherte Inhalte und Kommunikation
 initialisiert werden. Das reduziert die schwarze Wartephase; es macht die
 anschließende Speicherprüfung nicht überflüssig. `BOOT` protokolliert die Dauer
 von Speicherinitialisierung, erstem Snapshot-Laden und UI-Start für die Abnahme.
@@ -137,7 +137,7 @@ das Logo beim nächsten Neustart. Es wird nicht bei jedem Sync erneut eingeblend
 | Rechts CENTER | Bestätigen, Nachricht senden, Quiz beantworten |
 
 Nach einer Minute wird gedimmt, nach drei Minuten ohne Eingabe gesperrt.
-Die Sidebar ist exakt **86 Pixel** breit. Sie zeigt kleine WLAN-/Gruppenfunk- und
+Die Sidebar ist exakt **86 Pixel** breit. Sie zeigt WLAN-, Posteingangs- und
 Sync-Symbole, eine 22 Pixel hohe Uhr und den unskalierten 80×80-Avatar. Das
 Akku-Symbol mit Strich bedeutet „unbekannt“ (keine angeschlossene Messleitung).
 Unten stehen alle Seitenicons in der konfigurierten Reihenfolge, die aktuelle
@@ -146,9 +146,30 @@ kleiner Punkt rechts neben der Uhr kennzeichnet einen noch nicht bestätigten Ze
 Nach einem Check-in läuft die Uhr lokal weiter; Sommerzeit über POSIX-Zeitzone.
 
 **Gruppenchat:** Rechts UP/DOWN wählt Vorlagen, MITTE sendet, LINKS/RECHTS
-blättert durch die letzten acht Chatzeilen. Historie bleibt nur im RAM. Die zehn Standardsymbole werden lokal als 12×12-Icons
+blättert durch die letzten acht Chatzeilen. Die letzten acht Chatzeilen bleiben lokal im RAM; der Server hält Nachrichten sieben Tage. Die zehn Standardsymbole werden lokal als 12×12-Icons
 in Vorlagenauswahl und Historie gezeichnet. Eigene unbekannte Symbole bleiben ohne
 Icon; zusätzliche Assets sind nicht nötig.
+
+**Chat-Relay (ab 1.0.2):** Alle Nachrichten gehen an den Homeserver, der sie
+allen eingeschalteten Geräten mit aktivierter Kommunikation bereitstellt.
+Ein eigener Hintergrundtask fragt etwa alle zwei Sekunden ab, unabhängig von
+aktiver Seite, Sperrbildschirm, Spielen und Inhalts-Sync. Funkkanäle müssen nicht
+übereinstimmen. Bei einer eingehenden Nachricht ertönt ein kurzer Pling, auch
+während WAV-/Spielaudio; die eingestellte Lautstärke gilt weiterhin (0 ist stumm).
+Ein gelbes Briefsymbol über der Uhr bleibt an, bis die Kommunikationsseite
+angezeigt wurde. In vollflächiger Ruhezeit wird der Brief als kleines Overlay
+angezeigt. Eigene Nachrichten und die beim Neustart geladene Historie klingeln
+nicht. Eine empfangene Gruppe von Nachrichten wird gemeinsam signalisiert.
+
+Senden ist asynchron: „Wird gesendet“/„Wartet auf WLAN“, danach „Vom Homeserver
+bestaetigt“ oder ein Fehlerhinweis. Kurze Verbindungsabbrüche werden mit derselben
+zufälligen Nachrichtenkennung wiederholt, ohne doppelte Servernachrichten. Die
+Sendewarteschlange und der Abrufcursor liegen im RAM (acht wartende Nachrichten
+plus eine laufende Übertragung); ein Neustart verwirft noch unbestätigte Sendungen.
+Eine Serverbestätigung bestätigt die Speicherung, nicht das Lesen aller Geräte.
+Nach Verbindungsrückkehr werden neue Nachrichten im laufenden Gerätebetrieb
+nachgeholt. Kein Offline-Funk-Fallback. Homeserver und Firmware gemeinsam auf
+1.0.2 aktualisieren; der Server führt Migration `0012` für die Nachrichtenfolge aus.
 
 **Regenradar:** Die Wetterseite zeigt rechts eine 112×112-Pixel-Aufnahme von
 RainViewer, zentriert auf den im Homeserver konfigurierten Standort (50×50 km am Standort,
@@ -459,20 +480,22 @@ bewusster Haltefrist. Inhalte kommen danach erneut vom Homeserver.
 
 Der Homeserver arbeitet im vertrauenswürdigen Heimnetz ohne Geräteauthentifizierung.
 HTTPS wird mit konfiguriertem CA-Zertifikat unterstützt, niemals mit `setInsecure()`.
-SHA-256 ist eine Integritätsprüfung, keine Firmware-Signatur. ESP-NOW-Broadcast
-ist unverschlüsselt und ohne Identitätsnachweis; nur lokal bekannte Vorlagen-IDs
-desselben Paketstands werden angezeigt. Kein Freitext, kein Relay, keine
-Direktnachrichten. Alle Geräte/AP müssen auf demselben Funkkanal arbeiten.
+SHA-256 ist eine Integritätsprüfung, keine Firmware-Signatur. Der Gruppenchat
+verwendet ab 1.0.2 ausschließlich das Homeserver-Relay, mit serverseitig geprüften
+Vorlagen und Namen. Freitext und Direktnachrichten sind nicht vorgesehen.
+Unterschiedliche WLAN-Kanäle sind möglich; alle Geräte benötigen Zugriff auf
+denselben Homeserver. Der frühere Funkkanal bleibt nur zur Wahrung des
+NVS-Schema-1-Layouts im Gerätekonfigurationsdatensatz.
 
 ## Struktur, Diagnose und Tests
 
 - `LEAP/src/Hardware.h`, `Config.h`: Pins, Version, Grenzen.
 - `Storage`, `Transport`, `Assets`, `Network`, `Ota`: persistente Daten und Sync.
-- `Input`, `Ui`, `Media`, `Games`, `Audio`, `Radio`, `Motion`: lokale Gerätefunktionen.
+- `Input`, `Ui`, `Media`, `Games`, `Audio`, `Communication`, `Motion`: lokale Gerätefunktionen.
 - `Core.h`, `Protocol.h`: plattformunabhängig getestete Regeln.
 - `tests/`, `.github/workflows/build.yml`: Tests und reproduzierbarer Arduino-Build.
 
-Serial-Tags: `BOOT`, `STORE`, `DISPLAY`, `WIFI`, `HTTP`, `SYNC`, `ASSETS`, `RADIO`,
+Serial-Tags: `BOOT`, `STORE`, `DISPLAY`, `WIFI`, `HTTP`, `SYNC`, `ASSETS`, `CHAT`,
 `AUDIO`, `IMU`, `OTA`, `HEALTH`. Keine WLAN-Passwörter oder Inhaltspayloads in Logs.
 Min-Heap, freier PSRAM und Dateisystemplatz werden einmal pro Minute ausgegeben.
 `wifiConnected=1` bedeutet verbunden (auch das frühere `wifi=1` war ein Boolean,

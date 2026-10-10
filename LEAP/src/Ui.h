@@ -55,6 +55,7 @@ class Ui {
   bool reload(bool initial = false);
   void render();
   void sidebar();
+  void envelope();
   void body(const String &text, int x = 94, int y = 12, int width = 326, int height = 110, const String &heading = "");
   void text(const String &text, int x, int y, int size = 1, uint16_t color = 0xffff);
   void list(const std::vector<String> &labels, int x = 94, int y = 18, int width = 326);

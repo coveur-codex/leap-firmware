@@ -10,7 +10,10 @@ flowchart LR
   NVS --> UI[UI und Eingabe Core 1]
   FS --> UI
   UI --> Audio[I2S-Task Core 0]
-  Radio[ESP-NOW Callback] --> Queue[Begrenzte Queue]
+  Server <-->|HTTP alle 2 Sekunden| Chat[Chat-Relay-Task Core 0]
+  UI --> Send[Begrenzte Sendewarteschlange]
+  Send --> Chat
+  Chat --> Queue[Begrenzte Empfangsqueue]
   Queue --> UI
   Worker --> OTA[Inaktiver OTA-Slot]
 ```
@@ -19,9 +22,14 @@ Netzwerk-Worker und UI besitzen getrennte JSON-Dokumente. Ein atomarer
 Generationszähler meldet einen neuen Snapshot. Ein Mutex schützt das Laden und
 Umschalten der beiden Snapshot-Dateien; HTTP findet nie unter diesem Mutex statt.
 Assetdateien sind nach SHA-256 adressiert und unveränderlich. Medien-Decoder
-teilen nur einen separat gesperrten Callback-Kontext. Audio und ESP-NOW verwenden
-begrenzte Queues. Funkcallbacks parsen kein JSON, schreiben keinen Flash und
-zeichnen nicht aufs Display.
+teilen nur einen separat gesperrten Callback-Kontext. Audio und Chat-Relay verwenden
+begrenzte Queues. Der Chat-Task besitzt einen eigenen HTTP-Transport und parst
+eigene JSON-Dokumente; die UI übernimmt nur feste Queue-Datensätze. Der
+Abrufcursor wird erst nach vollständiger Übergabe einer Antwort erhöht. Der
+Chat-Task bleibt unabhängig von längeren Inhalts-/Asset-Syncs. Ungelesenstatus
+und Historie gehören der UI; Konfigurationsgenerationen verwerfen alte Antworten
+bei deaktivierter Kommunikation. Ein kurzer Benachrichtigungston wird direkt
+in die laufende I²S-Ausgabe gemischt und wartet nicht hinter Audiojobs.
 
 JSON-Dokumente bevorzugen PSRAM. Rendering verwendet einen RGB565-Canvas von
 428 × 142 (121552 Byte) sowie kleine Bildcaches. Dateiübertragung: 2048-Byte-Blöcke,

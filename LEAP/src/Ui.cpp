@@ -9,7 +9,7 @@
 #include "Network.h"
 #include "Protocol.h"
 #include "GameSelection.h"
-#include "Radio.h"
+#include "Communication.h"
 #include "ChatSymbols.h"
 #include <algorithm>
 #include <font/glcdfont.h>
@@ -84,7 +84,7 @@ bool Ui::beginDisplay() {
   canvas->print("Startet...");
   canvas->flush();
   ledcWrite(hw::Backlight, brightness);
-  log("DISPLAY", "Early LEAP screen visible before storage and radio initialization");
+  log("DISPLAY", "Early LEAP screen visible before storage and communication initialization");
   return true;
 }
 bool Ui::begin(JsonDocument *bootState) {
@@ -153,7 +153,7 @@ bool Ui::reload(bool initial) {
     avatarId = "avatar-" + avatarId;
   game.avatarPackage(avatarId, state["assets"][avatarId] | 0, manifestFor(avatarId));
   if (!same || generation == 0)
-    radio.configure(state);
+    communication.configure(state);
   pages.clear();
   JsonArray configuredPages = state["config"]["pages"].as<JsonArray>();
   for (JsonObject p : configuredPages) {
@@ -330,14 +330,19 @@ static const uint8_t pageIcons[][7] = {
     {2, 6, 14, 30, 62, 60, 24}};     // chill
 static const char *pageIds[] = {"home", "news", "weather", "aircraft", "quiz", "games",
                                 "communication", "knowledge", "settings", "chill"};
+void Ui::envelope() {
+  if (!communication.unread) return;
+  canvas->fillRect(21, 2, 16, 12, Panel);
+  canvas->drawRect(23, 4, 12, 8, 0xffe0);
+  canvas->drawLine(23, 4, 29, 8, 0xffe0);
+  canvas->drawLine(29, 8, 34, 4, 0xffe0);
+}
 void Ui::sidebar() {
   canvas->fillRect(0, 0, 86, 142, Panel);
   for (int i = 0; i < 3; i++)
     canvas->drawFastVLine(7 + i * 3, 9 - i * 2, 2 + i * 2,
                           network.connected ? Accent : Muted);
-  // ESP-NOW group radio; no Bluetooth connection is advertised.
-  canvas->drawCircle(28, 7, 2, radio.enabled ? Accent : Muted);
-  canvas->drawFastVLine(28, 9, 3, radio.enabled ? Accent : Muted);
+  envelope();
   // No wired battery ADC: outline and dash explicitly mean unknown.
   canvas->drawRect(48, 4, 12, 7, Muted);
   canvas->drawFastVLine(60, 6, 3, Muted);
@@ -725,21 +730,21 @@ void Ui::drawPage(const String &id) {
         list(labels);
     }
   } else if (id == "communication") {
-    if (!radio.enabled) {
+    if (!communication.enabled) {
       body("Gruppenchat ist ausgeschaltet.");
       return;
     }
-    auto messages = radio.messages();
+    auto messages = communication.messages();
     if (messages.size()) {
       selection = constrain(selection, 0, int(messages.size()) - 1);
       chatSymbol(messages[selection]["symbol"] | "", 94, 72);
       body(messages[selection]["text"] | "", 112, 72, 308, 35);
     } else
       text("Keine Vorlagen", 94, 78, 1, Muted);
-    if (radio.count) {
+    if (communication.count) {
       auto &last =
-          radio.history[radio.count - 1 - std::min(size_t(std::max(0, item)), radio.count - 1)];
-      text(displayText(last.name).substring(0, 40), 94, 10, 1, Accent);
+          communication.history[communication.count - 1 - std::min(size_t(std::max(0, item)), communication.count - 1)];
+      text(displayText(last.mine ? "Ich (gesendet)" : last.name).substring(0, 40), 94, 10, 1, Accent);
       int old = scroll;
       scroll = 0;
       chatSymbol(last.symbol, 94, 26);
@@ -747,6 +752,14 @@ void Ui::drawPage(const String &id) {
       scroll = old;
     } else
       text("Gemeinsamer Gruppenchat", 94, 15, 1, Muted);
+    switch (communication.sendStatus.load()) {
+    case RelaySendStatus::Queued: notice = network.connected ? "Wird an Homeserver gesendet..." : "Nachricht wartet auf WLAN"; break;
+    case RelaySendStatus::Sent: notice = "Vom Homeserver bestaetigt"; break;
+    case RelaySendStatus::Retrying: notice = "Senden wird erneut versucht..."; break;
+    case RelaySendStatus::LocalBlocked: notice = "Kurz warten / Sendewarteschlange voll"; break;
+    case RelaySendStatus::Rejected: notice = "Server lehnt Nachricht ab: Vorlagen synchronisieren"; break;
+    default: notice = communication.online ? "Homeserver-Relay verbunden" : "Warte auf Homeserver"; break;
+    }
   } else if (id == "knowledge") {
     auto k = content["knowledge"];
     if (knowledgeMode == 0)
@@ -870,10 +883,13 @@ void Ui::render() {
     String id = assetOfType("chill");
     chill.start(id, state["assets"][id] | 0, manifestFor(id), millis());
     chill.draw(*canvas, millis());
+    envelope(); // Full-screen scenes still show pending mail.
     canvas->flush();
     return;
   }
   chill.close();
+  if (!locked && !menu && !pages.empty() && pages[page].id == "communication")
+    communication.markRead();
   canvas->fillScreen(Background);
   sidebar();
   if (locked) {
@@ -1083,10 +1099,10 @@ void Ui::action(const InputEvent &e) {
     }
   } else if (id == "communication") {
     if (e.key == Key::Left || e.key == Key::Right)
-      item = constrain(item + (e.key == Key::Left ? 1 : -1), 0, std::max(0, int(radio.count) - 1));
-    selection = constrain(selection + direction, 0, std::max(0, int(radio.messages().size()) - 1));
+      item = constrain(item + (e.key == Key::Left ? 1 : -1), 0, std::max(0, int(communication.count) - 1));
+    selection = constrain(selection + direction, 0, std::max(0, int(communication.messages().size()) - 1));
     if (e.key == Key::Center) {
-      notice = radio.send(selection) ? "Gesendet (ohne Empfangsbestaetigung)"
+      notice = communication.send(selection) ? "Wird an Homeserver gesendet..."
                                      : "Senden derzeit nicht moeglich";
     }
   } else if (id == "knowledge") {
@@ -1181,6 +1197,10 @@ void Ui::action(const InputEvent &e) {
 void Ui::tick() {
   if (!healthy)
     return;
+  if (communication.poll()) {
+    audio.notify();
+    frameRequested = true;
+  }
   if (bootLogoVisible) {
     if (!elapsed(millis(), bootLogoAt, 2000))
       return;
@@ -1192,7 +1212,6 @@ void Ui::tick() {
     reload();
   bool radarVisible = !locked && !menu && !pages.empty() && pages[page].id == "aircraft";
   network.aircraftVisible = radarVisible;
-  radio.poll();
   game.tick();
   chill.tick(millis());
   bool chillVisible = !locked && !menu && !pages.empty() && pages[page].id == "chill";

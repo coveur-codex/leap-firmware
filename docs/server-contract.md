@@ -60,12 +60,10 @@ sein Inventar aktiv ist; HTTP 404/409 beendet dieses Wiederaufnehmen.
    Formate als in Flash passen. Vorschlag: Gerätemeldung `capabilities` mit
    Formaten, Bildmaßen, `maxJsonBytes`, `maxPackageBytes`, Engines, Displaygeometrie;
    Angebote serverseitig passend filtern und nicht renderbare Pakete sichtbar markieren.
-7. **ESP-NOW-Kanal und Vorlagenversion.** Es gibt keinen Kanal-/Gruppenschlüssel-
-   Vertrag. V1 verwendet einen gemeinsamen Kanal, keine Relays, 32 letzte Paket-IDs
-   als Deduplikationsring und acht RAM-Chatzeilen. Geräte mit unterschiedlicher
-   Vorlagenversion verwerfen fremde Versionen, um gelöschte/umgedeutete Vorlagen
-   nicht weiterzugeben. Vorschlag: Kanal und Gruppen-ID als Gerätekonfiguration;
-   bei Authentifizierungsbedarf eigenes Schlüssel-/Pairing-Konzept.
+7. **Kommunikation ab 1.0.2.** Ein eigener HTTP-Relay-Task ersetzt ESP-NOW.
+   Der Server validiert Gerätefreigabe und Vorlagen-ID und liefert unveränderliche
+   Namen/Text-/Symbol-Snapshots. Eine fortlaufende ID und idempotente Sende-ID
+   vermeiden Wiederholungen; acht lokale RAM-Chatzeilen bleiben erhalten.
 8. **Zeit und Batteriemessung.** `serverTime` ist UTC, aber eine Gerätezonenangabe
    fehlt. Ohne belegte ADC-Schaltung weder Spannung noch Prozent liefern.
    Vorschlag: typisierte Zeitzone sowie explizites Hardwareprofil, falls später
@@ -188,3 +186,24 @@ verwendet dieselbe Mercatorprojektion und einen quadratischen Sichtbereich;
 der Abrufradius bleibt separat. Alte Regenbilder ohne diesen Maßstab werden
 als „Server-Update“ angezeigt. Der neue serverseitige Cache-Key verhindert,
 dass bisherige Zoom-7-Bilder als 50-km-Aufnahmen ausgegeben werden.
+
+
+## Homeserver-Chat-Relay (1.0.2)
+
+`POST /api/v1/devices/{id}/communication/messages`:
+`{"eventId":"128-bit-zufallskennung","templateId":"vorlagen-id"}`.
+Antwort: `{"ok":true,"eventId":"...","message":{...}}`. Der Server akzeptiert
+nur aktive vorbereitete Nachrichten; Text, Symbol und Sendername werden aus
+seinen Daten abgeleitet. Die Kombination aus Geräte-ID und `eventId` ist eindeutig;
+eine verlorene Antwort wird mit derselben ID wiederholt, nicht erneut verteilt.
+
+`GET /api/v1/devices/{id}/communication/messages?since={cursor}` liefert
+`schemaVersion:1`, bis zu acht nach ID sortierte `messages`, `cursor`, `more` und
+`reset`. Nachricht: `id`, `eventId`, `senderId`, `name`, `text`, `symbol`, `sentAt`.
+Alle freigegebenen Geräte sehen denselben Gruppenchat. Der Abruf ohne `since`
+lädt die letzte Historie für einen stillen Start. Bei einem Cursor oberhalb der
+Serverfolge (z. B. Datenbank-Restore) ist `reset:true` und die Historie wird erneut
+still geladen. Mit `more:true` folgt die nächste Seite direkt. 403 bedeutet
+ausgeschaltete Kommunikation, 404 ein fehlendes/deaktiviertes Gerät. Sendefehler
+4xx außer 408/429 werden nicht automatisch wiederholt. Der Server speichert
+Nachrichten sieben Tage; die SQLite-Folge verwendet AUTOINCREMENT.

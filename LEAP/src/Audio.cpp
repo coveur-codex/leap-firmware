@@ -1,5 +1,6 @@
 #include "Audio.h"
 #include "Hardware.h"
+#include "NotificationTone.h"
 #include <driver/i2s_std.h>
 namespace leap {
 Audio audio;
@@ -88,51 +89,52 @@ void Audio::run() {
     vTaskDelete(nullptr);
     return;
   }
+  NotificationTone notification;
   for (;;) {
-    AudioJob job;
-    if (xQueueReceive(jobs, &job, portMAX_DELAY) != pdTRUE)
-      continue;
+    AudioJob job{};
+    bool hasJob = xQueueReceive(jobs, &job, pdMS_TO_TICKS(20)) == pdTRUE;
+    if (!hasJob && !notificationRequested) continue;
     stopRequested = false;
     File file;
     Wav wav;
     uint32_t rate = 22050, remaining = rate * job.duration / 1000, phase = 0;
     if (job.path[0]) {
       file = LittleFS.open(job.path, "r");
-      if (!file || !wavHeader(file, wav))
-        continue;
-      rate = wav.rate;
-      remaining = wav.size / (2 * wav.channels);
-      file.seek(wav.offset);
+      if (!file || !wavHeader(file, wav)) {
+        file.close();
+        if (!notificationRequested) continue;
+        remaining = 0;
+      } else {
+        rate = wav.rate;
+        remaining = wav.size / (2 * wav.channels);
+        file.seek(wav.offset);
+      }
     }
     i2s_std_clk_config_t clock = I2S_STD_CLK_DEFAULT_CONFIG(rate);
     i2s_channel_reconfig_std_clock(tx, &clock);
     i2s_channel_enable(tx);
-    while (remaining && !stopRequested) {
+    while (remaining || notification.active() || notificationRequested) {
+      if (notificationRequested.exchange(false)) notification.start();
+      if (stopRequested.exchange(false)) { remaining = 0; file.close(); }
       int16_t buffer[256];
-      size_t frames = std::min(uint32_t(128), remaining);
+      size_t frames = std::min(uint32_t(128), std::max(remaining, notification.active() ? uint32_t(128) : 0));
       for (size_t i = 0; i < frames; i++) {
         int16_t l = 0, r = 0;
-        if (file) {
-          if (file.read(reinterpret_cast<uint8_t *>(&l), 2) != 2) {
-            remaining = 0;
-            frames = i;
-            break;
+        if (remaining) {
+          if (file) {
+            if (file.read(reinterpret_cast<uint8_t *>(&l), 2) != 2) remaining = 0;
+            r = l;
+            if (wav.channels == 2 && file.read(reinterpret_cast<uint8_t *>(&r), 2) != 2) remaining = 0;
+          } else {
+            phase = (phase + job.frequency) % rate;
+            l = r = job.frequency ? (phase < rate / 2 ? 3000 : -3000) : 0;
           }
-          r = l;
-          if (wav.channels == 2 && file.read(reinterpret_cast<uint8_t *>(&r), 2) != 2) {
-            remaining = 0;
-            frames = i;
-            break;
-          }
-        } else {
-          phase = (phase + job.frequency) % rate;
-          l = r = phase < rate / 2 ? 3000 : -3000;
+          if (remaining) --remaining;
         }
-        buffer[2 * i] = int32_t(l) * volume.load() / 100;
-        buffer[2 * i + 1] = int32_t(r) * volume.load() / 100;
+        int16_t chime = notification.next(rate);
+        buffer[2 * i] = int32_t(NotificationTone::mix(l, chime)) * volume.load() / 100;
+        buffer[2 * i + 1] = int32_t(NotificationTone::mix(r, chime)) * volume.load() / 100;
       }
-      if (remaining >= frames)
-        remaining -= frames;
       size_t written = 0;
       if (i2s_channel_write(tx, buffer, frames * 4, &written, 200) != ESP_OK ||
           written != frames * 4)

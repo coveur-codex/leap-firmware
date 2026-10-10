@@ -298,7 +298,7 @@ bool Network::sync() {
   return event(syncId, "sync_success", next, reply);
 }
 void Network::run() {
-  // WLAN must also work if ESP-NOW initialization failed before setting STA mode.
+  // Chat relay and content workers share the WLAN connection.
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
   WiFi.setAutoReconnect(true);
