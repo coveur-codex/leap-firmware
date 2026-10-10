@@ -23,6 +23,8 @@ Stand: 2026-10-10. Dragon Run und bisherige Firmwaremodule.
   GitHub-Releases; nur Compiler/SDK/Image-Tools für diesen Build installiert.
   Bestehende Warnungen aus Core/Bibliotheken und der unveränderten Quiz-UI.
   Reale PNGdec- und Media-Regressionen ebenfalls bestanden.
+  Der Kabel-Provisionierungsbuild (`LEAP_PROVISION_DEVICE=1`) besteht ebenfalls
+  Imageprüfung und den Test auf den korrekten Provisionierungsmarker.
 - Gerätebildrate, Displayfarben, reale GPIO-Kombinationen und Stromausfall
   während eines NVS-Schreibvorgangs bleiben Teil der Hardware-Abnahme.
 
