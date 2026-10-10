@@ -1,5 +1,6 @@
 #include "Ui.h"
 #include "DisplayText.h"
+#include "AccentColor.h"
 #include "ChillAssets.h"
 #include "AircraftMap.h"
 #include "WeatherIcon.h"
@@ -13,11 +14,11 @@
 #include "Communication.h"
 #include "ChatSymbols.h"
 #include <algorithm>
-#include <font/glcdfont.h>
 #include <time.h>
 namespace leap {
 Ui ui;
-constexpr uint16_t Background = 0x10e5, Panel = 0x18e7, Accent = 0x06b8, Muted = 0x9d35;
+constexpr uint16_t Background = 0x10e5, Panel = 0x18e7, Muted = 0x9d35;
+static uint16_t Accent = 0x06b8;
 static constexpr const char *DiagnosticKeys[] = {"Ob", "Un", "Li", "Re", "Mi"};
 static String displayText(const String &s) {
   return String(displayGlyphs(s.c_str()).c_str());
@@ -134,6 +135,7 @@ bool Ui::reload(bool initial) {
       state["assets"].as<JsonVariantConst>() == next["assets"].as<JsonVariantConst>() &&
       state["content"]["quiz"].as<JsonVariantConst>() == next["content"]["quiz"].as<JsonVariantConst>();
   state = std::move(next);
+  Accent = accentColor(state["config"]["accentColor"] | "");
   aircraftFrame.clear();
   generation = loadedGeneration;
   manifests = std::move(nextManifests);
@@ -230,7 +232,7 @@ void Ui::body(const String &raw, int x, int y, int width, int height, const Stri
   unsigned pos = 0;
   while (pos < s.length()) {
     bool emphasized = pos < title.length();
-    int advance = emphasized ? 8 : 6, lineHeight = emphasized ? 13 : 10;
+    int advance = 6, lineHeight = emphasized ? 12 : 10;
     if (line >= scroll && used + lineHeight > height) break;
     unsigned end = std::min(pos + width / advance, unsigned(s.length()));
     int nl = s.indexOf('\n', pos);
@@ -240,18 +242,7 @@ void Ui::body(const String &raw, int x, int y, int width, int height, const Stri
       if (space > int(pos)) end = space;
     }
     if (line++ >= scroll) {
-      if (emphasized) {
-        // Enlarge the built-in glyphs to 7x10 and thicken by one pixel.
-        // No external font asset; title wrapping and scrolling stay complete.
-        for (unsigned i = pos; i < end; ++i)
-          for (int xx = 0; xx < 6; ++xx)
-            for (int yy = 0; yy < 10; ++yy)
-              if (font[uint8_t(s[i]) * 5 + xx * 5 / 6] & (1 << (yy * 8 / 10))) {
-                int px = x + (i - pos) * advance + xx;
-                canvas->drawPixel(px, y + used + yy, Accent);
-                canvas->drawPixel(px + 1, y + used + yy, Accent);
-              }
-      } else glyphText(s.substring(pos, end), x, y + used);
+      glyphText(s.substring(pos, end), x, y + used, 1, emphasized ? Accent : 0xffff);
       used += lineHeight;
       drawn++;
     }
@@ -594,6 +585,8 @@ void Ui::drawPage(const String &id) {
         radarStale = radarStale || !network.timeSynced || time(nullptr) - stamp > 1800;
       }
     }
+    canvas->fillRect(360, 8, 9, 9, Panel);
+    text("N", 362, 8, 1, Muted);
     text(String("Stand ") + weatherUpdated.substring(11, 16) +
          (w["stale"] == true || !network.connected ? " alt" : "") +
          (shown ? " | Radar " + String(radar["updated"] | "").substring(11, 16) + (radarStale ? " alt" : "") : "") + " UTC",
@@ -632,12 +625,11 @@ void Ui::drawPage(const String &id) {
     constexpr int cx = 364, cy = 64, pixels = 55;
     canvas->fillRect(308, 8, 112, 112, Panel);
     if (centered) {
-      for (int km = RadarRingStepKm; km < RadarWidthKm / 2; km += RadarRingStepKm)
+      for (int km = RadarRingStepKm; km <= RadarWidthKm / 2; km += RadarRingStepKm)
         canvas->drawCircle(cx, cy, radarRingPixels(km, pixels), Muted);
       canvas->drawFastVLine(cx, cy - pixels, 2 * pixels + 1, Muted);
       canvas->drawFastHLine(cx - pixels, cy, 2 * pixels + 1, Muted);
       canvas->fillCircle(cx, cy, 2, 0xffff);
-      text("N", cx - 2, 8, 1, Muted);
       if (rows.size()) item = (item + rows.size()) % rows.size();
       int index = 0;
       for (JsonObject plane : rows) {
@@ -663,6 +655,8 @@ void Ui::drawPage(const String &id) {
       text("Standort fehlt", 314, 52, 1, Muted);
       text("Server-Sync", 320, 66, 1, Muted);
     }
+    canvas->fillRect(cx - 4, 8, 9, 9, Panel);
+    text("N", cx - 2, 8, 1, Muted);
     if (!rows.size()) {
       body("Keine Flugzeuge im gespeicherten Umkreis.", 94, 12, 204, 100);
       return;

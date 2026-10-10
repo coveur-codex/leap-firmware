@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.8
+- Chat über WebSocket-Push, Cursor-Nachladen, idempotente Bestätigungen und begrenzte Queues; Homeserver 1.0.4 erforderlich.
+- WLAN-Minimum-Modem-Sleep, Keepalive alle 30 Sekunden und Wiederverbindung mit Backoff.
+- Akzentfarbe pro Gerät vom Homeserver; bisheriges Türkis bleibt Standard.
+- Künstliche Fettzeichnung und verzerrte Skalierung der Überschriften/Flugzeugkennungen entfernt.
+- Regen- und Flugradar auf 60 × 60 km mit drei Ringen bei 10/20/30 km; N oben mittig.
+
+
 ## 1.0.7 – 2026-10-10
 
 - ä, ö, ü, Ä, Ö, Ü und ß werden als echte Zeichen der eingebauten Displayschrift dargestellt.

@@ -25,130 +25,101 @@ bool Storage::readJson(const String &, JsonDocument &out, size_t) {
 String Transport::encode(const String &s) { return s; }
 bool Transport::json(const String &, JsonDocument &, JsonDocument *) { return false; }
 }
-struct Server {
-  int status = 200, posts = 0;
-  bool losePostResponse = false, deny = false, invalid = false;
-  std::string expectedTemplate = "template";
-  std::vector<bool> mine;
-  std::map<std::string,uint64_t> accepted;
-  std::function<void()> onGet;
-  void add(bool own = false) { mine.push_back(own); }
-  bool json(const String &path, JsonDocument &out, JsonDocument *body) {
-    status = deny ? 403 : 200;
-    if (deny) return false;
-    if (body) {
-      ++posts;
-      std::string event = (*body)["eventId"].as<std::string>();
-      assert(event.size() == 32 && (*body)["templateId"].as<std::string>() == expectedTemplate);
-      if (!accepted.count(event)) { add(true); accepted[event] = mine.size(); }
-      if (losePostResponse) { losePostResponse = false; status = 502; return false; }
-      out["ok"] = true; out["eventId"] = event;
-      return true;
-    }
-    if (onGet) { auto action = onGet; onGet = {}; action(); }
-    auto query = path.find("?since=");
-    bool initial = query == std::string::npos;
-    uint64_t since = initial ? 0 : std::stoull(path.substr(query + 7));
-    bool reset = since > mine.size();
-    size_t start = initial || reset ? (mine.size() > 8 ? mine.size()-8 : 0) : since;
-    size_t end = std::min(mine.size(), start+8);
-    out["schemaVersion"] = invalid ? 99 : 1;
-    out["reset"] = reset; out["more"] = end < mine.size(); out["cursor"] = end;
-    auto rows = out["messages"].to<JsonArray>();
-    for (size_t i = start; i < end; ++i) {
-      auto row = rows.add<JsonObject>();
-      row["id"] = uint64_t(i+1); row["senderId"] = mine[i] ? "local" : "remote";
-      row["name"] = "Server name"; row["text"] = "Server text"; row["symbol"] = "👋";
-    }
-    return true;
-  }
-};
+
 static JsonDocument config(bool enabled = true) {
   JsonDocument state;
   state["config"]["communicationEnabled"] = enabled;
   state["assets"]["communication-messages"] = 1;
   return state;
 }
-static void step(Communication &c, Server &s, uint32_t time, bool wifi = true) {
-  fakeNow = time;
-  c.service(time,wifi,[&](const String &path, JsonDocument &out, JsonDocument *body) { return s.json(path,out,body); },[&] { return s.status; });
+static void step(Communication &c, uint32_t time, bool wifi=true) {
+  fakeNow=time; c.service(time,wifi);
+}
+static void event(Communication &c, WebSocketsClient &socket, WStype_t type, const std::string &frame, uint32_t time) {
+  socket.events.push_back({type,frame}); step(c,time);
+}
+static std::string page(uint64_t start, unsigned count, bool reset=false, bool more=false) {
+  JsonDocument doc;
+  doc["type"]="messages"; doc["schemaVersion"]=1;
+  doc["cursor"]=start+count; doc["reset"]=reset; doc["more"]=more;
+  auto rows=doc["messages"].to<JsonArray>();
+  for (unsigned i=0;i<count;++i) {
+    auto row=rows.add<JsonObject>(); row["id"]=start+i+1;
+    row["senderId"]=i%2 ? "local" : "remote";
+    row["name"]="Name"; row["text"]="Hallo"; row["symbol"]="!";
+  }
+  std::string raw; serializeJson(doc,raw); return raw;
+}
+static JsonDocument last(WebSocketsClient &socket) {
+  JsonDocument doc; assert(!socket.sent.empty());
+  assert(!deserializeJson(doc,socket.sent.back())); return doc;
 }
 int main() {
   strcpy(deviceSettings.deviceId,"local");
-  auto state = config();
-  Communication c;
-  c.configure(state); assert(c.begin());
-  Server s;
-  s.add(); s.add(true);
-  step(c,s,1000);
-  assert(!c.poll() && c.count==2 && !c.unread); // Historical boot seed.
-  s.add(); s.add(true);
-  step(c,s,3000);
-  assert(c.poll() && c.unread && c.count==4); // Notify incoming, never own echo.
-  assert(!c.poll()); c.markRead(); assert(!c.unread);
-  step(c,s,5000); assert(!c.poll()); // No duplicate notification on a repeated fetch.
-  step(c,s,7000,false); assert(!c.online);
-  s.add();
-  step(c,s,9000); assert(c.poll() && c.unread); // Reconnect catches messages since cursor.
+  strcpy(deviceSettings.server,"http://homeserver:8080");
+  auto state=config();
+  Communication c; c.configure(state); assert(c.begin());
+  auto &s=*WebSocketsClient::instances.back();
+  step(c,1000);
+  assert(s.host=="homeserver" && s.port==8080 && s.url=="/api/v1/devices/local/communication/ws");
+  assert(s.heartbeat==30000);
+  event(c,s,WStype_CONNECTED,"",1010);
+  assert(last(s)["type"]=="sync" && !last(s)["since"].is<uint64_t>());
+  event(c,s,WStype_TEXT,page(0,2),1020);
+  assert(c.online && !c.poll() && c.count==2 && !c.unread); // Silent boot.
+  assert(last(s)["since"]==2);
+  auto sent=s.sent.size(); step(c,15000); assert(s.sent.size()==sent); // No idle polling.
+  event(c,s,WStype_TEXT,page(2,2),15010);
+  assert(c.poll() && c.unread); c.markRead();
+  event(c,s,WStype_TEXT,page(4,0),15020); assert(!c.poll());
+  event(c,s,WStype_DISCONNECTED,"",16000);
+  assert(!c.online && s.interval==2000);
+  event(c,s,WStype_CONNECTED,"",18000); assert(last(s)["since"]==4);
+  event(c,s,WStype_TEXT,page(4,1),18010); assert(c.poll()); c.markRead();
+  assert(c.send(0)); step(c,19000);
+  auto request=last(s); assert(request["type"]=="send");
+  auto id=request["eventId"].as<std::string>(); assert(id.size()==32);
+  step(c,29000); assert(!s.connected && c.sendStatus==RelaySendStatus::Retrying);
+  event(c,s,WStype_CONNECTED,"",31000);
+  assert(last(s)["eventId"].as<std::string>()==id); // Lost ack retries same ID.
+  std::string ack="{\"type\":\"ack\",\"ok\":true,\"eventId\":\""+id+"\"}";
+  event(c,s,WStype_TEXT,ack,31010); assert(c.sendStatus==RelaySendStatus::Sent);
+  event(c,s,WStype_TEXT,"{\"type\":\"messages\",\"schemaVersion\":99}",32000);
+  assert(!c.online && !s.connected);
+  event(c,s,WStype_CONNECTED,"",34000); assert(last(s)["since"]==5);
+  event(c,s,WStype_TEXT,page(5,1),34010); assert(c.poll()); c.markRead();
+  assert(c.sendIcon(20)); step(c,35000); assert(last(s)["templateId"]=="icon:help");
+  assert(!c.sendIcon(0));
+  id=last(s)["eventId"].as<std::string>();
+  event(c,s,WStype_TEXT,"{\"type\":\"error\",\"status\":422,\"eventId\":\""+id+"\"}",35010);
+  assert(c.sendStatus==RelaySendStatus::Rejected);
+  auto disabled=config(false); c.configure(disabled); step(c,36000);
+  assert(!s.connected && !c.unread && c.count==0 && !c.send(0));
+  c.configure(state); step(c,38000); event(c,s,WStype_CONNECTED,"",38010);
+  event(c,s,WStype_TEXT,page(0,8),38020); assert(!c.poll() && c.count==8);
+  // UI stalls: first batch fits, second must not advance cursor.
+  event(c,s,WStype_TEXT,page(8,8),39000);
+  event(c,s,WStype_TEXT,page(16,8),39010);
+  event(c,s,WStype_TEXT,page(24,8),39020);
+  assert(!s.connected); assert(c.poll() && c.history[7].id==24);
+  event(c,s,WStype_CONNECTED,"",41000); assert(last(s)["since"]==24);
+  event(c,s,WStype_TEXT,page(24,8),41010); assert(c.poll() && c.history[7].id==32);
   c.markRead();
-  s.losePostResponse = true;
-  assert(c.send(0));
-  step(c,s,9010);
-  assert(c.sendStatus == RelaySendStatus::Retrying && !c.poll() && !c.unread);
-  assert(s.accepted.size()==1 && s.posts==1);
-  step(c,s,10000); assert(s.posts==1);
-  s.add(); // Intervening remote message must survive a POST acknowledgement.
-  step(c,s,11010);
-  assert(c.sendStatus == RelaySendStatus::Sent && s.posts==2 && s.accepted.size()==1);
-  assert(c.poll() && c.unread);
-  c.markRead();
-  s.add(); s.invalid=true;
-  step(c,s,13010); assert(!c.poll() && !c.online);
-  s.invalid=false;
-  step(c,s,18010); assert(c.poll() && c.unread); // Malformed page never advances the cursor.
-  auto disabled = config(false);
-  c.configure(disabled); assert(!c.unread && c.count==0);
-  assert(!c.send(0));
-  c.configure(state);
-  step(c,s,19010); assert(!c.poll() && c.count==8 && !c.unread);
-  s.deny=true; assert(c.send(0));
-  step(c,s,21010); assert(c.sendStatus == RelaySendStatus::Rejected && !c.online);
-  int sent = s.posts;
-  step(c,s,26010); assert(s.posts==sent); // Terminal permission error isn't retried.
-  s.deny=false;
-  s.onGet=[&] { c.configure(disabled); };
-  step(c,s,31010); assert(!c.poll() && !c.unread && c.count==0); // In-flight disable discards stale responses.
-
-  // Icon-only messages use the same actual bounded queue and idempotent retry.
-  c.configure(state); step(c,s,32010); c.poll();
-  s.expectedTemplate = "icon:help";
-  assert(!c.sendIcon(48));
-  assert(c.sendIcon(20));
-  assert(!c.sendIcon(0)); // Shared text/icon send throttling.
-  s.losePostResponse = true;
-  step(c,s,32020); assert(c.sendStatus == RelaySendStatus::Retrying);
-  auto iconEvents = s.accepted.size();
-  step(c,s,34020); assert(c.sendStatus == RelaySendStatus::Sent);
-  assert(s.accepted.size() == iconEvents);
-  c.configure(disabled); assert(!c.sendIcon(20));
-
-  Communication blocked;
-  blocked.configure(state); assert(blocked.begin());
-  Server many;
-  step(blocked,many,1000); // One seed-control record waits in the queue.
-  for (int i=0;i<24;++i) many.add();
-  step(blocked,many,3000); // First batch fits.
-  step(blocked,many,3030); // Next batch would overflow: cursor stays at eight.
-  assert(blocked.poll() && blocked.count==8);
-  step(blocked,many,8030); assert(blocked.poll() && blocked.history[7].id==16);
-  step(blocked,many,8060); assert(blocked.poll() && blocked.history[7].id==24);
-  blocked.markRead(); step(blocked,many,10060); assert(!blocked.poll() && !blocked.unread);
-  // Future cursor after a server restore seeds silently instead of losing future events.
-  many.mine.resize(3);
-  step(blocked,many,12060); assert(!blocked.poll() && blocked.count==3 && !blocked.unread);
-  many.add(); step(blocked,many,14060); assert(blocked.poll() && blocked.unread);
-  many.mine.resize(1);
-  step(blocked,many,16060); assert(!blocked.poll() && blocked.unread);
-  blocked.markRead(); assert(!blocked.unread); // Only a page visit acknowledges unread mail.
-  puts("PASS: real relay worker, boot history, own echoes, unread/read, reconnect, idempotent retries, malformed pages, permission changes, queue backpressure and restore");
+  event(c,s,WStype_TEXT,page(0,3,true),42000); assert(!c.poll() && c.count==3 && !c.unread);
+  sent=s.sent.size(); step(c,72000); assert(s.sent.size()==sent);
+  step(c,73000,false); assert(!s.connected && !c.online);
+  s.failConnect=true;
+  for (unsigned i=0;i<6;++i) {
+    step(c,75000+i*30000);
+    assert(s.interval==std::min(2000u << i,30000u)); // TCP failures have no callback.
+  }
+  Communication secure; secure.configure(state); assert(secure.begin());
+  auto &tls=*WebSocketsClient::instances.back();
+  strcpy(deviceSettings.server,"https://homeserver/prefix");
+  step(secure,300000); assert(!tls.started); // Never fall back to insecure WSS.
+  strcpy(deviceSettings.tlsCa,"test-ca");
+  step(secure,301000);
+  assert(tls.started && tls.ca=="test-ca" && tls.port==443 &&
+         tls.url=="/prefix/api/v1/devices/local/communication/ws");
+  puts("PASS: WebSocket push, no idle polls, keepalive, cursor resume, idempotent sends, rejection, backpressure and restore");
 }

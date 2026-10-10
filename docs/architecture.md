@@ -10,7 +10,7 @@ flowchart LR
   NVS --> UI[UI und Eingabe Core 1]
   FS --> UI
   UI --> Audio[I2S-Task Core 0]
-  Server <-->|HTTP alle 2 Sekunden| Chat[Chat-Relay-Task Core 0]
+  Server <-->|WebSocket Push| Chat[Chat-Relay-Task Core 0]
   UI --> Send[Begrenzte Sendewarteschlange]
   Send --> Chat
   Chat --> Queue[Begrenzte Empfangsqueue]

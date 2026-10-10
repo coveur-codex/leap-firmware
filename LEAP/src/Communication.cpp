@@ -3,12 +3,16 @@
 #include "Core.h"
 #include "ChatSymbols.h"
 #include "Transport.h"
+#include "WebSocketEndpoint.h"
 #include <WiFi.h>
 namespace leap {
 Communication communication;
 bool Communication::begin() {
   incoming = xQueueCreate(16, sizeof(RelayDelivery));
   outgoing = xQueueCreate(8, sizeof(RelayRequest));
+  socket.onEvent([this](WStype_t type, uint8_t *payload, size_t length) {
+    socketEvent(type, payload, length);
+  });
   ready = incoming && outgoing;
   if (!ready) return false;
   ready = xTaskCreatePinnedToCore([](void *p) { static_cast<Communication *>(p)->run(); },
@@ -113,68 +117,119 @@ bool Communication::deliver(JsonDocument &response, uint32_t generation) {
   }
   cursor = next;
   initialized = true;
-  pollInterval = response["more"] == true ? 0 : 2000;
   return true;
 }
-void Communication::service(uint32_t now, bool connected,
-    const std::function<bool(const String &, JsonDocument &, JsonDocument *)> &json,
-    const std::function<int()> &httpStatus) {
+bool Communication::write(JsonDocument &frame) {
+  std::string encoded;
+  serializeJson(frame, encoded);
+  String raw(encoded.c_str());
+  return socket.sendTXT(raw);
+}
+bool Communication::subscribe() {
+  JsonDocument frame(&jsonRam);
+  frame["type"] = "sync";
+  if (initialized) frame["since"] = cursor;
+  return write(frame);
+}
+void Communication::socketEvent(WStype_t type, uint8_t *payload, size_t length) {
+  if (type == WStype_DISCONNECTED) {
+    online = false;
+    requestSent = false; // Keep the same eventId until acknowledged.
+    if (pending && enabled && workerEpoch == epoch.load()) sendStatus = RelaySendStatus::Retrying;
+    return;
+  }
+  if (!enabled || workerEpoch != epoch.load()) return;
+  if (type == WStype_CONNECTED) {
+    reconnectInterval = 2000;
+    if (!subscribe()) socket.disconnect();
+  } else if (type == WStype_TEXT) {
+    JsonDocument frame(&jsonRam);
+    if (length > 16384 || deserializeJson(frame, static_cast<const uint8_t *>(payload), length)) {
+      socket.disconnect();
+      return;
+    }
+    if (frame["type"] == "messages") {
+      // Never acknowledge a malformed page or a batch that cannot fit. A
+      // reconnect requests the unchanged cursor after the UI drains its queue.
+      if (!deliver(frame, workerEpoch) || !subscribe()) socket.disconnect();
+      else online = true;
+    } else if (frame["type"] == "ack") {
+      if (pending && frame["ok"] == true && frame["eventId"] == request.eventId) {
+        pending = requestSent = false;
+        sendStatus = RelaySendStatus::Sent;
+      }
+    } else if (frame["type"] == "error") {
+      if (pending && frame["eventId"] == request.eventId) {
+        int status = frame["status"] | 500;
+        if (status >= 400 && status < 500 && status != 408 && status != 429) {
+          pending = requestSent = false;
+          sendStatus = RelaySendStatus::Rejected;
+        } else socket.disconnect();
+      }
+    } else if (frame["type"] != "pong") socket.disconnect();
+  } else if (type == WStype_BIN || type == WStype_FRAGMENT_TEXT_START ||
+             type == WStype_FRAGMENT_BIN_START) socket.disconnect();
+}
+void Communication::service(uint32_t now, bool connected) {
   uint32_t generation = epoch.load();
   if (workerEpoch != generation) {
+    socketStarted = false;
+    socket.disconnect();
     workerEpoch = generation;
     initialized = false;
     cursor = 0;
-    pollInterval = retryInterval = 0;
-    pending = false;
+    pending = requestSent = false;
+    reconnectInterval = 2000;
+    lastSocketFailure = 0;
   }
-  if (!enabled || !connected) { online = false; return; }
-  String base = "/api/v1/devices/" + Transport::encode(deviceSettings.deviceId) + "/communication/messages";
+  if (!enabled || !connected) {
+    if (socketStarted) socket.disconnect();
+    socketStarted = false;
+    online = false;
+    return;
+  }
+  if (!socketStarted) {
+    WebSocketEndpoint endpoint;
+    if (!webSocketEndpoint(deviceSettings.server, endpoint) ||
+        (endpoint.tls && !strlen(deviceSettings.tlsCa))) return;
+    String path = String(endpoint.path.c_str()) + "/api/v1/devices/" +
+        Transport::encode(deviceSettings.deviceId) + "/communication/ws";
+    socket.setReconnectInterval(reconnectInterval);
+    if (endpoint.tls)
+      socket.beginSslWithCA(endpoint.host.c_str(), endpoint.port, path.c_str(), deviceSettings.tlsCa, "");
+    else socket.begin(endpoint.host.c_str(), endpoint.port, path.c_str(), "");
+    socket.enableHeartbeat(30000, 10000, 2);
+    socketStarted = true;
+  }
+  socket.loop();
+  uint32_t failure = socket.failureStamp();
+  if (failure != lastSocketFailure && !socket.isConnected()) {
+    socket.setReconnectInterval(reconnectInterval);
+    reconnectInterval = std::min(reconnectInterval * 2, uint32_t(30000));
+  }
+  lastSocketFailure = failure;
+  if (!enabled || epoch.load() != generation || !socket.isConnected()) return;
   if (!pending) {
-    while (outgoing && xQueueReceive(outgoing, &request, 0) == pdTRUE) {
-      if (request.epoch == generation) { pending = true; retryInterval = 0; break; }
+    while (xQueueReceive(outgoing, &request, 0) == pdTRUE) {
+      if (request.epoch == generation) { pending = true; requestSent = false; break; }
     }
   }
-  if (pending && elapsed(now, lastAttempt, retryInterval)) {
-    JsonDocument body(&jsonRam), response(&jsonRam);
-    body["eventId"] = request.eventId;
-    body["templateId"] = request.templateId;
-    bool sent = json(base, response, &body) && response["ok"] == true && response["eventId"] == request.eventId;
-    if (epoch.load() != generation || !enabled) return;
-    if (sent) {
-      pending = false;
-      sendStatus = RelaySendStatus::Sent;
-      pollInterval = 0; // Fetch the confirmed message without skipping intervening sends.
-    } else if (httpStatus() >= 400 && httpStatus() < 500 && httpStatus() != 429 && httpStatus() != 408) {
-      pending = false;
-      sendStatus = RelaySendStatus::Rejected;
-    } else {
-      sendStatus = RelaySendStatus::Retrying;
-      retryInterval = retryInterval ? std::min(retryInterval * 2, uint32_t(30000)) : 2000;
-    }
+  if (pending && !requestSent) {
+    JsonDocument frame(&jsonRam);
+    frame["type"] = "send";
+    frame["eventId"] = request.eventId;
+    frame["templateId"] = request.templateId;
+    requestSent = write(frame);
     lastAttempt = now;
-  }
-  if (elapsed(now, lastPoll, pollInterval)) {
-    JsonDocument response(&jsonRam);
-    char query[48]{};
-    if (initialized) snprintf(query, sizeof(query), "?since=%llu", (unsigned long long)cursor);
-    bool fetched = json(base + query, response, nullptr);
-    if (epoch.load() != generation || !enabled) return;
-    online = fetched;
-    if (!fetched || !deliver(response, generation)) {
-      online = false;
-      pollInterval = 5000;
-    }
-    lastPoll = now;
+    if (!requestSent) socket.disconnect();
+  } else if (pending && elapsed(now, lastAttempt, 10000)) {
+    socket.disconnect(); // A lost acknowledgement retries the same eventId.
   }
 }
 void Communication::run() {
-  Transport transport;
   for (;;) {
-    service(millis(), WiFi.status() == WL_CONNECTED,
-        [&](const String &path, JsonDocument &response, JsonDocument *body) {
-          return transport.json(path, response, body);
-        }, [&] { return transport.status; });
-    vTaskDelay(pdMS_TO_TICKS(30));
+    service(millis(), WiFi.status() == WL_CONNECTED);
+    vTaskDelay(pdMS_TO_TICKS(socketStarted ? 50 : 250));
   }
 }
 } // namespace leap
