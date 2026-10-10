@@ -21,7 +21,7 @@ und eine Möglichkeit, die Versorgung kontrolliert zu unterbrechen.
    WAV mono/stereo 8/22,05/48 kHz, Stoppen und Lautstärke 0. Keine Analogausgabe
    oder erfundenen Amplifier-Enable-Pins.
 5. **Sync:** aktive Seiten/Reihenfolge/Name/Avatar/Altersfilter ändern. Kommunikation
-   deaktivieren, gleichzeitig ein unpassendes Asset zuordnen: Funk muss trotzdem
+   deaktivieren, gleichzeitig ein unpassendes Asset zuordnen: Chat-Relay muss trotzdem
    deaktiviert bleiben. News/Wetter/Flugradar/Quiz und Wissenssuche prüfen.
 6. **Offline:** nach Sync Server und AP abschalten, Neustart. Alle lokal vorhandenen
    Bereiche weiter nutzen. Uhr mit `~` kennzeichnet unbekannte Ausschaltzeit.
@@ -38,9 +38,14 @@ und eine Möglichkeit, die Versorgung kontrolliert zu unterbrechen.
    Selbsttest bzw. Reset vor Bestätigung installieren: Bootloader muss auf die
    vorherige Version zurückfallen und bei Serverkontakt `rollback` melden.
    **Vor diesem Test keine Annahme über eine bereits früher geflashte Bootloader-Version.**
-10. **ESP-NOW:** zwei Geräte, gleicher AP-Kanal; offline auf gleichem Kanal testen.
-    Bekannte Vorlage senden, doppelte Pakete verwerfen, abweichende Vorlagenversion
-    verwerfen, Kommunikation deaktivieren. „Gesendet“ ist keine Empfangsbestätigung.
+10. **Chat-Relay:** zwei/drei Geräte an APs mit unterschiedlichen Kanälen, aber
+    demselben erreichbaren Homeserver. Vorlage senden und Namen/Icon kontrollieren.
+    Neue Nachrichten bei News, Spiel, Sperrbildschirm, Ruhezeit und langem WAV
+    müssen plingen und den gelben Brief anzeigen. Kommunikationsseite aufrufen:
+    Brief aus; nächste eingehende Nachricht: Brief wieder an. Eigene Nachrichten
+    und alte Historie nach Neustart dürfen nicht klingeln. Lautstärke 0 bleibt stumm.
+    Server-/WLAN-Ausfall und Wiederkehr, verlorene POST-Antwort, volle Queue sowie
+    deaktivierte Kommunikation prüfen. Serverbestätigung ist keine Lesebestätigung.
 11. **Dauerlauf:** 24 Stunden mit wiederholtem Sync, Suche, Avataranimation, Audio
     und Paketwechseln. Min-Heap/PSRAM beobachten; keine ungeklärten Neustarts.
 12. **Recovery:** defektes/volles FS, physisch bestätigte Formatierung und erneuter

@@ -8,11 +8,13 @@ struct AudioJob {
 };
 class Audio {
   QueueHandle_t jobs = nullptr;
+  std::atomic<bool> notificationRequested{false};
 
 public:
   std::atomic<uint8_t> volume{35};
   std::atomic<bool> stopRequested{false};
   bool begin();
+  void notify() { notificationRequested = true; }
   void tone(uint16_t hz, uint16_t duration = 120);
   bool play(const String &blob);
   void stop() {
