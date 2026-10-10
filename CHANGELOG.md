@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.5 – 2026-10-10
+
+- **Dragon Run** heißt jetzt **Drachenrennen**. Spiel-ID und gespeicherter Rekord bleiben erhalten.
+- Sprünge dauern 1,6 statt 1,2 Sekunden, bei unveränderter Höhe von 72 Pixeln.
+- Feuer reicht 64 statt 48 Pixel weit und brennt 0,42 statt 0,24 Sekunden.
+- Ruhigerer Start mit 60 statt 78 Pixel/s; die Höchstgeschwindigkeit bleibt 150 Pixel/s.
+- Hindernisabstände berücksichtigen die längere Sprungdauer; Zeichen- und Kollisionsfläche des Feuers passen zusammen.
+
 ## 1.0.4 – 2026-10-10
 
 - Neues Offline-Einzelspielerspiel **Dragon Run** im konfigurierten Spielemenü.

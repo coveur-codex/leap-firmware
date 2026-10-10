@@ -8,9 +8,10 @@ namespace leap {
 struct DragonRun {
   static constexpr int Width = 342, Height = 142, Ground = 116, PlayerX = 44;
   static constexpr uint32_t FrameMs = 33;
-  static constexpr float Gravity = 400, JumpVelocity = -240;
+  static constexpr float Gravity = 225, JumpVelocity = -180;
+  static constexpr float StartSpeed = 60, MaxSpeed = 150, FireReach = 64;
   static constexpr float JumpSeconds = -2 * JumpVelocity / Gravity;
-  static constexpr float FireDuration = .24f, FireCooldown = .95f, RestartDelay = .65f;
+  static constexpr float FireDuration = .42f, FireCooldown = .95f, RestartDelay = .65f;
   static constexpr int MaxScore = 999999;
   enum class Kind : uint8_t { Rock, Pillar, Bat, Wood, TallWood, Coin, Gem };
   struct Box {
@@ -52,7 +53,7 @@ struct DragonRun {
   };
   Object objects[8]{};
   Particle particles[18]{};
-  float lift = 0, velocity = 0, distance = 0, time = 0, speed = 78;
+  float lift = 0, velocity = 0, distance = 0, time = 0, speed = StartSpeed;
   float flame = 0, cooldown = 0, deadTime = 0, nextSpawn = 180;
   int bonus = 0;
   bool alive = true, ducking = false;
@@ -80,7 +81,7 @@ struct DragonRun {
   }
   Box fireBox() const {
     auto p = playerBox();
-    return {p.x + p.w, p.y + (ducking ? 2 : 7), 48, 18};
+    return {p.x + p.w, p.y + (ducking ? 2 : 7), FireReach, 18};
   }
   bool jump() {
     if (!alive || lift > .01f || velocity < 0)
@@ -99,10 +100,10 @@ struct DragonRun {
   bool restartReady() const {
     return !alive && deadTime >= RestartDelay;
   }
-  // At max speed this leaves >1.45 s between hazard edges: a full 1.2 s jump,
+  // Leave the full jump plus reaction time between hazard edges:
   // landing/body clearance, reaction time and the .95 s fire cooldown all fit.
   float safeGap() const {
-    return speed * 1.45f + 36;
+    return speed * (JumpSeconds + .25f) + 36;
   }
   bool add(Kind kind, float x, float y) {
     for (auto &o : objects)
@@ -157,7 +158,7 @@ struct DragonRun {
       deadTime += dt;
       return;
     }
-    speed = 78 + std::min(72.0f, distance / 650);
+    speed = StartSpeed + std::min(MaxSpeed - StartSpeed, distance / 650);
     float move = speed * dt;
     distance = std::min(distance + move, float(MaxScore * 10));
     cooldown = std::max(0.0f, cooldown - dt);

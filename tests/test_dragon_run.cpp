@@ -19,12 +19,15 @@ static void advance(DragonRun &r, float seconds, bool down = false) {
 }
 int main() {
   auto r = empty();
+  assert(r.speed == 60);
   assert(r.jump());
   assert(!r.jump());
-  advance(r, .6f);
+  advance(r, .8f);
   assert(r.lift > 71 && r.lift <= 72.1f);
   assert(!r.jump());
-  advance(r, .65f);
+  advance(r, .5f);
+  assert(r.lift > 0); // Remains airborne beyond the former 1.2-second jump.
+  advance(r, .35f);
   assert(r.lift == 0 && r.velocity == 0);
   r.update(.02f, true);
   assert(r.ducking && r.playerBox().h == 15);
@@ -36,6 +39,18 @@ int main() {
   assert(!r.fire());
   advance(r, 1);
   assert(r.fire());
+  // A distant barrier is within the longer flame but outside the previous 48 px reach.
+  r = empty();
+  r.add(Kind::TallWood, r.fireBox().x + 55, 76);
+  assert(r.fire());
+  r.update(.01f, false);
+  assert(!r.objects[0].active && r.bonus == 15);
+  r = empty();
+  assert(r.fire());
+  advance(r, .3f);
+  assert(r.flame > .1f); // The former flame expired at .24 seconds.
+  advance(r, .15f);
+  assert(r.flame == 0 && !r.fire());
   for (Kind kind : {Kind::Rock, Kind::Pillar, Kind::Wood, Kind::TallWood, Kind::Bat}) {
     r = empty();
     float y = kind == Kind::Bat ? 87 : DragonRun::Ground - DragonRun::Object{kind}.box().h;
@@ -79,17 +94,17 @@ int main() {
   r.update(10, false);
   assert(r.distance < 8);
   // Clear each entire fireproof hitbox at both speed limits.
-  for (float speed : {78.0f, 150.0f})
+  for (float speed : {DragonRun::StartSpeed, DragonRun::MaxSpeed})
     for (Kind kind : {Kind::Rock, Kind::Pillar, Kind::Wood})
       for (float timingError : {-.09f, 0.0f, .09f}) {
         r = empty();
-        r.distance = (speed - 78) * 650;
+        r.distance = (speed - DragonRun::StartSpeed) * 650;
         auto shape = DragonRun::Object{kind}.box();
         float crossing = (shape.w + r.playerBox().w) / speed;
         float lead = (DragonRun::JumpSeconds - crossing) / 2 + timingError;
         r.add(kind, r.playerBox().x + r.playerBox().w + speed * lead, DragonRun::Ground - shape.h);
         r.jump();
-        advance(r, 1.3f);
+        advance(r, 1.7f);
         assert(r.alive);
       }
   // Generated encounters across all biomes, including the maximum speed.
@@ -128,7 +143,7 @@ int main() {
           if (a.active && b.active && !a.treasure() && !b.treasure() && a.x < b.x)
             assert(b.x - a.x - a.box().w >= 140);
     }
-    assert(r.hazards > 80);
+    assert(r.hazards > 50);
   }
   Arduino_GFX gfx;
   gfx.recordAll = true;

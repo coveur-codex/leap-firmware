@@ -2,6 +2,21 @@
 
 Stand: 2026-10-10. Dragon Run und bisherige Firmwaremodule.
 
+## Drachenrennen (1.0.5)
+
+- Sprungdauer 1,6 s bei unveränderten 72 Pixeln Höhe, Starttempo 60 Pixel/s,
+  Feuerreichweite 64 Pixel und Brenndauer 0,42 s geprüft.
+- Tests bestätigen fortgesetzten Flug nach 1,2 Sekunden, Feuer nach 0,3 Sekunden
+  und die Zerstörung einer Barrikade außerhalb der früheren 48-Pixel-Reichweite.
+- Hindernisabstände wachsen mit der Sprungdauer. Ganze Hitboxen werden bei
+  60/150 Pixel/s mit ±90 ms Timingabweichung übersprungen; 64 simulierte
+  200-Sekunden-Läufe bestehen weiterhin ohne unvermeidbare Kollisionen.
+- Vollständige native Firmware-Regressionssuite besteht; echte Games-Integration
+  zeigt den neuen Namen und erhält den bestehenden gespeicherten Rekord.
+- Universeller ESP32-S3 N16R8-Build mit Core 3.3.0 und den festgelegten Libraries
+  besteht; App-Binary 1.525.376 Bytes, Image-/Slotprüfung bestanden.
+- Reale Bildrate, Eingaben und Spielgefühl bleiben Teil der Hardware-Abnahme.
+
 ## Dragon Run (1.0.4)
 
 - Hostsimulation: Sprungbogen/Landung, gehaltenes Ducken und kleinere Hitbox,

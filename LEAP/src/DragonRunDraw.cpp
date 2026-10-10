@@ -181,17 +181,17 @@ void drawDragonRun(Arduino_GFX &gfx, const DragonRun &r, int best, bool saving) 
     auto f = r.fireBox();
     int fx = int(f.x), fy = int(f.y) + 8;
     p.circle(fx + 13, fy, 7, 0xf980);
-    p.circle(fx + 29, fy, 9, 0xfd20);
-    p.circle(fx + 37 + int(r.time * 30) % 5, fy - 2, 5, 0xff60);
-    p.rect(fx, fy - 3, 36, 7, 0xfd20);
-    p.rect(fx, fy - 1, 30, 3, 0xffd4);
+    p.circle(fx + int(f.w) - 19, fy, 9, 0xfd20);
+    p.circle(fx + int(f.w) - 11 + int(r.time * 30) % 5, fy - 2, 5, 0xff60);
+    p.rect(fx, fy - 3, int(f.w) - 12, 7, 0xfd20);
+    p.rect(fx, fy - 1, int(f.w) - 18, 3, 0xffd4);
   }
   for (const auto &part : r.particles)
     if (part.life > 0)
       p.rect(int(part.x), int(part.y), 2, 2, part.color);
   p.rect(0, 0, 342, 19, 0x1949);
-  p.text(6, 6, "Dragon Run", 0xbff4);
-  gfx.setCursor(86 + 94, 6);
+  p.text(6, 6, "Drachenrennen", 0xbff4);
+  gfx.setCursor(86 + 96, 6);
   gfx.printf("%06d  Best %06d", r.score(), std::max(best, r.score()));
   p.text(285, 6, r.cooldown <= 0 ? "Feuer OK" : "Feuer...");
   p.rect(0, 132, 342, 10, 0x1949);
