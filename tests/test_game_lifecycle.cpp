@@ -58,6 +58,16 @@ static CrabJourneyProgress savedCrab() {
 }
 int main() {
   Arduino_GFX gfx;
+  Games maze; maze.begin(); maze.start("tilt_maze");
+  gfx.recordAll = true; maze.draw(gfx, 94, 10);
+  int cells = 0;
+  for (const auto &rect : gfx.rects) {
+    assert(rect.x >= 94 && rect.x + rect.w <= 428);
+    assert(rect.y >= 10 && rect.y + rect.h <= 132);
+    if (rect.w == 11 && rect.h == 11 && (rect.color == 0x18c3 || rect.color == 0x4a69)) ++cells;
+  }
+  assert(cells == 189);
+  gfx.rects.clear(); gfx.text.clear(); gfx.recordAll = false; maze.close();
   // Dragon Run consumes only the right switch and keeps its game-over screen active.
   Games runner;
   runner.begin(); runner.start("dragon_run");

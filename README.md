@@ -145,10 +145,17 @@ Seite ist hervorgehoben; ihr Titel steht darunter statt im Hauptbereich. Ein
 kleiner Punkt rechts neben der Uhr kennzeichnet einen noch nicht bestätigten Zeitstand. Ohne RTC kennt das Gerät eine stromlose Zeitspanne nicht.
 Nach einem Check-in läuft die Uhr lokal weiter; Sommerzeit über POSIX-Zeitzone.
 
-**Gruppenchat:** Rechts UP/DOWN wählt Vorlagen, MITTE sendet, LINKS/RECHTS
-blättert durch die letzten acht Chatzeilen. Die letzten acht Chatzeilen bleiben lokal im RAM; der Server hält Nachrichten sieben Tage. Die zehn Standardsymbole werden lokal als 12×12-Icons
-in Vorlagenauswahl und Historie gezeichnet. Eigene unbekannte Symbole bleiben ohne
-Icon; zusätzliche Assets sind nicht nötig.
+**Gruppenchat:** Rechts UP/DOWN führt durch die Textvorlagen und anschließend
+in die Icon-Auswahl: drei Zeilen mit je 16 lokal gezeichneten Symbolen. Am Ende
+der letzten Icon-Zeile geht es zurück zur ersten Textvorlage; UP durchläuft die
+Auswahl rückwärts. Im Raster wählt LINKS/RECHTS die Spalte, MITTE sendet genau
+ein Icon ohne Begleittext. Unter dem Raster steht dessen Bedeutung. Außerhalb
+des Rasters blättert LINKS/RECHTS durch die letzten acht Chatzeilen. Ohne
+Textvorlagen bleibt das Raster verfügbar. Einzel-Icons erscheinen im Verlauf
+vergrößert. Die letzten acht Chatzeilen bleiben lokal im RAM; der Server hält
+Nachrichten sieben Tage. Eigene unbekannte Vorlagensymbole bleiben ohne Icon.
+Für Einzel-Icons benötigt Firmware **1.0.6** den Homeserver **1.0.3** oder neuer;
+beim gemeinsamen Update zuerst den Homeserver aktualisieren.
 
 **Chat-Relay (ab 1.0.2):** Alle Nachrichten gehen an den Homeserver, der sie
 allen eingeschalteten Geräten mit aktivierter Kommunikation bereitstellt.
@@ -289,7 +296,7 @@ damit die neue ID beim nächsten Sync in `config.games` angeboten wird.
 
 **Spiele:** `hot_potato` = 15-Sekunden-Weitergabe-/Tastenspiel,
 `simon_motion` = Richtungsfolge merken und durch Kippen/Schalter nachspielen,
-`tilt_maze` = zufällig erzeugtes, zusammenhängendes 9×9-Kipp-Labyrinth mit
+`tilt_maze` = zufällig erzeugtes, zusammenhängendes 9×21-Kipp-Labyrinth (9 Zeilen, 21 Spalten) mit
 zusätzlicher Schaltersteuerung. Jede neue Runde generiert ein neues Layout;
 Start oben links, Ziel unten rechts, alle Gänge erreichbar. Bei Hot Potato
 zählt auch eine Schüttelbewegung. Die IMU wird mit 50 Hz gelesen, inklusive
@@ -622,3 +629,8 @@ MITTE speit Feuer oder startet nach Game Over erneut. Im Homeserver für das Ger
 freigeben, dann synchronisieren. Rekorde bleiben lokal erhalten.
 Details und Hardware-Abnahme: [Spiele](docs/games.md#drachenrennen-105).
 Änderungen: [Changelog](CHANGELOG.md).
+
+Regen- und Flugradar verwenden die gleiche 50×50-km-Karte mit Entfernungsringen
+bei **10 und 20 km** (22 und 44 Pixel Radius). Für das korrigierte Regenradarbild
+ist Homeserver 1.0.3 erforderlich; dessen neuer Cache-Schlüssel erzeugt die
+Bilder beim nächsten Abruf neu.

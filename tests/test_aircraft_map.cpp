@@ -5,6 +5,8 @@
 
 int main() {
   int x, y;
+  assert(leap::radarRingPixels(10, 55) == 22);
+  assert(leap::radarRingPixels(20, 55) == 44);
   assert(leap::aircraftOffset(52.52, 13.405, 52.52, 13.405, 25, 46, x, y));
   assert(x == 0 && y == 0);
   assert(leap::aircraftOffset(0, 0, 0.1, 0, 12, 48, x, y));

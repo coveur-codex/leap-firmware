@@ -7,6 +7,7 @@
 #include "MathQuiz.h"
 #include "QuizTracking.h"
 #include "Storage.h"
+#include "ChatSelection.h"
 #include <vector>
 namespace leap {
 struct Page {
@@ -45,7 +46,8 @@ class Ui {
   bool locked = true, menu = false, answered = false, gameOpen = false, dirtySettings = false;
   bool inputDiagnostics = false, calibrationVisible = false;
   void drawCalibration();
-  void chatSymbol(const String &symbol, int x, int y);
+  ChatSelection chatChoice;
+  void chatSymbol(const String &symbol, int x, int y, int scale = 1);
   uint16_t heldButtons = 0;
   bool diagnosticsVisible() const {
     return inputDiagnostics && !locked && !menu && !pages.empty() && pages[page].id == "settings";

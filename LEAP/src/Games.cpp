@@ -483,18 +483,19 @@ void Games::draw(Arduino_GFX &gfx, int left, int top) {
       gfx.print(won ? "Geschafft!" : "Noch einmal?");
     }
   } else {
-    for (int row = 0; row < MazeState::Size; row++)
-      for (int col = 0; col < MazeState::Size; col++) {
+    for (int row = 0; row < MazeState::Rows; row++)
+      for (int col = 0; col < MazeState::Columns; col++) {
         int xx = left + col * 12, yy = top + row * 12;
         gfx.fillRect(xx, yy, 11, 11, maze.open[row][col] ? 0x18c3 : 0x4a69);
       }
     gfx.fillCircle(left + maze.x * 12 + 5, top + maze.y * 12 + 5, 4, 0x07ff);
-    gfx.drawRect(left + 96, top + 96, 11, 11, 0xffe0);
+    gfx.drawRect(left + (MazeState::Columns - 1) * 12,
+                 top + (MazeState::Rows - 1) * 12, 11, 11, 0xffe0);
     gfx.setTextSize(1);
-    gfx.setCursor(left + 124, top + 15);
-    gfx.print(won ? "Ziel erreicht!" : "Finde den Weg");
-    gfx.setCursor(left + 124, top + 35);
-    gfx.print(motion.available ? "Kippen / Schalter" : "Rechter Schalter");
+    gfx.setCursor(left + 258, top + 15);
+    gfx.print(won ? "Geschafft!" : "Zum Ziel");
+    gfx.setCursor(left + 258, top + 35);
+    gfx.print(motion.available ? "Kippen" : "Schalter");
   }
 }
 void Games::drawFour(Arduino_GFX &gfx, int left, int top) {

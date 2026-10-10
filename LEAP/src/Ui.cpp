@@ -642,7 +642,8 @@ void Ui::drawPage(const String &id) {
     constexpr int cx = 364, cy = 64, pixels = 55;
     canvas->fillRect(308, 8, 112, 112, Panel);
     if (centered) {
-      for (int r : {28, 55}) canvas->drawCircle(cx, cy, r, Muted);
+      for (int km = RadarRingStepKm; km < RadarWidthKm / 2; km += RadarRingStepKm)
+        canvas->drawCircle(cx, cy, radarRingPixels(km, pixels), Muted);
       canvas->drawFastVLine(cx, cy - pixels, 2 * pixels + 1, Muted);
       canvas->drawFastHLine(cx - pixels, cy, 2 * pixels + 1, Muted);
       canvas->fillCircle(cx, cy, 2, 0xffff);
@@ -750,19 +751,28 @@ void Ui::drawPage(const String &id) {
       return;
     }
     auto messages = communication.messages();
-    if (messages.size()) {
-      selection = constrain(selection, 0, int(messages.size()) - 1);
-      chatSymbol(messages[selection]["symbol"] | "", 94, 72);
-      body(messages[selection]["text"] | "", 112, 72, 308, 35);
-    } else
-      text("Keine Vorlagen", 94, 78, 1, Muted);
+    if (!messages.size()) chatChoice.icons = true;
+    if (chatChoice.icons) {
+      for (size_t i = 0; i < ChatIconCount; ++i) {
+        int x = 94 + (i % ChatIconColumns) * 20;
+        int y = 66 + (i / ChatIconColumns) * 18;
+        if (int(i) == chatChoice.icon) canvas->drawRect(x, y, 20, 18, Accent);
+        chatSymbol(ChatIcons[i].symbol, x + 4, y + 3);
+      }
+      text(String(ChatIcons[chatChoice.icon].label) + " | Mitte: senden", 94, 123, 1, Accent);
+    } else {
+      chatChoice.text = constrain(chatChoice.text, 0, int(messages.size()) - 1);
+      chatSymbol(messages[chatChoice.text]["symbol"] | "", 94, 72);
+      body(messages[chatChoice.text]["text"] | "", 112, 72, 308, 35);
+      text("Hoch/Runter: Texte + Icons | Mitte: senden", 94, 123, 1, Muted);
+    }
     if (communication.count) {
       auto &last =
           communication.history[communication.count - 1 - std::min(size_t(std::max(0, item)), communication.count - 1)];
       text(displayText(last.mine ? "Ich (gesendet)" : last.name).substring(0, 40), 94, 10, 1, Accent);
       int old = scroll;
       scroll = 0;
-      chatSymbol(last.symbol, 94, 26);
+      chatSymbol(last.symbol, 94, 26, last.text.length() ? 1 : 2);
       body(last.text, 112, 26, 308, 28);
       scroll = old;
     } else
@@ -772,7 +782,7 @@ void Ui::drawPage(const String &id) {
     case RelaySendStatus::Sent: notice = "Vom Homeserver bestaetigt"; break;
     case RelaySendStatus::Retrying: notice = "Senden wird erneut versucht..."; break;
     case RelaySendStatus::LocalBlocked: notice = "Kurz warten / Sendewarteschlange voll"; break;
-    case RelaySendStatus::Rejected: notice = "Server lehnt Nachricht ab: Vorlagen synchronisieren"; break;
+    case RelaySendStatus::Rejected: notice = "Server abgelehnt: Update / Vorlagen pruefen"; break;
     default: notice = communication.online ? "Homeserver-Relay verbunden" : "Warte auf Homeserver"; break;
     }
   } else if (id == "knowledge") {
@@ -826,12 +836,13 @@ void Ui::drawPage(const String &id) {
                (motion.available ? " | IMU OK" : " | IMU fehlt");
   }
 }
-void Ui::chatSymbol(const String &symbol, int x, int y) {
+void Ui::chatSymbol(const String &symbol, int x, int y, int scale) {
   const uint16_t *rows = chatSymbolRows(symbol.c_str());
   if (!rows) return;
   for (int yy = 0; yy < 12; ++yy)
     for (int xx = 0; xx < 12; ++xx)
-      if (rows[yy] & (1 << (11 - xx))) canvas->drawPixel(x + xx, y + yy, Accent);
+      if (rows[yy] & (1 << (11 - xx)))
+        canvas->fillRect(x + xx * scale, y + yy * scale, scale, scale, Accent);
 }
 void Ui::drawCalibration() {
   text("MPU kalibrieren", 94, 10, 1, Accent);
@@ -1129,12 +1140,17 @@ void Ui::action(const InputEvent &e) {
       }
     }
   } else if (id == "communication") {
-    if (e.key == Key::Left || e.key == Key::Right)
-      item = constrain(item + (e.key == Key::Left ? 1 : -1), 0, std::max(0, int(communication.count) - 1));
-    selection = constrain(selection + direction, 0, std::max(0, int(communication.messages().size()) - 1));
+    if (!communication.enabled) return;
+    if (e.key == Key::Left || e.key == Key::Right) {
+      if (chatChoice.icons) chatChoice.horizontal(e.key == Key::Right ? 1 : -1);
+      else item = constrain(item + (e.key == Key::Left ? 1 : -1), 0,
+                            std::max(0, int(communication.count) - 1));
+    }
+    chatChoice.vertical(direction, int(communication.messages().size()));
     if (e.key == Key::Center) {
-      notice = communication.send(selection) ? "Wird an Homeserver gesendet..."
-                                     : "Senden derzeit nicht moeglich";
+      bool sent = chatChoice.icons ? communication.sendIcon(chatChoice.icon)
+                                   : communication.send(chatChoice.text);
+      notice = sent ? "Wird an Homeserver gesendet..." : "Senden derzeit nicht moeglich";
     }
   } else if (id == "knowledge") {
     if (knowledgeMode == 0) {
