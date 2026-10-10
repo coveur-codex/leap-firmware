@@ -1,14 +1,28 @@
 #pragma once
 #include <algorithm>
-#include <array>
 #include <cstdint>
 #include <string>
-#include <vector>
 
 namespace leap {
+// Same controls as knowledge search, restricted to four decimal digits.
+class MathAnswerInput {
+public:
+  std::string value;
+  int digit = 0;
+  void reset() { value.clear(); digit = 0; }
+  void left() { digit = (digit + 9) % 10; }
+  void right() { digit = (digit + 1) % 10; }
+  void append() { if (value.size() < 4) value += char('0' + digit); }
+  void erase() { if (!value.empty()) value.pop_back(); }
+  bool correct(int result) const {
+    if (value.empty()) return false;
+    int number = 0;
+    for (char c : value) number = number * 10 + c - '0';
+    return number == result;
+  }
+};
 struct MathQuestion {
   int left, right, result;
-  std::array<int, 4> answers;
   std::string question, explanation;
 };
 inline std::string placeValues(int value) {
@@ -50,18 +64,6 @@ MathQuestion generateMathQuestion(const std::string &operation, int limit, Rando
   }
   q.explanation += "\nStellenwerttafel:\nT=Tausender, H=Hunderter\nZ=Zehner, E=Einer\n    T | H | Z | E\nA:  " + placeValues(q.left) +
                    "\nB:  " + placeValues(q.right) + "\n=:  " + placeValues(q.result);
-  // Four unique non-negative choices, all in the configured result range.
-  int maximum = multiply ? limit * limit : limit;
-  std::vector<int> distractors;
-  for (int candidate = std::max(0, q.result - 10);
-       candidate <= std::min(maximum, q.result + 10); ++candidate)
-    if (candidate != q.result) distractors.push_back(candidate);
-  q.answers[0] = q.result;
-  for (int i = 1; i < 4; ++i) {
-    size_t index = random() % distractors.size();
-    q.answers[i] = distractors[index];
-    distractors.erase(distractors.begin() + index);
-  }
   return q;
 }
 } // namespace leap

@@ -408,6 +408,7 @@ void Ui::sidebar() {
 }
 void Ui::startQuiz() {
   quizCatalog = -1;
+  mathAnswer.reset();
   selection = item = scroll = quizDetail = 0;
   answered = false;
 }
@@ -436,6 +437,7 @@ void Ui::chooseQuizCatalog(int index) {
 }
 void Ui::nextQuestion(int delta) {
   quizTimer.reset();
+  mathAnswer.reset();
   quizTrackingFailed = false;
   if (quizCatalog == int(quiz["catalogs"].size()) - 1) {
     auto math = generateMathQuestion(state["config"]["mathQuiz"]["operation"] | "add",
@@ -445,8 +447,7 @@ void Ui::nextQuestion(int delta) {
     auto q = rows.add<JsonObject>();
     q["q"] = math.question;
     q["explanation"] = math.explanation;
-    auto answers = q["a"].to<JsonArray>();
-    for (int answer : math.answers) answers.add(std::to_string(answer));
+    q["result"] = math.result;
     questionOrder = {0};
   }
   int count = quiz["questions"].size();
@@ -469,10 +470,14 @@ void Ui::recordQuizAnswer(uint32_t clickedAt) {
            (unsigned long)esp_random(), (unsigned long)esp_random());
   attempt["eventId"] = eventId;
   int index = questionOrder[item % questionOrder.size()];
-  quizAnswerSnapshot(attempt, quiz["questions"][index], answerOrder, selection,
-                     quizTimer.duration(clickedAt));
-  JsonObjectConst catalog = quiz["catalogs"][quizCatalog];
   bool math = quizCatalog == int(quiz["catalogs"].size()) - 1;
+  if (math)
+    mathAnswerSnapshot(attempt, quiz["questions"][index], mathAnswer.value,
+                       quizTimer.duration(clickedAt));
+  else
+    quizAnswerSnapshot(attempt, quiz["questions"][index], answerOrder, selection,
+                       quizTimer.duration(clickedAt));
+  JsonObjectConst catalog = quiz["catalogs"][quizCatalog];
   String package = catalog["package"] | "";
   attempt["kind"] = math ? "math" : "catalog";
   attempt["quizSetName"] = catalog["name"];
@@ -698,6 +703,7 @@ void Ui::drawPage(const String &id) {
       return;
     }
     auto q = rows[questionOrder[item % questionOrder.size()]];
+    bool math = quizCatalog == int(quiz["catalogs"].size()) - 1;
     if (quizDetail) {
       body(quizDetail == 1 ? String(q["q"] | "") : String(q["a"][answerOrder[selection]] | ""), 94,
            12, 326, 110);
@@ -707,9 +713,16 @@ void Ui::drawPage(const String &id) {
     if (answered) {
       notice = "Hoch/Runter: lesen | Rechts: weiter | OK: Kataloge";
       if (quizTrackingFailed) notice = "Tracking: Antwort konnte nicht gespeichert werden";
-      body(String(answerOrder[selection] == 0 ? "Richtig!\n" : "Gute Idee! Richtig ist:\n") +
-           String(q["a"][0] | "") + "\n" + String(q["explanation"] | "") +
+      bool correct = math ? mathAnswer.correct(q["result"].as<int>()) : answerOrder[selection] == 0;
+      body(String(correct ? "Richtig!\n" : "Gute Idee! Richtig ist:\n") +
+           (math ? String(q["result"].as<int>()) : String(q["a"][0] | "")) + "\n" + String(q["explanation"] | "") +
            "\nRechts: weiter | Mitte: Kataloge");
+    } else if (math) {
+      text(q["q"] | "", 94, 12, 2);
+      text(mathAnswer.value.empty() ? "_" : mathAnswer.value.c_str(), 94, 42, 2, Accent);
+      text(String("< ") + char('0' + mathAnswer.digit) + " >", 94, 72, 2);
+      text("Oben: + | Unten: loeschen", 94, 102);
+      notice = "Links/Rechts: Ziffer | Mitte: bestaetigen";
     } else {
       body(q["q"] | "", 94, 12, 326, 30);
       std::vector<String> labels;
@@ -1064,6 +1077,19 @@ void Ui::action(const InputEvent &e) {
       if (e.key == Key::Center) startQuiz();
       else if (e.key == Key::Left || e.key == Key::Right)
         nextQuestion(e.key == Key::Left ? -1 : 1);
+    } else if (quizCatalog == int(quiz["catalogs"].size()) - 1) {
+      if (e.key == Key::Left) mathAnswer.left();
+      if (e.key == Key::Right) mathAnswer.right();
+      if (e.key == Key::Up) mathAnswer.append();
+      if (e.key == Key::Down) mathAnswer.erase();
+      uint32_t clickedAt = e.timestamped ? e.atMs : millis();
+      if (e.key == Key::Center && !mathAnswer.value.empty() && quizTimer.accepts(clickedAt)) {
+        recordQuizAnswer(clickedAt);
+        answered = true;
+        scroll = 0;
+        auto q = quiz["questions"][questionOrder[item % questionOrder.size()]];
+        audio.tone(mathAnswer.correct(q["result"].as<int>()) ? 880 : 220);
+      }
     } else {
       selection = constrain(selection + direction, 0, 3);
       if (e.key == Key::Left || e.key == Key::Right) {
