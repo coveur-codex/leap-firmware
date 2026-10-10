@@ -132,6 +132,9 @@ int main() {
   // Future cursor after a server restore seeds silently instead of losing future events.
   many.mine.resize(3);
   step(blocked,many,12060); assert(!blocked.poll() && blocked.count==3 && !blocked.unread);
-  many.add(); step(blocked,many,14060); assert(blocked.poll());
+  many.add(); step(blocked,many,14060); assert(blocked.poll() && blocked.unread);
+  many.mine.resize(1);
+  step(blocked,many,16060); assert(!blocked.poll() && blocked.unread);
+  blocked.markRead(); assert(!blocked.unread); // Only a page visit acknowledges unread mail.
   puts("PASS: real relay worker, boot history, own echoes, unread/read, reconnect, idempotent retries, malformed pages, permission changes, queue backpressure and restore");
 }

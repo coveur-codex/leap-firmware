@@ -22,7 +22,12 @@ public:
   uint32_t revision = 0;
   void clear() { count = 0; last = 0; unread = false; ++revision; }
   bool accept(const RelayDelivery &delivery) {
-    if (delivery.reset) { clear(); return false; }
+    if (delivery.reset) {
+      bool wasUnread = unread;
+      clear();
+      unread = wasUnread; // Resyncing server history does not mean the user read it.
+      return false;
+    }
     const auto &line = delivery.line;
     if (!line.id || line.id <= last) return false;
     last = line.id;
