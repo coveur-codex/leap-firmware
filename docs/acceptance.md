@@ -50,3 +50,23 @@ und eine Möglichkeit, die Versorgung kontrolliert zu unterbrechen.
     und Paketwechseln. Min-Heap/PSRAM beobachten; keine ungeklärten Neustarts.
 12. **Recovery:** defektes/volles FS, physisch bestätigte Formatierung und erneuter
     Sync; USB-Bootmodus und Komplettupload als letzte Wiederherstellung testen.
+
+
+## WebSocket und Darstellung (1.0.8 / Homeserver 1.0.4)
+
+- Zwei Geräte verbinden: Nachricht/Einzel-Icon auch während eines Spiels sofort
+  empfangen, eigene Echos und Boot-Historie ohne Pling. WLAN trennen, währenddessen
+  senden, WLAN wiederherstellen: fehlende Nachrichten genau einmal nachladen.
+- Homeserver stoppen/neu starten; verlorene Sendebestätigung und volle UI-Queue
+  prüfen. Wiederverbindung muss ohne Neustart funktionieren, unbestätigte eventIds
+  bleiben identisch. Kommunikation im Homeserver deaktivieren: Socket schließen.
+- Unter Geräte → Allgemein die Akzentfarbe ändern und Konfig-Sync abwarten;
+  Navigation, Markierungen und Überschriften prüfen, auch nach Gerätestart.
+- Lange News-/Wissenstitel und Flugkennungen mit ä/ö/ü/ß prüfen: keine zusätzliche
+  Fettzeichnung, vollständiges Umblättern/Scrollen, kein Überlappen.
+- Regen- und Flugradar mit demselben Standort prüfen: 60 × 60 km, drei Ringe
+  bei 10/20/30 km, N oben mittig, Standort im Zentrum.
+- Strom und Nachrichtenzustellzeit bei gutem/schwachem WLAN und verschiedenen
+  AP-DTIM-Einstellungen messen. Minimum-Modem-Sleep bleibt aktiv; Keepalive 30 s,
+  Task-Wartezeit 50 ms (ohne WLAN/deaktiviert 250 ms). Keine feste Funk-Schlafzeit
+  oder Verbrauchseinsparung ohne Messung am Gerät annehmen.

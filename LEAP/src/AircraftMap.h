@@ -29,7 +29,7 @@ inline double aircraftDistanceKm(double lat, double lon, double planeLat, double
   return 6371.0088 * 2 * std::asin(std::sqrt(std::clamp(h, 0.0, 1.0)));
 }
 // Same centred Mercator square as the RainViewer crop on the homeserver.
-constexpr double RadarWidthKm = 50;
+constexpr double RadarWidthKm = 60;
 constexpr int RadarRingStepKm = 10;
 inline int radarRingPixels(int distanceKm, int halfPixels) {
   return std::lround(distanceKm * halfPixels / (RadarWidthKm / 2));

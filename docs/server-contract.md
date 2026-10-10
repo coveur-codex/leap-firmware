@@ -188,13 +188,13 @@ Firmwarestände haben keine historischen Antworten zum Nachsenden gespeichert.
 
 ## Gemeinsamer Radarausschnitt (1.0.1)
 
-`GET /api/v1/devices/{id}/weather/radar` liefert zusätzlich `mapWidthKm: 50`.
+`GET /api/v1/devices/{id}/weather/radar` liefert zusätzlich `mapWidthKm: 60`.
 Der Server schneidet die zentrierte RainViewer-Mercator-Kachel vor der Skalierung
-auf 112×112 Pixel zu: 50 km Seitenlänge am Standort, mit Nord oben. Der Flugradar
+auf 112×112 Pixel zu: 60 km Seitenlänge am Standort, mit Nord oben. Der Flugradar
 verwendet dieselbe Mercatorprojektion und einen quadratischen Sichtbereich;
 der Abrufradius bleibt separat. Alte Regenbilder ohne diesen Maßstab werden
 als „Server-Update“ angezeigt. Der neue serverseitige Cache-Key verhindert,
-dass bisherige Zoom-7-Bilder als 50-km-Aufnahmen ausgegeben werden.
+dass bisherige Zoom-7-Bilder als 60-km-Aufnahmen ausgegeben werden.
 
 
 ## Homeserver-Chat-Relay (1.0.2)
@@ -216,3 +216,44 @@ still geladen. Mit `more:true` folgt die nächste Seite direkt. 403 bedeutet
 ausgeschaltete Kommunikation, 404 ein fehlendes/deaktiviertes Gerät. Sendefehler
 4xx außer 408/429 werden nicht automatisch wiederholt. Der Server speichert
 Nachrichten sieben Tage; die SQLite-Folge verwendet AUTOINCREMENT.
+
+
+## WebSocket-Kommunikation (Homeserver 1.0.4 / Firmware 1.0.8)
+
+`ws[s]://host/api/v1/devices/{id}/communication/ws` ersetzt in der Firmware
+HTTP-Polling und HTTP-Senden. Die HTTP-Endpunkte bleiben für ältere Firmware.
+Nach Verbindungsaufbau sendet das Gerät `{"type":"sync"}` für stille Historie,
+bei Wiederverbindung `{"type":"sync","since":cursor}` für verpasste Nachrichten.
+Der Server pusht `{"type":"messages", ...}` mit denselben Feldern wie beim GET.
+Es gibt höchstens eine unbestätigte Seite (acht Nachrichten). Erst nach Aufnahme
+in die Gerätequeue bestätigt `sync` den gelieferten Cursor. Dann folgt bei Bedarf
+die nächste Seite; im Leerlauf gibt es keine leeren Nachrichtenseiten.
+
+Senden: `{"type":"send","eventId":"...","templateId":"..."}`.
+Antwort: `{"type":"ack","ok":true,"eventId":"...","message":{...}}`.
+Fehler: `{"type":"error","eventId":"...","status":422}`. Dieselbe eventId bleibt
+bei verlorener Bestätigung erhalten. Serverbestätigung bedeutet Speicherung,
+nicht Lesen durch andere Geräte. Ungültige Frames/fehlende Berechtigung schließen
+mit Code 1008. Vorlagen, Icons und Berechtigungen werden serverseitig geprüft.
+WSS prüft die konfigurierte TLS-CA; keine unsichere TLS-Ausweichverbindung.
+
+Firmware: Protokoll-Ping alle 30 s, Pong-Timeout 10 s, zwei verpasste Pongs bis
+zum Neuverbinden. Sendebestätigung: Timeout 10 s. Wiederverbindung 2–30 s mit
+exponentiellem Backoff. Queue-Überlauf bestätigt keinen Cursor und führt zum
+Neuverbinden. Cursor und unbestätigte Sendungen bleiben im RAM, nicht über Reboot.
+Der Socket-Task schläft zwischen Service-Schritten 50 ms, bei deaktiviertem Chat
+oder fehlendem WLAN 250 ms. WLAN nutzt Minimum-Modem-Sleep (AP-DTIM-Empfangsfenster),
+keinen Deep Sleep und kein Maximum-Modem-Sleep. Die tatsächliche Funk-Schlafzeit
+bestimmt der Access Point. Stromverbrauch und Latenz müssen am Gerät gemessen werden.
+
+Der Homeserver verteilt Änderungen ereignisgesteuert innerhalb eines Uvicorn-Workers
+(Standard im Dockerfile). Alle 30 s werden zusätzlich Berechtigungen und Änderungen
+anderer Prozesse geprüft. Bei mehreren Workern wären für unmittelbaren Push zwischen
+Workern ein gemeinsamer Broker nötig. Reverse Proxies müssen WebSocket-Upgrades
+weiterleiten; Idle-Timeout mindestens 90 s. Docker begrenzt Frames auf 16 KiB und
+sendet zusätzlich einen Protokoll-Ping alle 60 s (10 s Pong-Timeout).
+
+Gerätekonfiguration enthält `accentColor` als `#RRGGBB`; Standard `#00d7c5`.
+Die Firmware wandelt in RGB565 um und verwendet bei fehlenden/ungültigen Werten
+das bisherige Türkis. Auswahl unter Geräte → Allgemein; wirksam nach Konfig-Sync.
+Beide Radare zeigen 60 × 60 km mit Ringen bei 10, 20 und 30 km und Norden oben mittig.

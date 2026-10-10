@@ -5,6 +5,8 @@ cd "$(dirname "$0")/.."
 mkdir -p build/tests
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_display_text.cpp -o build/tests/display-text
 build/tests/display-text
+c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_theme_endpoint.cpp -o build/tests/theme-endpoint
+build/tests/theme-endpoint
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/communication_fakes -I tests/storage_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_communication_relay.cpp LEAP/src/Communication.cpp -o build/tests/communication-relay
 build/tests/communication-relay
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_notification_tone.cpp -o build/tests/notification-tone

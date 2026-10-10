@@ -300,7 +300,7 @@ bool Network::sync() {
 void Network::run() {
   // Chat relay and content workers share the WLAN connection.
   WiFi.mode(WIFI_STA);
-  WiFi.setSleep(false);
+  WiFi.setSleep(true); // Minimum modem sleep: wake at AP DTIM, keep TCP connected.
   WiFi.setAutoReconnect(true);
   if (!strlen(deviceSettings.ssid))
     log("WIFI", "No SSID configured; check LEAP/LocalConfig.h");

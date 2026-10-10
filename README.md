@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.7`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.8`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -17,7 +17,7 @@ in einer Cloud-Umgebung nicht gemessen werden. Siehe [Abnahme](docs/acceptance.m
 Deutsche Displaytexte verwenden ä, ö, ü, Ä, Ö, Ü und ß. Die Firmware bildet
 UTF-8 erst bei der Anzeige auf die vorhandenen CP437-Glyphen der eingebauten
 6×8-Schrift ab. Dadurch funktionieren auch Kürzungen, Zeilenumbrüche und
-vergrößerte Artikelüberschriften ohne zusätzliche Schriftdatei. Gespeicherte
+normal gezeichnete Artikelüberschriften ohne zusätzliche Schriftdatei. Gespeicherte
 Inhalte und die Kommunikation mit dem Homeserver bleiben UTF-8.
 
 ## Arduino IDE: Einrichtung und Upload
@@ -34,6 +34,7 @@ Inhalte und die Kommunikation mit dem Homeserver bleiben UTF-8.
    | GFX Library for Arduino | 1.6.3 |
    | PNGdec | 1.1.6 |
    | JPEGDEC | 1.8.2 |
+   | WebSockets | 2.7.0 |
 
    WiFi, HTTPClient, LittleFS, Preferences, TLS und ESP-IDF-Treiber kommen aus
    dem ESP32-Core. Der MPU6050 wird direkt über Wire/I²C angesprochen.
@@ -165,8 +166,9 @@ beim gemeinsamen Update zuerst den Homeserver aktualisieren.
 
 **Chat-Relay (ab 1.0.2):** Alle Nachrichten gehen an den Homeserver, der sie
 allen eingeschalteten Geräten mit aktivierter Kommunikation bereitstellt.
-Ein eigener Hintergrundtask fragt etwa alle zwei Sekunden ab, unabhängig von
-aktiver Seite, Sperrbildschirm, Spielen und Inhalts-Sync. Funkkanäle müssen nicht
+Ab 1.0.8 hält ein eigener Hintergrundtask eine WebSocket-Verbindung offen, unabhängig
+von aktiver Seite, Sperrbildschirm, Spielen und Inhalts-Sync. Der Server pusht neue
+Nachrichten; periodische HTTP-Abfragen entfallen. Dafür ist Homeserver 1.0.4 nötig. Funkkanäle müssen nicht
 übereinstimmen. Bei einer eingehenden Nachricht ertönt ein kurzer Pling, auch
 während WAV-/Spielaudio; die eingestellte Lautstärke gilt weiterhin (0 ist stumm).
 Ein gelbes Briefsymbol über der Uhr bleibt an, bis die Kommunikationsseite
@@ -185,7 +187,7 @@ nachgeholt. Kein Offline-Funk-Fallback. Homeserver und Firmware gemeinsam auf
 1.0.2 aktualisieren; der Server führt Migration `0012` für die Nachrichtenfolge aus.
 
 **Regenradar:** Die Wetterseite zeigt rechts eine 112×112-Pixel-Aufnahme von
-RainViewer, zentriert auf den im Homeserver konfigurierten Standort (50×50 km am Standort,
+RainViewer, zentriert auf den im Homeserver konfigurierten Standort (60×60 km am Standort,
 Nord oben, weißer Standortpunkt). Seit 1.0.1 wird der Ausschnitt auf dem Server
 abhängig vom Breitengrad zugeschnitten (`mapWidthKm: 50`). Ein alter Server zeigt
 statt eines abweichenden Maßstabs „Server-Update“. Wetter- und Radarzeit stehen
@@ -212,7 +214,7 @@ des Homeservers reicht aus; eine Serveränderung ist dafür nicht erforderlich.
 
 **Flugradar:** Rechts zeigt eine 112×112-Ansicht die gemeldeten Flugzeugpositionen
 um den Gerätestandort (`aircraft.center` aus der Server-API), Nord oben. Seit 1.0.1
-zeigt sie denselben zentrierten 50×50-km-Mercator-Ausschnitt wie das Regenradar.
+zeigt sie denselben zentrierten 60×60-km-Mercator-Ausschnitt wie das Regenradar.
 Flugzeuge in den Ecken des Quadrats bleiben sichtbar; `radiusNm` bestimmt weiterhin
 den Server-Abruf, nicht den Kartenausschnitt. Weiß markiert den
 Standort, Gelb das links ausgewählte Flugzeug. Symbole zeigen die gemeldete
@@ -471,9 +473,9 @@ Bei Schreibfehler kann rechts Mitte erneut speichern. Fehlende/ungültige
 Kalibrierungen verwenden weiterhin die provisionierten Montagewerte. Dimmen und
 automatische Sperre sind während der Kalibrierung pausiert.
 
-News-/Wissenstitel und Flugkennungen erscheinen ab 1.0.1 in Akzentfarbe, etwas
-fetter und größer (8×13-Zeilenraster statt 6×10). Umbruch und Scrollen erhalten
-auch lange Titel vollständig.
+News-/Wissenstitel und Flugkennungen erscheinen in der konfigurierten Akzentfarbe.
+Ab 1.0.8 verwenden sie die unverzerrte 6×8-Schrift ohne zusätzliche Fettzeichnung
+mit 12 Pixel Zeilenabstand. Umbruch und Scrollen erhalten auch lange Titel vollständig.
 
 ## OTA und Recovery
 
@@ -636,7 +638,18 @@ freigeben, dann synchronisieren. Rekorde bleiben lokal erhalten.
 Details und Hardware-Abnahme: [Spiele](docs/games.md#drachenrennen-105).
 Änderungen: [Changelog](CHANGELOG.md).
 
-Regen- und Flugradar verwenden die gleiche 50×50-km-Karte mit Entfernungsringen
-bei **10 und 20 km** (22 und 44 Pixel Radius). Für das korrigierte Regenradarbild
-ist Homeserver 1.0.3 erforderlich; dessen neuer Cache-Schlüssel erzeugt die
+Regen- und Flugradar verwenden die gleiche 60×60-km-Karte mit Entfernungsringen
+bei **10, 20 und 30 km** (18, 37 und 55 Pixel Radius). Für das korrigierte Regenradarbild
+ist Homeserver 1.0.4 erforderlich; dessen neuer Cache-Schlüssel erzeugt die
 Bilder beim nächsten Abruf neu.
+
+
+### WebSocket und Darstellung (1.0.8)
+
+Zuerst Homeserver 1.0.4 installieren. WebSocket-Push ersetzt Chat-Polling;
+WLAN-Modem-Sleep und 30-s-Keepalive verringern den Leerlaufverkehr.
+Die Akzentfarbe kommt aus der Gerätekonfiguration (Standard Türkis).
+Überschriften und Flugzeugkennungen nutzen unverzerrte, normal gezeichnete
+6×8-Zeichen; Farbe und Abstand unterscheiden sie vom Text. Beide Radare:
+60 × 60 km, Ringe bei 10/20/30 km, Norden oben mittig.
+Details und Geräteabnahme: [Serververtrag](docs/server-contract.md).
