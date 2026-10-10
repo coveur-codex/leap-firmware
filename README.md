@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.2`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.3`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -228,10 +228,15 @@ Aufgabe lokal zufällig, auch offline. Im Homeserver unter Geräte → Quiz →
 Mathe-Quiz werden Rechenart und Grenze je Gerät eingestellt: Addition oder
 Subtraktion im Zahlenbereich 0 bis zur Grenze (3–1000), Multiplikation mit
 Faktoren 1 bis zur Grenze (3–20; 10 für das kleine Einmaleins).
-Vier verschiedene Antworten mit genau einem richtigen Ergebnis; nach der
-Antwort folgen ein Rechenweg und eine scrollbare Stellenwerttafel mit
+Ab 1.0.3 wird das Ergebnis von Hand eingegeben: Rechts LINKS/RECHTS wählt
+eine Ziffer von 0–9, OBEN fügt sie hinzu, UNTEN löscht die letzte Ziffer,
+MITTE bestätigt eine nicht leere Eingabe. Bis zu vier Ziffern sind möglich;
+führende Nullen bleiben im Ergebnisprotokoll erhalten und zählen numerisch.
+Aufgabe und Eingabe erscheinen beide in Schriftgröße 2. Nach jeder neuen
+Aufgabe startet die Eingabe leer bei Ziffer 0. Nach der Antwort folgen ein Rechenweg und eine scrollbare Stellenwerttafel mit
 Tausendern, Hundertern, Zehnern und Einern. Ohne neue Serverkonfiguration gilt
-Addition bis 20. Das neue Quiz benötigt keine Aufgabendatei.
+Addition bis 20. Das Quiz benötigt keine Aufgabendatei. Für freie Zahlenantworten
+zuerst den Homeserver mit Unterstützung für `answerMode: numeric` aktualisieren.
 
 **Neue Spiele (beta.10):** Im vorhandenen Spielebereich stehen „Mein Haustier“
 (`tamagotchi`) und `snake` zusätzlich zur Verfügung. Dafür auch den Homeserver

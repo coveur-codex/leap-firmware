@@ -33,6 +33,7 @@ class Ui {
       knowledgeMode = 0, character = 0;
   int quizDetail = 0, quizCatalog = -1;
   QuizTimer quizTimer;
+  MathAnswerInput mathAnswer;
   bool quizTrackingFailed = false;
   void recordQuizAnswer(uint32_t clickedAt);
   void chooseQuizCatalog(int index);

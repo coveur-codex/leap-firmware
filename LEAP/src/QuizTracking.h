@@ -1,5 +1,6 @@
 #pragma once
 #include "Storage.h"
+#include <string>
 
 namespace leap {
 // Unsigned subtraction also handles one millis() rollover.
@@ -27,6 +28,17 @@ inline void quizAnswerSnapshot(JsonDocument &out, JsonVariantConst question,
     if (order[i] == 0) out["correctIndex"] = i;
   }
   out["selectedIndex"] = selected;
+  out["elapsedMs"] = elapsed;
+}
+
+// Free input has no displayed choices or selected/correct choice indices.
+inline void mathAnswerSnapshot(JsonDocument &out, JsonVariantConst question,
+                               const std::string &entered, uint32_t elapsed) {
+  out["question"] = question["q"];
+  out["questionId"] = nullptr;
+  out["answerMode"] = "numeric";
+  out["enteredAnswer"] = entered;
+  out["correctAnswer"] = question["result"];
   out["elapsedMs"] = elapsed;
 }
 

@@ -19,24 +19,35 @@ int main() {
   JsonDocument question, answer;
   question["q"] = math.question;
   auto choices = question["a"].to<JsonArray>();
-  for (int n : math.answers) choices.add(std::to_string(n));
+  for (int n : {math.result, math.result + 1, math.result + 2, math.result + 3})
+    choices.add(std::to_string(n));
   int order[4] = {2, 0, 3, 1};
   quizAnswerSnapshot(answer, question.as<JsonVariantConst>(), order, 3, 1250);
   assert(answer["question"] == math.question);
   assert(answer["answers"][1] == std::to_string(math.result));
-  assert(answer["answers"][3] == std::to_string(math.answers[1]));
+  assert(answer["answers"][3] == std::to_string(math.result + 1));
   assert(answer["correctIndex"] == 1 && answer["selectedIndex"] == 3);
   assert(answer["elapsedMs"] == 1250 && answer["questionId"].isNull());
   question["id"] = 42;
   quizAnswerSnapshot(answer, question.as<JsonVariantConst>(), order, 1, 2000);
   assert(answer["questionId"] == 42 && answer["answers"].size() == 4);
 
+  JsonDocument numeric;
+  question["result"] = math.result;
+  mathAnswerSnapshot(numeric, question.as<JsonVariantConst>(), "0012", 3210);
+  assert(numeric["answerMode"] == "numeric" && numeric["enteredAnswer"] == "0012");
+  assert(numeric["correctAnswer"] == math.result && numeric["elapsedMs"] == 3210);
+  assert(numeric["question"] == math.question && numeric["questionId"].isNull());
+  assert(numeric["answers"].isNull() && numeric["selectedIndex"].isNull() && numeric["correctIndex"].isNull());
+
   QuizTracking queue;
   assert(queue.begin());
+  answer = numeric;
   answer["eventId"] = "first";
   assert(queue.enqueue(answer));
   JsonDocument first;
   assert(queue.front(first) && first["eventId"] == "first");
+  assert(first["enteredAnswer"] == "0012" && first["correctAnswer"] == math.result);
   // Another click while the network uploads the head survives its acknowledgement.
   answer["eventId"] = "second";
   assert(queue.enqueue(answer));

@@ -145,6 +145,15 @@ zufällige 128-Bit-`eventId`, `kind` (`catalog`/`math`), `quizSetId`,
 `quizSetName`, `quizSetVersion`, optionale `questionId`, `questionIndex`,
 `question`, vier `answers` in der tatsächlichen Anzeige-Reihenfolge,
 `selectedIndex`, `correctIndex`, `elapsedMs` und `firmwareVersion`.
+Diese Auswahlfelder gelten für Kataloge und ältere Mathe-Firmware.
+Ab Firmware 1.0.3 überträgt Mathe stattdessen `answerMode: "numeric"`,
+`enteredAnswer` (1–4 Ziffern als String, einschließlich führender Nullen) und
+`correctAnswer` (nicht negative Ganzzahl). Auswahlfelder entfallen vollständig.
+Der Homeserver vergleicht den Zahlenwert der Eingabe mit `correctAnswer` und
+zeigt Eingabe sowie richtiges Ergebnis an. Leere Eingaben sind nicht bestätigbar.
+Zuerst den kompatiblen Homeserver installieren; bisherige Auswahl-Snapshots
+und deren Wiederholungen bleiben unverändert gültig.
+
 Beide Antwortindizes sind nullbasiert. Kataloge verwenden die installierte
 Paketversion oder im Legacy-Fallback die Quiz-Version; Mathe verwendet die
 Konfigurationsversion und zusätzlich `mathOperation` und `mathLimit`.
