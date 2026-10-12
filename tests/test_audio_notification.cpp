@@ -16,6 +16,7 @@ int main() {
   const char *path="build/tests/notification-music.wav";
   std::ofstream file(path,std::ios::binary);file.write(reinterpret_cast<const char *>(wav.data()),wav.size());file.close();
   assert(Audio::validateWav(path));
+  for(auto sound:{NotificationSound::Pling, NotificationSound::Plong, NotificationSound::Swish})
   for(int volume:{35,0}) {
     assert(audio.begin()); audio.volume=volume;
     assert(audio.play(path));
@@ -24,18 +25,18 @@ int main() {
       ++blocks;
       if(blocks==1) {
         for(size_t i=0;i<size;++i)assert(samples[i]==volume*10);
-        audio.notify(); // Arrives during a long WAV, with no queued tone job.
+        audio.notify(sound); // Arrives during a long WAV, with no queued tone job.
       } else if(blocks==2) {
         for(size_t i=0;i<size;++i)if(samples[i]!=volume*10)mixed=true;
-      } else if(blocks==40) {
+      } else if(blocks==70) {
         for(size_t i=0;i<size;++i)assert(samples[i]==volume*10);
         resumed=true; // WAV continues after the chime; no stop/restart.
       }
       if(volume==0)for(size_t i=0;i<size;++i)assert(samples[i]==0);
-      if(blocks==45)throw Complete{};
+      if(blocks==75)throw Complete{};
     };
     try { fakeTask(fakeContext); } catch(const Complete &) {}
-    assert(blocks==45 && resumed && (volume==0 || mixed));
+    assert(blocks==75 && resumed && (volume==0 || mixed));
   }
   puts("PASS: actual Audio task mixes notifications into a running WAV immediately, keeps music playing and honors mute");
 }

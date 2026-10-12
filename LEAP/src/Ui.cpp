@@ -164,6 +164,7 @@ bool Ui::reload(bool initial) {
   if (pages.empty())
     pages.push_back({"home", "LEAP", 0});
   observeNews(initial);
+  lastNewsRevision = 0;
   page = std::min(page, int(pages.size()) - 1);
   selection = item = scroll = 0;
   if (!same) {
@@ -320,7 +321,7 @@ void Ui::observeNews(bool initial) {
   if (initial || !bootEpoch || bootEpoch != network.newsBootEpoch.load()) return; // Offline snapshots never notify at startup.
   unsigned count = 0;
   String title;
-  uint64_t newest = 0;
+  String newestPublished;
   // Process IDs in ascending order so an entire newly fetched batch is counted.
   std::vector<JsonObjectConst> articles;
   for (JsonObjectConst row : news["articles"].as<JsonArrayConst>()) articles.push_back(row);
@@ -334,7 +335,8 @@ void Ui::observeNews(bool initial) {
     uint64_t number = strtoull(id + 5, nullptr, 10);
     if (newsNotifications.observe(number, row["fetchedEpoch"] | int64_t(0), bootEpoch)) {
       ++count;
-      if (number > newest) { newest = number; title = row["title"] | "News"; }
+      String published = row["published"] | "";
+      if (!title.length() || published > newestPublished) { newestPublished = published; title = row["title"] | "News"; }
     }
   }
   bool enabled = std::any_of(pages.begin(), pages.end(), [](const Page &p) { return p.id == "news"; });
@@ -1336,6 +1338,17 @@ void Ui::tick() {
   bool radarVisible = !locked && !menu && !pages.empty() && pages[page].id == "aircraft";
   bool radarEnabled = std::any_of(pages.begin(), pages.end(), [](const Page &p) { return p.id == "aircraft"; });
   network.aircraftVisible = radarVisible || radarEnabled;
+  network.newsEnabled = std::any_of(pages.begin(), pages.end(), [](const Page &p) { return p.id == "news"; });
+  uint32_t newsRevision = network.newsRevision.load();
+  if (newsRevision != lastNewsRevision) {
+    JsonDocument freshNews(&jsonRam);
+    if (network.copyNews(freshNews)) {
+      state["content"]["news"] = freshNews;
+      observeNews(false);
+      lastNewsRevision = newsRevision;
+      frameRequested = true;
+    }
+  }
   if (radarEnabled && elapsed(millis(), lastProximity, 1000)) {
     lastProximity = millis(); observeAircraft();
   }

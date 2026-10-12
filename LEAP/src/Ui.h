@@ -63,7 +63,7 @@ class Ui {
   NewsNotifications newsNotifications;
   AircraftProximity aircraftProximity;
   JsonDocument notificationAircraft{&jsonRam};
-  uint32_t lastProximity = 0;
+  uint32_t lastProximity = 0, lastNewsRevision = 0;
   bool aircraftBaseline = false;
   void observeNews(bool initial);
   void observeAircraft();

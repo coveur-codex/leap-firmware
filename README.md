@@ -680,3 +680,7 @@ der 3,5-km-Pufferzone gibt es beim nächsten Eintritt erneut eine Meldung.
 Der erste gültige Flugzeugbestand bleibt still. Fehlende Höhe und alte Daten
 lösen nichts aus und gelten nicht als bestätigtes Verlassen. Barometrische
 ADS-B-Höhen sind eine Näherung; Hardware-/Hörtests bleiben notwendig.
+
+Neue News werden außerdem einmal pro Minute im RAM aktualisiert; die normale
+15-Minuten-Synchronisierung bleibt für Offline-Snapshots zuständig. Beim Öffnen
+der News stehen dadurch die bereits gemeldeten Artikel sofort zur Verfügung.

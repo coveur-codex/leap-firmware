@@ -266,3 +266,5 @@ Relay `accentColor` (Standard Türkis). Die Firmware verankert den Startzeitpunk
 an der ersten Serverzeit minus monotone Laufzeit; nur später importierte Artikel
 lösen Hinweise aus. Gespeicherte News aus früheren Starts werden ohne aktuellen
 Sitzungsanker nie gemeldet. Radar läuft bei aktivem Modul auch außerhalb der Seite.
+News werden zusätzlich alle 60 Sekunden per `/news` im RAM aktualisiert, einschließlich
+Titel/Artikelansicht; Offline-Snapshots bleiben im normalen Sync-Zyklus.

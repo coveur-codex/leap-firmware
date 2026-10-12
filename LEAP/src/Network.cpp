@@ -8,6 +8,22 @@
 #include <sys/time.h>
 namespace leap {
 Network network;
+void Network::publishNews(JsonDocument &value) {
+  if (!aircraftMutex || !notificationBootEpoch) return;
+  value["notificationBootEpoch"] = notificationBootEpoch;
+  xSemaphoreTake(aircraftMutex, portMAX_DELAY);
+  newsLive.set(value);
+  xSemaphoreGive(aircraftMutex);
+  newsBootEpoch = notificationBootEpoch;
+  ++newsRevision;
+}
+bool Network::copyNews(JsonDocument &value) {
+  if (!aircraftMutex || xSemaphoreTake(aircraftMutex, 0) != pdTRUE) return false;
+  bool available = newsLive["articles"].is<JsonArray>();
+  if (available) value.set(newsLive);
+  xSemaphoreGive(aircraftMutex);
+  return available;
+}
 void Network::publishAircraft(JsonDocument &value) {
   if (!aircraftMutex) return;
   xSemaphoreTake(aircraftMutex, portMAX_DELAY);
@@ -140,9 +156,8 @@ void Network::content(JsonDocument &state) {
                                                : value["current"].is<JsonObject>();
       if (shape) {
         if (String(key) == "news") {
-          value["notificationBootEpoch"] = notificationBootEpoch;
+          publishNews(value);
           newsFetched = true;
-          newsBootEpoch = notificationBootEpoch;
         }
         if (String(key) == "aircraft") publishAircraft(value);
         state["content"][key] = value;
@@ -324,7 +339,7 @@ void Network::run() {
   selfTestDone = true;
   bootState.clear();
   uint32_t lastConnect = millis() - 30000, lastSync = millis() - SyncInterval;
-  uint32_t lastAircraft = millis() - 30000;
+  uint32_t lastAircraft = millis() - 30000, lastNews = millis();
   uint32_t lastQuizUpload = millis() - 1000, quizUploadInterval = 1000;
   uint32_t interval = 10000;
   int lastWifiStatus = -1;
@@ -392,6 +407,13 @@ void Network::run() {
       JsonDocument value(&jsonRam);
       if (net.json(base + "/aircraft", value) && value["aircraft"].is<JsonArray>())
         publishAircraft(value); // RAM only: do not write flash every thirty seconds.
+    }
+    if (connected && storage.ready && ota.locallyConfirmed && newsEnabled &&
+        notificationBootEpoch && elapsed(millis(), lastNews, 60000)) {
+      lastNews = millis();
+      JsonDocument value(&jsonRam);
+      if (net.json(base + "/news", value) && value["articles"].is<JsonArray>())
+        publishNews(value); // RAM only: timely headlines without extra flash writes.
     }
     KnowledgeRequest request;
     if (xQueueReceive(requests, &request, 0) == pdTRUE && connected) {
