@@ -106,6 +106,7 @@ void Network::checkin(JsonDocument &state) {
       timeval tv{epoch, 0};
       settimeofday(&tv, nullptr);
       state["lastTime"] = int64_t(epoch);
+      if (!notificationBootEpoch) notificationBootEpoch = int64_t(epoch) - millis() / 1000;
       timeSynced = true;
     }
   }
@@ -119,7 +120,7 @@ void Network::content(JsonDocument &state) {
     String versionKey = String(key) + "Version";
     // Weather/aircraft refresh on every scheduled sync: provider freshness is not
     // reliably represented by the current server's device version counters.
-    bool live = String(key) == "weather" || String(key) == "aircraft";
+    bool live = String(key) == "weather" || String(key) == "aircraft" || (String(key) == "news" && !newsFetched);
     if (!live && hasVersions && !state["content"][key].isNull() &&
         state["versions"][versionKey] == versions[versionKey] &&
         state["contentConfig"] == state["config"]["configVersion"])
@@ -138,6 +139,11 @@ void Network::content(JsonDocument &state) {
                    : String(key) == "aircraft" ? value["aircraft"].is<JsonArray>()
                                                : value["current"].is<JsonObject>();
       if (shape) {
+        if (String(key) == "news") {
+          value["notificationBootEpoch"] = notificationBootEpoch;
+          newsFetched = true;
+          newsBootEpoch = notificationBootEpoch;
+        }
         if (String(key) == "aircraft") publishAircraft(value);
         state["content"][key] = value;
         state["versions"][versionKey] = versions[versionKey];
@@ -381,7 +387,7 @@ void Network::run() {
       interval = ok ? SyncInterval : std::min(interval * 2, SyncInterval);
       log("SYNC", ok ? "Complete" : "Deferred; previous usable data retained");
     }
-    if (connected && storage.ready && ota.locallyConfirmed && aircraftVisible && elapsed(millis(), lastAircraft, 30000)) {
+    if (connected && storage.ready && ota.locallyConfirmed && aircraftVisible && elapsed(millis(), lastAircraft, 15000)) {
       lastAircraft = millis();
       JsonDocument value(&jsonRam);
       if (net.json(base + "/aircraft", value) && value["aircraft"].is<JsonArray>())

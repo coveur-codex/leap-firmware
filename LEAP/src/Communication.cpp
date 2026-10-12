@@ -69,9 +69,13 @@ bool Communication::enqueue(const char *id) {
 }
 bool Communication::poll() {
   bool notify = false;
+  notificationCount = 0;
   RelayDelivery delivery;
   while (incoming && xQueueReceive(incoming, &delivery, 0) == pdTRUE)
-    if (enabled && delivery.epoch == epoch.load()) notify = accept(delivery) || notify;
+    if (enabled && delivery.epoch == epoch.load() && accept(delivery)) {
+      notify = true;
+      if (notificationCount < 8) notifications[notificationCount++] = delivery.line;
+    }
   return notify;
 }
 static bool validLine(JsonVariantConst value, uint64_t previous) {
@@ -109,6 +113,7 @@ bool Communication::deliver(JsonDocument &response, uint32_t generation) {
   for (JsonVariantConst row : rows) {
     delivery.line = RelayLine{};
     delivery.line.id = row["id"];
+    strlcpy(delivery.line.accent, row["accentColor"] | "", sizeof(delivery.line.accent));
     delivery.line.mine = !strcmp(row["senderId"], deviceSettings.deviceId);
     strlcpy(delivery.line.name, row["name"], sizeof(delivery.line.name));
     strlcpy(delivery.line.text, row["text"], sizeof(delivery.line.text));

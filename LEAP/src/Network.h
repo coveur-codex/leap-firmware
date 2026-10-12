@@ -12,6 +12,8 @@ class Network {
   TaskHandle_t task = nullptr;
   Transport net;
   String base;
+  int64_t notificationBootEpoch = 0;
+  bool newsFetched = false;
   JsonDocument aircraftLive{&jsonRam};
   SemaphoreHandle_t aircraftMutex = nullptr;
   void publishAircraft(JsonDocument &value);
@@ -27,6 +29,7 @@ public:
   std::atomic<bool> timeSynced{false}, selfTestDone{false}, selfTestPassed{false};
   std::atomic<uint32_t> knowledgeRevision{0};
   std::atomic<bool> aircraftVisible{false};
+  std::atomic<int64_t> newsBootEpoch{0};
   bool copyAircraft(JsonDocument &value);
   bool begin();
   bool knowledge(const String &suffix);

@@ -257,3 +257,12 @@ Gerätekonfiguration enthält `accentColor` als `#RRGGBB`; Standard `#00d7c5`.
 Die Firmware wandelt in RGB565 um und verwendet bei fehlenden/ungültigen Werten
 das bisherige Türkis. Auswahl unter Geräte → Allgemein; wirksam nach Konfig-Sync.
 Beide Radare zeigen 60 × 60 km mit Ringen bei 10, 20 und 30 km und Norden oben mittig.
+
+## Benachrichtigungen (Firmware 1.0.9 / Homeserver 1.0.5)
+
+Neue optionale Felder: Konfiguration `notificationSounds.{communication,news,aircraft}`
+(Standard `true`), Artikel `fetchedEpoch`, Radar `center.altitudeMeters` (Standard 0),
+Relay `accentColor` (Standard Türkis). Die Firmware verankert den Startzeitpunkt
+an der ersten Serverzeit minus monotone Laufzeit; nur später importierte Artikel
+lösen Hinweise aus. Gespeicherte News aus früheren Starts werden ohne aktuellen
+Sitzungsanker nie gemeldet. Radar läuft bei aktivem Modul auch außerhalb der Seite.
