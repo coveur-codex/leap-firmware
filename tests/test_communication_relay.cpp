@@ -46,7 +46,7 @@ static std::string page(uint64_t start, unsigned count, bool reset=false, bool m
   for (unsigned i=0;i<count;++i) {
     auto row=rows.add<JsonObject>(); row["id"]=start+i+1;
     row["senderId"]=i%2 ? "local" : "remote";
-    row["name"]="Name"; row["text"]="Hallo"; row["symbol"]="!";
+    row["accentColor"]="#ff9933"; row["name"]="Name"; row["text"]="Hallo"; row["symbol"]="!";
   }
   std::string raw; serializeJson(doc,raw); return raw;
 }
@@ -70,7 +70,9 @@ int main() {
   assert(last(s)["since"]==2);
   auto sent=s.sent.size(); step(c,15000); assert(s.sent.size()==sent); // No idle polling.
   event(c,s,WStype_TEXT,page(2,2),15010);
-  assert(c.poll() && c.unread); c.markRead();
+  assert(c.poll() && c.unread);
+  assert(c.notificationCount == 1 && c.notifications[0].id == 3 && !strcmp(c.notifications[0].accent,"#ff9933"));
+  c.markRead();
   event(c,s,WStype_TEXT,page(4,0),15020); assert(!c.poll());
   event(c,s,WStype_DISCONNECTED,"",16000);
   assert(!c.online && s.interval==2000);

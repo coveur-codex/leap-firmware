@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.8`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.9`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -653,3 +653,34 @@ Die Akzentfarbe kommt aus der Gerätekonfiguration (Standard Türkis).
 6×8-Zeichen; Farbe und Abstand unterscheiden sie vom Text. Beide Radare:
 60 × 60 km, Ringe bei 10/20/30 km, Norden oben mittig.
 Details und Geräteabnahme: [Serververtrag](docs/server-contract.md).
+
+### Gemeinsame Benachrichtigungen (1.0.9)
+
+Homeserver 1.0.5 (Migration 0014) zuerst installieren. Dienste übergeben an
+`Notifications::submit` Modul-ID, Titel, Text/Symbol, Farbe und Ton. Die UI
+zeigt jeden Hinweis 5 Sekunden im 80×80-Avatarbereich, danach wieder den Avatar.
+Maximal 12 wartende Karten; bei Überlauf entfällt die älteste wartende Karte,
+deren Modul-Markierung bleibt. Wartende News werden mit neuester Titelzeile
+und „+N weitere“ gebündelt. Die Modul-Markierung bleibt bis zum Öffnen bestehen;
+der bisherige gelbe Brief entfällt. Gesperrte/gedimmte Geräte zeigen die Karten
+mit aufgehelltem Display; Spiele laufen weiter. In Vollbild-Chill wird für die
+Karte kurz die Seitenleiste eingeblendet.
+
+Kommunikation: Pling, Absender und gespeicherte Absenderfarbe; einzelne Icons
+werden groß dargestellt. News: Plong und eigene Akzentfarbe. Nur nach dem
+Gerätestart importierte Artikel melden; Offline-Bestände bleiben still.
+Flugzeuge: Zisch, Kennung, Typ, km/h und räumliche Entfernung in km.
+Alle drei Töne lassen sich pro Gerät im Homeserver abschalten.
+
+Bei aktivem Flugradarmodul wird alle 15 Sekunden auch im Hintergrund abgefragt.
+Nähe wird sekündlich anhand unveränderter Beobachtungen und Kurs/Geschwindigkeit
+geschätzt (höchstens 120 Sekunden inklusive Positionsalter). Die 3-km-Grenze
+berücksichtigt Flugzeughöhe und Standorthöhe (leer: 0 m). Erst nach Verlassen
+der 3,5-km-Pufferzone gibt es beim nächsten Eintritt erneut eine Meldung.
+Der erste gültige Flugzeugbestand bleibt still. Fehlende Höhe und alte Daten
+lösen nichts aus und gelten nicht als bestätigtes Verlassen. Barometrische
+ADS-B-Höhen sind eine Näherung; Hardware-/Hörtests bleiben notwendig.
+
+Neue News werden außerdem einmal pro Minute im RAM aktualisiert; die normale
+15-Minuten-Synchronisierung bleibt für Offline-Snapshots zuständig. Beim Öffnen
+der News stehen dadurch die bereits gemeldeten Artikel sofort zur Verfügung.

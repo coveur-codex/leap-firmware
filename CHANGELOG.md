@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.9 – 2026-10-12
+- Gemeinsame 5-Sekunden-Benachrichtigungen im Avatarbereich mit Warteschlange und News-Bündelung.
+- Modul-Markierungen bis zum Öffnen ersetzen den gelben Brief; Kommunikation zeigt Absenderfarbe.
+- Pling, Plong und Zisch; pro Dienst im Homeserver abschaltbar.
+- Räumliche Flugzeugnähe bis 3 km, Standorthöhe, 3,5-km-Pufferzone und stille Startbestände.
+- Radarabfrage alle 15 Sekunden im Hintergrund und sekündliche begrenzte Positionsvorhersage.
+- Homeserver 1.0.5 mit Migration 0014 erforderlich.
+
 ## 1.0.8
 - Chat über WebSocket-Push, Cursor-Nachladen, idempotente Bestätigungen und begrenzte Queues; Homeserver 1.0.4 erforderlich.
 - WLAN-Minimum-Modem-Sleep, Keepalive alle 30 Sekunden und Wiederverbindung mit Backoff.

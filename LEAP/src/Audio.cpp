@@ -93,7 +93,7 @@ void Audio::run() {
   for (;;) {
     AudioJob job{};
     bool hasJob = xQueueReceive(jobs, &job, pdMS_TO_TICKS(20)) == pdTRUE;
-    if (!hasJob && !notificationRequested) continue;
+    if (!hasJob && notificationRequested.load() == NotificationSound::Silent) continue;
     stopRequested = false;
     File file;
     Wav wav;
@@ -102,7 +102,7 @@ void Audio::run() {
       file = LittleFS.open(job.path, "r");
       if (!file || !wavHeader(file, wav)) {
         file.close();
-        if (!notificationRequested) continue;
+        if (notificationRequested.load() == NotificationSound::Silent) continue;
         remaining = 0;
       } else {
         rate = wav.rate;
@@ -113,8 +113,9 @@ void Audio::run() {
     i2s_std_clk_config_t clock = I2S_STD_CLK_DEFAULT_CONFIG(rate);
     i2s_channel_reconfig_std_clock(tx, &clock);
     i2s_channel_enable(tx);
-    while (remaining || notification.active() || notificationRequested) {
-      if (notificationRequested.exchange(false)) notification.start();
+    while (remaining || notification.active() || notificationRequested.load() != NotificationSound::Silent) {
+      auto requestedSound = notificationRequested.exchange(NotificationSound::Silent);
+      if (requestedSound != NotificationSound::Silent) notification.start(requestedSound);
       if (stopRequested.exchange(false)) { remaining = 0; file.close(); }
       int16_t buffer[256];
       size_t frames = std::min(uint32_t(128), std::max(remaining, notification.active() ? uint32_t(128) : 0));

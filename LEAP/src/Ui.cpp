@@ -163,6 +163,8 @@ bool Ui::reload(bool initial) {
     pages.push_back({"chill", "Ruhezeit", 1000});
   if (pages.empty())
     pages.push_back({"home", "LEAP", 0});
+  observeNews(initial);
+  lastNewsRevision = 0;
   page = std::min(page, int(pages.size()) - 1);
   selection = item = scroll = 0;
   if (!same) {
@@ -313,19 +315,104 @@ static const uint8_t pageIcons[][7] = {
     {2, 6, 14, 30, 62, 60, 24}};     // chill
 static const char *pageIds[] = {"home", "news", "weather", "aircraft", "quiz", "games",
                                 "communication", "knowledge", "settings", "chill"};
-void Ui::envelope() {
-  if (!communication.unread) return;
-  canvas->fillRect(21, 2, 16, 12, Panel);
-  canvas->drawRect(23, 4, 12, 8, 0xffe0);
-  canvas->drawLine(23, 4, 29, 8, 0xffe0);
-  canvas->drawLine(29, 8, 34, 4, 0xffe0);
+void Ui::observeNews(bool initial) {
+  auto news = state["content"]["news"];
+  int64_t bootEpoch = news["notificationBootEpoch"] | int64_t(0);
+  if (initial || !bootEpoch || bootEpoch != network.newsBootEpoch.load()) return; // Offline snapshots never notify at startup.
+  unsigned count = 0;
+  String title;
+  String newestPublished;
+  // Process IDs in ascending order so an entire newly fetched batch is counted.
+  std::vector<JsonObjectConst> articles;
+  for (JsonObjectConst row : news["articles"].as<JsonArrayConst>()) articles.push_back(row);
+  std::sort(articles.begin(), articles.end(), [](JsonObjectConst a, JsonObjectConst b) {
+    String left = a["id"] | "", right = b["id"] | "";
+    return strtoull(left.substring(5).c_str(), nullptr, 10) < strtoull(right.substring(5).c_str(), nullptr, 10);
+  });
+  for (auto row : articles) {
+    const char *id = row["id"] | "";
+    if (strncmp(id, "news_", 5)) continue;
+    uint64_t number = strtoull(id + 5, nullptr, 10);
+    if (newsNotifications.observe(number, row["fetchedEpoch"] | int64_t(0), bootEpoch)) {
+      ++count;
+      String published = row["published"] | "";
+      if (!title.length() || published > newestPublished) { newestPublished = published; title = row["title"] | "News"; }
+    }
+  }
+  bool enabled = std::any_of(pages.begin(), pages.end(), [](const Page &p) { return p.id == "news"; });
+  if (count && enabled) notifications.submit({"news", "News", title.c_str(), "", Accent, NotificationSound::Plong, count}, true);
 }
+void Ui::observeAircraft() {
+  if (!network.copyAircraft(notificationAircraft)) return;
+  auto snapshot = notificationAircraft.as<JsonObjectConst>();
+  if (snapshot["stale"] == true || !snapshot["receivedMillis"].is<uint32_t>() ||
+      !snapshot["center"]["latitude"].is<double>() || !snapshot["center"]["longitude"].is<double>()) return;
+  double age = (snapshot["ageSeconds"] | 121.0) + uint32_t(millis() - snapshot["receivedMillis"].as<uint32_t>()) / 1000.0;
+  if (!std::isfinite(age) || age < 0 || age > AircraftMaxPredictionSeconds) return;
+  double homeLat = snapshot["center"]["latitude"], homeLon = snapshot["center"]["longitude"];
+  double altitude = snapshot["center"]["altitudeMeters"] | 0.0;
+  for (JsonObjectConst plane : snapshot["aircraft"].as<JsonArrayConst>()) {
+    if (!plane["latitude"].is<double>() || !plane["longitude"].is<double>() || !plane["altitudeFeet"].is<double>()) continue;
+    double lat = plane["latitude"], lon = plane["longitude"], feet = plane["altitudeFeet"];
+    if (std::abs(homeLat) > 90 || std::abs(homeLon) > 180 || std::abs(lat) > 90 || std::abs(lon) > 180) continue;
+    double observedAge = age + (plane["positionAgeSeconds"] | 0.0);
+    if (!std::isfinite(observedAge) || observedAge < 0 || observedAge > AircraftMaxPredictionSeconds) continue;
+    if (observedAge > 0 && !predictAircraft(lat, lon, plane["groundSpeedKnots"] | -1.0, plane["trackDegrees"] | NAN, observedAge)) {
+      if (observedAge > 15) continue; // Fresh observations remain useful without course/speed.
+    }
+    double horizontal = aircraftDistanceKm(homeLat, homeLon, lat, lon);
+    if (!aircraftProximity.observe(plane["hex"] | "", horizontal, feet, altitude, millis(), !aircraftBaseline)) continue;
+    String identity = plane["registration"] | "";
+    if (!identity.length()) identity = plane["callsign"] | "";
+    if (!identity.length()) identity = plane["hex"] | "Flugzeug";
+    String type = plane["type"] | "Typ unbekannt";
+    String details = type + "\n";
+    if (plane["groundSpeedKnots"].is<double>()) details += String(int(std::lround(plane["groundSpeedKnots"].as<double>() * 1.852))) + " km/h\n";
+    else details += "Tempo ?\n";
+    details += String(std::hypot(horizontal, (feet * 0.3048 - altitude) / 1000), 1) + " km";
+    notifications.submit({"aircraft", identity.c_str(), details.c_str(), "", Accent, NotificationSound::Swish});
+  }
+  aircraftBaseline = true;
+}
+void Ui::drawNotification() {
+  const auto *message = notifications.visible();
+  if (!message) return;
+  canvas->fillRect(3, 38, 80, 80, Panel);
+  auto heading = displayText(message->title.c_str());
+  if (heading.length() > 13) heading = heading.substring(0, 11) + "..";
+  glyphText(heading, 4, 40, 1, message->color);
+  int bottom = message->count > 1 ? 104 : 117;
+  if (!message->symbol.empty() && message->text.empty()) {
+    uint16_t ownAccent = Accent; Accent = message->color;
+    chatSymbol(message->symbol.c_str(), 19, 60, 4);
+    Accent = ownAccent;
+  } else {
+    String content = displayText(message->text.c_str());
+    int y = 53;
+    while (content.length() && y + 8 <= bottom) {
+      int length = std::min(13, int(content.length()));
+      int newline = content.indexOf('\n');
+      if (newline >= 0 && newline < length) length = newline;
+      else if (length < int(content.length())) {
+        int space = content.lastIndexOf(' ', length);
+        if (space > 0) length = space;
+      }
+      String row = content.substring(0, length);
+      if (y + 18 > bottom && int(content.length()) > length) row = row.substring(0, 11) + "..";
+      glyphText(row, 4, y, 1, message->color);
+      content = content.substring(length);
+      while (content.length() && (content[0] == ' ' || content[0] == '\n')) content = content.substring(1);
+      y += 10;
+    }
+  }
+  if (message->count > 1) text("+" + String(message->count - 1) + " weitere", 4, 107, 1, message->color);
+}
+
 void Ui::sidebar() {
   canvas->fillRect(0, 0, 86, 142, Panel);
   for (int i = 0; i < 3; i++)
     canvas->drawFastVLine(7 + i * 3, 9 - i * 2, 2 + i * 2,
                           network.connected ? Accent : Muted);
-  envelope();
   // No wired battery ADC: outline and dash explicitly mean unknown.
   canvas->drawRect(48, 4, 12, 7, Muted);
   canvas->drawFastVLine(60, 6, 3, Muted);
@@ -364,7 +451,8 @@ void Ui::sidebar() {
   if (!id.startsWith("avatar-"))
     id = "avatar-" + id;
   String avatarPage = locked || menu || pages.empty() ? "home" : pages[page].id;
-  if (!drawSidebarAvatar(id, avatarPage)) {
+  if (notifications.visible()) drawNotification();
+  else if (!drawSidebarAvatar(id, avatarPage)) {
     text("Avatar", 25, 67, 1, Muted);
     text("wartet auf", 13, 80, 1, Muted);
     text("Sync", 31, 93, 1, Muted);
@@ -378,11 +466,13 @@ void Ui::sidebar() {
     for (int j = 0; j < 10; ++j)
       if (pages[index].id == pageIds[j]) glyph = j;
     bool selected = !locked && index == active;
+    bool unread = notifications.unread(pages[index].id.c_str());
     if (selected) canvas->fillRect(x, 119, 8, 11, Accent);
+    else if (unread) canvas->drawRect(x, 119, 8, 11, Accent);
     for (int row = 0; row < 7; ++row)
       for (int col = 0; col < 7; ++col)
         if (pageIcons[glyph][row] & (1 << (6 - col)))
-          canvas->drawPixel(x + col, 121 + row, selected ? Background : Muted);
+          canvas->drawPixel(x + col, 121 + row, selected ? Background : unread ? Accent : Muted);
   }
   String title = locked ? "Gesperrt" : menu ? "Menü" : pages[page].title;
   title = displayText(title);
@@ -893,7 +983,7 @@ void Ui::render() {
     String id = assetOfType("chill");
     chill.start(id, state["assets"][id] | 0, manifestFor(id), millis());
     chill.draw(*canvas, millis());
-    envelope(); // Full-screen scenes still show pending mail.
+    if (notifications.visible()) sidebar();
     canvas->flush();
     return;
   }
@@ -1229,7 +1319,10 @@ void Ui::tick() {
   if (!healthy)
     return;
   if (communication.poll()) {
-    audio.notify();
+    for (size_t i = 0; i < communication.notificationCount; ++i) {
+      const auto &line = communication.notifications[i];
+      notifications.submit({"communication", line.name, line.text, line.symbol, accentColor(line.accent), NotificationSound::Pling});
+    }
     frameRequested = true;
   }
   if (bootLogoVisible) {
@@ -1242,7 +1335,28 @@ void Ui::tick() {
   if (generation != storage.generation.load())
     reload();
   bool radarVisible = !locked && !menu && !pages.empty() && pages[page].id == "aircraft";
-  network.aircraftVisible = radarVisible;
+  bool radarEnabled = std::any_of(pages.begin(), pages.end(), [](const Page &p) { return p.id == "aircraft"; });
+  network.aircraftVisible = radarVisible || radarEnabled;
+  network.newsEnabled = std::any_of(pages.begin(), pages.end(), [](const Page &p) { return p.id == "news"; });
+  uint32_t newsRevision = network.newsRevision.load();
+  if (newsRevision != lastNewsRevision) {
+    JsonDocument freshNews(&jsonRam);
+    if (network.copyNews(freshNews)) {
+      state["content"]["news"] = freshNews;
+      observeNews(false);
+      lastNewsRevision = newsRevision;
+      frameRequested = true;
+    }
+  }
+  if (radarEnabled && elapsed(millis(), lastProximity, 1000)) {
+    lastProximity = millis(); observeAircraft();
+  }
+  if (notifications.tick(millis())) {
+    const auto &message = *notifications.visible();
+    if (state["config"]["notificationSounds"][message.service.c_str()] | true) audio.notify(message.sound);
+    lastInput = millis(); frameRequested = true;
+  }
+  if (!locked && !menu && !pages.empty()) notifications.markRead(pages[page].id.c_str());
   game.tick();
   chill.tick(millis());
   bool chillVisible = !locked && !menu && !pages.empty() && pages[page].id == "chill";

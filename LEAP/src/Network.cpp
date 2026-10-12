@@ -8,6 +8,22 @@
 #include <sys/time.h>
 namespace leap {
 Network network;
+void Network::publishNews(JsonDocument &value) {
+  if (!aircraftMutex || !notificationBootEpoch) return;
+  value["notificationBootEpoch"] = notificationBootEpoch;
+  xSemaphoreTake(aircraftMutex, portMAX_DELAY);
+  newsLive.set(value);
+  xSemaphoreGive(aircraftMutex);
+  newsBootEpoch = notificationBootEpoch;
+  ++newsRevision;
+}
+bool Network::copyNews(JsonDocument &value) {
+  if (!aircraftMutex || xSemaphoreTake(aircraftMutex, 0) != pdTRUE) return false;
+  bool available = newsLive["articles"].is<JsonArray>();
+  if (available) value.set(newsLive);
+  xSemaphoreGive(aircraftMutex);
+  return available;
+}
 void Network::publishAircraft(JsonDocument &value) {
   if (!aircraftMutex) return;
   xSemaphoreTake(aircraftMutex, portMAX_DELAY);
@@ -106,6 +122,7 @@ void Network::checkin(JsonDocument &state) {
       timeval tv{epoch, 0};
       settimeofday(&tv, nullptr);
       state["lastTime"] = int64_t(epoch);
+      if (!notificationBootEpoch) notificationBootEpoch = int64_t(epoch) - millis() / 1000;
       timeSynced = true;
     }
   }
@@ -119,7 +136,7 @@ void Network::content(JsonDocument &state) {
     String versionKey = String(key) + "Version";
     // Weather/aircraft refresh on every scheduled sync: provider freshness is not
     // reliably represented by the current server's device version counters.
-    bool live = String(key) == "weather" || String(key) == "aircraft";
+    bool live = String(key) == "weather" || String(key) == "aircraft" || (String(key) == "news" && !newsFetched);
     if (!live && hasVersions && !state["content"][key].isNull() &&
         state["versions"][versionKey] == versions[versionKey] &&
         state["contentConfig"] == state["config"]["configVersion"])
@@ -138,6 +155,10 @@ void Network::content(JsonDocument &state) {
                    : String(key) == "aircraft" ? value["aircraft"].is<JsonArray>()
                                                : value["current"].is<JsonObject>();
       if (shape) {
+        if (String(key) == "news") {
+          publishNews(value);
+          newsFetched = true;
+        }
         if (String(key) == "aircraft") publishAircraft(value);
         state["content"][key] = value;
         state["versions"][versionKey] = versions[versionKey];
@@ -318,7 +339,7 @@ void Network::run() {
   selfTestDone = true;
   bootState.clear();
   uint32_t lastConnect = millis() - 30000, lastSync = millis() - SyncInterval;
-  uint32_t lastAircraft = millis() - 30000;
+  uint32_t lastAircraft = millis() - 30000, lastNews = millis();
   uint32_t lastQuizUpload = millis() - 1000, quizUploadInterval = 1000;
   uint32_t interval = 10000;
   int lastWifiStatus = -1;
@@ -381,11 +402,18 @@ void Network::run() {
       interval = ok ? SyncInterval : std::min(interval * 2, SyncInterval);
       log("SYNC", ok ? "Complete" : "Deferred; previous usable data retained");
     }
-    if (connected && storage.ready && ota.locallyConfirmed && aircraftVisible && elapsed(millis(), lastAircraft, 30000)) {
+    if (connected && storage.ready && ota.locallyConfirmed && aircraftVisible && elapsed(millis(), lastAircraft, 15000)) {
       lastAircraft = millis();
       JsonDocument value(&jsonRam);
       if (net.json(base + "/aircraft", value) && value["aircraft"].is<JsonArray>())
         publishAircraft(value); // RAM only: do not write flash every thirty seconds.
+    }
+    if (connected && storage.ready && ota.locallyConfirmed && newsEnabled &&
+        notificationBootEpoch && elapsed(millis(), lastNews, 60000)) {
+      lastNews = millis();
+      JsonDocument value(&jsonRam);
+      if (net.json(base + "/news", value) && value["articles"].is<JsonArray>())
+        publishNews(value); // RAM only: timely headlines without extra flash writes.
     }
     KnowledgeRequest request;
     if (xQueueReceive(requests, &request, 0) == pdTRUE && connected) {

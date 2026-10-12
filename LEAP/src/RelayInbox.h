@@ -5,6 +5,7 @@ namespace leap {
 struct RelayLine {
   uint64_t id = 0;
   char name[401]{}, text[481]{}, symbol[65]{};
+  char accent[8]{};
   bool mine = false;
 };
 struct RelayDelivery {

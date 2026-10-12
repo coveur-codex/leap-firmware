@@ -41,6 +41,8 @@ public:
   std::atomic<RelaySendStatus> sendStatus{RelaySendStatus::Idle};
   bool begin();
   void configure(JsonDocument &state);
+  RelayLine notifications[8];
+  size_t notificationCount = 0;
   bool poll(); // Consume messages and return true for a new incoming notification.
   bool send(size_t index);
   bool sendIcon(size_t index);
