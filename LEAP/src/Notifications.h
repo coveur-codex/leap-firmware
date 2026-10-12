@@ -5,6 +5,7 @@
 #include <deque>
 #include <map>
 #include <string>
+#include <set>
 namespace leap {
 enum class NotificationSound : uint8_t { Silent, Pling, Plong, Swish };
 struct Notification {
@@ -59,24 +60,18 @@ public:
 };
 // Missing/stale observations never rearm a plane. Only a measured exit does.
 class AircraftProximity {
-  struct State { bool inside = false; uint32_t seen = 0; };
-  std::map<std::string, State> planes;
+  std::set<std::string> inside;
 public:
   bool observe(const std::string &id, double horizontalKm, double altitudeFeet,
-               double observerMeters, uint32_t now, bool initial = false) {
+               double observerMeters, uint32_t, bool initial = false) {
     if (id.empty() || !std::isfinite(horizontalKm) || horizontalKm < 0 ||
         !std::isfinite(altitudeFeet) || !std::isfinite(observerMeters)) return false;
-    if (!planes.count(id) && planes.size() >= 128) return false;
-    auto &state = planes[id]; state.seen = now;
     double distance = std::hypot(horizontalKm, (altitudeFeet * 0.3048 - observerMeters) / 1000);
-    if (distance > 3.5) state.inside = false;
-    if (distance > 3 || state.inside) return false;
-    state.inside = true;
+    if (distance > 3.5) inside.erase(id);
+    if (distance > 3 || inside.count(id) || inside.size() >= 128) return false;
+    inside.insert(id);
     return !initial;
   }
-  void prune(uint32_t now) {
-    for (auto it = planes.begin(); it != planes.end();)
-      if (uint32_t(now - it->second.seen) > 600000) it = planes.erase(it); else ++it;
-  }
 };
+
 } // namespace leap

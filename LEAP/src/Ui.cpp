@@ -351,7 +351,6 @@ void Ui::observeAircraft() {
   if (!std::isfinite(age) || age < 0 || age > AircraftMaxPredictionSeconds) return;
   double homeLat = snapshot["center"]["latitude"], homeLon = snapshot["center"]["longitude"];
   double altitude = snapshot["center"]["altitudeMeters"] | 0.0;
-  aircraftProximity.prune(millis());
   for (JsonObjectConst plane : snapshot["aircraft"].as<JsonArrayConst>()) {
     if (!plane["latitude"].is<double>() || !plane["longitude"].is<double>() || !plane["altitudeFeet"].is<double>()) continue;
     double lat = plane["latitude"], lon = plane["longitude"], feet = plane["altitudeFeet"];

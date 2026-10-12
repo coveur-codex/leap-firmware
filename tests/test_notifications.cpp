@@ -25,6 +25,7 @@ int main() {
   AircraftProximity planes;
   assert(!planes.observe("boot", 1, 1000, 0, 0, true));
   assert(!planes.observe("boot", 1, 1000, 0, 1000));
+  assert(!planes.observe("boot", 1, 1000, 0, 900000)); // A long absence does not confirm an exit.
   assert(!planes.observe("new", 4, 1000, 0, 1000));
   assert(planes.observe("new", 2.9, 1000, 0, 2000));
   assert(!planes.observe("new", 3.1, 1000, 0, 3000));
