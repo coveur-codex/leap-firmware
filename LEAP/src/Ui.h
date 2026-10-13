@@ -68,7 +68,9 @@ class Ui {
   void observeNews(bool initial);
   void observeAircraft();
   void drawNotification();
-  void body(const String &text, int x = 94, int y = 12, int width = 326, int height = 110, const String &heading = "");
+  void openNotification(const Notification &message);
+  std::string selectedNewsId, selectedAircraftHex;
+  void body(const String &text, int x = 94, int y = 12, int width = 326, int height = 110, const String &heading = "", uint16_t color = 0xffff);
   void text(const String &text, int x, int y, int size = 1, uint16_t color = 0xffff);
   void glyphText(const String &glyphs, int x, int y, int size = 1, uint16_t color = 0xffff);
   void list(const std::vector<String> &labels, int x = 94, int y = 18, int width = 326);

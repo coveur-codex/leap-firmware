@@ -268,3 +268,11 @@ lösen Hinweise aus. Gespeicherte News aus früheren Starts werden ohne aktuelle
 Sitzungsanker nie gemeldet. Radar läuft bei aktivem Modul auch außerhalb der Seite.
 News werden zusätzlich alle 60 Sekunden per `/news` im RAM aktualisiert, einschließlich
 Titel/Artikelansicht; Offline-Snapshots bleiben im normalen Sync-Zyklus.
+
+## Nachtruhe (Firmware 1.0.10 / Homeserver 1.0.6)
+
+Konfiguration ergänzt `notificationQuietHours`: `{enabled, start, end}` mit
+Uhrzeiten `HH:MM`. Fehlend/leer bedeutet deaktiviert. Aktivierte Zeiträume
+haben unterschiedliche Start- und Endzeiten und dürfen Mitternacht überschreiten.
+Firmware wertet die lokale Gerätezeit aus; Start inklusive, Ende exklusive.
+Die Nachtruhe unterdrückt Benachrichtigungstöne, Anzeige und Seitensprung bleiben aktiv.

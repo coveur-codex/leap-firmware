@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.10 – 2026-10-13
+- Kommunikationsverlauf zeichnet Absender, Text und Icon in der Absenderfarbe.
+- News- und Flugzeughinweise dauern 10 Sekunden, Kommunikation weiterhin 5 Sekunden.
+- Benachrichtigungen öffnen bei abgedunkeltem Display das Modul und wählen den Artikel beziehungsweise das Flugzeug per stabiler ID.
+- Optionale Nachtruhe für Benachrichtigungstöne nach lokaler Gerätezeit, auch über Mitternacht.
+- Homeserver 1.0.6 mit Migration 0015 für die Nachtruhe erforderlich.
+
 ## 1.0.9 – 2026-10-12
 - Gemeinsame 5-Sekunden-Benachrichtigungen im Avatarbereich mit Warteschlange und News-Bündelung.
 - Modul-Markierungen bis zum Öffnen ersetzen den gelben Brief; Kommunikation zeigt Absenderfarbe.

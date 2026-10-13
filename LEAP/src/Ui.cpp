@@ -1,6 +1,7 @@
 #include "Ui.h"
 #include "DisplayText.h"
 #include "AccentColor.h"
+#include "NotificationNavigation.h"
 #include "ChillAssets.h"
 #include "AircraftMap.h"
 #include "WeatherIcon.h"
@@ -227,7 +228,7 @@ void Ui::glyphText(const String &s, int x, int y, int size, uint16_t color) {
   canvas->setTextColor(color);
   canvas->print(s);
 }
-void Ui::body(const String &raw, int x, int y, int width, int height, const String &heading) {
+void Ui::body(const String &raw, int x, int y, int width, int height, const String &heading, uint16_t color) {
   String title = displayText(heading);
   String s = (title.length() ? title + "\n\n" : String()) + displayText(raw);
   int line = 0, drawn = 0, used = 0;
@@ -244,7 +245,7 @@ void Ui::body(const String &raw, int x, int y, int width, int height, const Stri
       if (space > int(pos)) end = space;
     }
     if (line++ >= scroll) {
-      glyphText(s.substring(pos, end), x, y + used, 1, emphasized ? Accent : 0xffff);
+      glyphText(s.substring(pos, end), x, y + used, 1, emphasized ? Accent : color);
       used += lineHeight;
       drawn++;
     }
@@ -321,7 +322,7 @@ void Ui::observeNews(bool initial) {
   if (initial || !bootEpoch || bootEpoch != network.newsBootEpoch.load()) return; // Offline snapshots never notify at startup.
   unsigned count = 0;
   String title;
-  String newestPublished;
+  String newestPublished, target;
   // Process IDs in ascending order so an entire newly fetched batch is counted.
   std::vector<JsonObjectConst> articles;
   for (JsonObjectConst row : news["articles"].as<JsonArrayConst>()) articles.push_back(row);
@@ -336,11 +337,11 @@ void Ui::observeNews(bool initial) {
     if (newsNotifications.observe(number, row["fetchedEpoch"] | int64_t(0), bootEpoch)) {
       ++count;
       String published = row["published"] | "";
-      if (!title.length() || published > newestPublished) { newestPublished = published; title = row["title"] | "News"; }
+      if (!title.length() || published > newestPublished) { newestPublished = published; title = row["title"] | "News"; target = id; }
     }
   }
   bool enabled = std::any_of(pages.begin(), pages.end(), [](const Page &p) { return p.id == "news"; });
-  if (count && enabled) notifications.submit({"news", "News", title.c_str(), "", Accent, NotificationSound::Plong, count}, true);
+  if (count && enabled) notifications.submit({"news", "News", title.c_str(), "", Accent, NotificationSound::Plong, count, target.c_str()}, true);
 }
 void Ui::observeAircraft() {
   if (!network.copyAircraft(notificationAircraft)) return;
@@ -370,9 +371,27 @@ void Ui::observeAircraft() {
     if (plane["groundSpeedKnots"].is<double>()) details += String(int(std::lround(plane["groundSpeedKnots"].as<double>() * 1.852))) + " km/h\n";
     else details += "Tempo ?\n";
     details += String(std::hypot(horizontal, (feet * 0.3048 - altitude) / 1000), 1) + " km";
-    notifications.submit({"aircraft", identity.c_str(), details.c_str(), "", Accent, NotificationSound::Swish});
+    notifications.submit({"aircraft", identity.c_str(), details.c_str(), "", Accent, NotificationSound::Swish, 1, plane["hex"] | ""});
   }
   aircraftBaseline = true;
+}
+void Ui::openNotification(const Notification &message) {
+  for (size_t i = 0; i < pages.size(); ++i) {
+    if (pages[i].id != message.service.c_str()) continue;
+    game.close(); gameOpen = false;
+    chill.close();
+    locked = menu = false;
+    page = int(i); selection = item = scroll = 0;
+    notice = "";
+    selectedNewsId.clear(); selectedAircraftHex.clear();
+    if (message.service == "news") selectedNewsId = message.target;
+    if (message.service == "aircraft") { selectedAircraftHex = message.target; aircraftFrame.clear(); }
+    if (message.service == "communication") {
+      for (size_t row = 0; row < communication.count; ++row)
+        if (std::to_string(communication.history[row].id) == message.target) item = int(communication.count - 1 - row);
+    }
+    return;
+  }
 }
 void Ui::drawNotification() {
   const auto *message = notifications.visible();
@@ -607,6 +626,11 @@ void Ui::drawPage(const String &id) {
            94, 46, 290, 55);
   } else if (id == "news") {
     auto rows = content["news"]["articles"].as<JsonArray>();
+    if (!selectedNewsId.empty()) {
+      int index = notificationTargetIndex(rows, "id", selectedNewsId);
+      if (index < 0) { body("Der gemeldete Artikel ist nicht mehr verfügbar."); return; }
+      item = index;
+    }
     if (!rows.size()) {
       body("Noch keine Nachrichten gespeichert.");
       return;
@@ -706,6 +730,11 @@ void Ui::drawPage(const String &id) {
     }
     auto snapshot = aircraftFrame.as<JsonObject>();
     auto rows = snapshot["aircraft"].as<JsonArray>();
+    if (!selectedAircraftHex.empty()) {
+      int index = notificationTargetIndex(rows, "hex", selectedAircraftHex);
+      if (index < 0) { body("Das gemeldete Flugzeug ist nicht mehr im Radar verfügbar."); return; }
+      item = index;
+    }
     bool centered = snapshot["center"]["latitude"].is<double>() &&
                     snapshot["center"]["longitude"].is<double>();
     double lat = snapshot["center"]["latitude"] | 0.0;
@@ -843,11 +872,14 @@ void Ui::drawPage(const String &id) {
     if (communication.count) {
       auto &last =
           communication.history[communication.count - 1 - std::min(size_t(std::max(0, item)), communication.count - 1)];
-      glyphText(displayText(last.mine ? "Ich (gesendet)" : last.name).substring(0, 40), 94, 10, 1, Accent);
+      uint16_t senderColor = accentColor(last.accent);
+      glyphText(displayText(last.mine ? "Ich (gesendet)" : last.name).substring(0, 40), 94, 10, 1, senderColor);
       int old = scroll;
       scroll = 0;
+      uint16_t ownAccent = Accent; Accent = senderColor;
       chatSymbol(last.symbol, 94, 26, last.text[0] ? 1 : 2);
-      body(last.text, 112, 26, 308, 28);
+      body(last.text, 112, 26, 308, 28, "", senderColor);
+      Accent = ownAccent;
       scroll = old;
     } else
       text("Gemeinsamer Gruppenchat", 94, 15, 1, Muted);
@@ -1310,6 +1342,7 @@ void Ui::action(const InputEvent &e) {
   } else {
     scroll = std::max(0, scroll + direction);
     if (e.key == Key::Left || e.key == Key::Right) {
+      selectedNewsId.clear(); selectedAircraftHex.clear();
       item += e.key == Key::Right ? 1 : -1;
       scroll = 0;
     }
@@ -1321,7 +1354,7 @@ void Ui::tick() {
   if (communication.poll()) {
     for (size_t i = 0; i < communication.notificationCount; ++i) {
       const auto &line = communication.notifications[i];
-      notifications.submit({"communication", line.name, line.text, line.symbol, accentColor(line.accent), NotificationSound::Pling});
+      notifications.submit({"communication", line.name, line.text, line.symbol, accentColor(line.accent), NotificationSound::Pling, 1, std::to_string(line.id)});
     }
     frameRequested = true;
   }
@@ -1353,7 +1386,15 @@ void Ui::tick() {
   }
   if (notifications.tick(millis())) {
     const auto &message = *notifications.visible();
-    if (state["config"]["notificationSounds"][message.service.c_str()] | true) audio.notify(message.sound);
+    bool chillVisible = !locked && !menu && !pages.empty() && pages[page].id == "chill";
+    bool standby = !chillVisible && !diagnosticsVisible() && !calibrationVisible && elapsed(millis(), lastInput, 60000);
+    if (standby) openNotification(message);
+    auto quiet = state["config"]["notificationQuietHours"];
+    tm local{};
+    time_t now = time(nullptr);
+    int minute = network.timeSynced && localtime_r(&now, &local) ? local.tm_hour * 60 + local.tm_min : -1;
+    if ((state["config"]["notificationSounds"][message.service.c_str()] | true) &&
+        !notificationQuiet(quiet["enabled"] | false, quiet["start"] | "", quiet["end"] | "", minute)) audio.notify(message.sound);
     lastInput = millis(); frameRequested = true;
   }
   if (!locked && !menu && !pages.empty()) notifications.markRead(pages[page].id.c_str());

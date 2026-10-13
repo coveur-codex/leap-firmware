@@ -13,6 +13,8 @@ struct Notification {
   uint16_t color = 0x06b8;
   NotificationSound sound = NotificationSound::Pling;
   unsigned count = 1;
+  std::string target{};
+  uint32_t duration() const { return service == "news" || service == "aircraft" ? 10000 : 5000; }
 };
 // UI-task owned. Services submit presentation data; the UI owns timing and acknowledgement.
 class Notifications {
@@ -37,7 +39,7 @@ public:
   }
   // True only on a new presentation, so sound plays once per visible card.
   bool tick(uint32_t now) {
-    if (showing && uint32_t(now - started) >= Duration) showing = false;
+    if (showing && uint32_t(now - started) >= current.duration()) showing = false;
     if (showing || pending.empty()) return false;
     current = std::move(pending.front()); pending.pop_front();
     showing = true; started = now;
@@ -49,6 +51,20 @@ public:
   }
   void markRead(const std::string &service) { markers[service] = false; }
 };
+inline int notificationMinutes(const char *value) {
+  if (!value || std::string(value).size() != 5 || value[2] != ':') return -1;
+  for (int i : {0, 1, 3, 4}) if (value[i] < '0' || value[i] > '9') return -1;
+  int hours = (value[0] - '0') * 10 + value[1] - '0';
+  int minutes = (value[3] - '0') * 10 + value[4] - '0';
+  return hours < 24 && minutes < 60 ? hours * 60 + minutes : -1;
+}
+inline bool notificationQuiet(bool enabled, const char *start, const char *end, int localMinute) {
+  if (!enabled) return false;
+  int from = notificationMinutes(start), to = notificationMinutes(end);
+  if (from < 0 || to < 0 || from == to) return false;
+  if (localMinute < 0 || localMinute >= 1440) return true; // Stay quiet until the clock is known.
+  return from < to ? localMinute >= from && localMinute < to : localMinute >= from || localMinute < to;
+}
 class NewsNotifications {
   uint64_t highest = 0;
 public:
