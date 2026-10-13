@@ -1,5 +1,6 @@
 #include "Notifications.h"
 #include "NotificationTone.h"
+#include "NotificationNavigation.h"
 #include <cassert>
 #include <limits>
 #include <cstdio>
@@ -7,15 +8,39 @@ using namespace leap;
 int main() {
   Notifications queue;
   queue.submit({"communication", "Anna", "Hallo", "", 123, NotificationSound::Pling});
-  queue.submit({"news", "News", "Erster Titel", "", 12, NotificationSound::Plong, 2}, true);
-  queue.submit({"news", "News", "Neuer Titel", "", 12, NotificationSound::Plong}, true);
+  queue.submit({"news", "News", "Erster Titel", "", 12, NotificationSound::Plong, 2, "news_1"}, true);
+  queue.submit({"news", "News", "Neuer Titel", "", 12, NotificationSound::Plong, 1, "news_2"}, true);
   assert(queue.tick(UINT32_MAX - 1000));
   assert(queue.visible()->title == "Anna" && queue.unread("communication"));
   assert(!queue.tick(3998)); // Wraparound, still within five seconds.
   assert(queue.tick(3999));
   assert(queue.visible()->text == "Neuer Titel" && queue.visible()->count == 3);
   queue.markRead("communication"); assert(!queue.unread("communication") && queue.unread("news"));
-  assert(!queue.tick(8999) && !queue.visible());
+  assert(queue.visible()->target == "news_2");
+  assert(!queue.tick(13998) && queue.visible());
+  assert(!queue.tick(13999) && !queue.visible());
+  queue.submit({"aircraft", "Flight", "", "", 12, NotificationSound::Swish});
+  assert(queue.tick(15000));
+  assert(!queue.tick(24999) && queue.visible());
+  assert(!queue.tick(25000) && !queue.visible());
+  assert(notificationMinutes("23:59") == 1439);
+  assert(notificationMinutes("24:00") == -1 && notificationMinutes("bad") == -1);
+  for (int minute : {1320, 1439, 0, 419}) assert(notificationQuiet(true, "22:00", "07:00", minute));
+  for (int minute : {420, 1319}) assert(!notificationQuiet(true, "22:00", "07:00", minute));
+  assert(notificationQuiet(true, "09:00", "12:00", 540));
+  assert(!notificationQuiet(true, "09:00", "12:00", 720));
+  assert(!notificationQuiet(false, "22:00", "07:00", 0));
+  assert(notificationQuiet(true, "22:00", "07:00", -1));
+  assert(!notificationQuiet(true, "bad", "07:00", -1));
+  JsonDocument data;
+  auto rows = data.to<JsonArray>();
+  rows.add<JsonObject>()["id"] = "news_2";
+  rows.add<JsonObject>()["id"] = "news_1";
+  assert(notificationTargetIndex(rows, "id", "news_1") == 1);
+  assert(notificationTargetIndex(rows, "id", "missing") == -1);
+  rows[0]["hex"] = "abc"; rows[1]["hex"] = "def";
+  assert(notificationTargetIndex(rows, "hex", "def") == 1);
+
   NewsNotifications news;
   assert(!news.observe(1, 90, 100));
   assert(!news.observe(2, 100, 100));

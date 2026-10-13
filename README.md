@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.9`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.10`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -684,3 +684,24 @@ ADS-B-Höhen sind eine Näherung; Hardware-/Hörtests bleiben notwendig.
 Neue News werden außerdem einmal pro Minute im RAM aktualisiert; die normale
 15-Minuten-Synchronisierung bleibt für Offline-Snapshots zuständig. Beim Öffnen
 der News stehen dadurch die bereits gemeldeten Artikel sofort zur Verfügung.
+
+### Nachrichtenfarben, Standby und Nachtruhe (1.0.10)
+
+Kommunikationsverlauf: Name, Text und Icon eingehender und ausgehender Nachrichten
+verwenden die gespeicherte Absenderfarbe. Nachrichtenhinweise dauern weiterhin
+5 Sekunden, News und Flugzeughinweise jetzt 10 Sekunden.
+
+Ist das Display wegen Inaktivität abgedunkelt, öffnet eine Benachrichtigung
+die betreffende Seite und hebt auch die Gerätesperre auf. Bei News wird der
+gemeldete Artikel, beim Radar das gemeldete Flugzeug per stabiler ID ausgewählt;
+bei gebündelten News der angezeigte Titel. Die Auswahl bleibt über neue Daten
+hinweg erhalten, bis LINKS/RECHTS einen anderen Eintrag wählt. Verschwundene
+Einträge erhalten einen Hinweis statt einer falschen Auswahl. Aktive Nutzung
+und Vollbild-Chill werden nicht automatisch umgeschaltet.
+
+Homeserver 1.0.6 mit Migration 0015 ergänzt pro Gerät optionale Nachtruhe für
+Benachrichtigungstöne. Sie nutzt die lokale Gerätezeit inklusive Sommerzeit,
+von der Startminute einschließlich bis zur Endminute ausschließlich, auch
+über Mitternacht. Anzeige und Standby-Seitenwechsel bleiben aktiv. Solange die
+Serverzeit noch nicht synchronisiert ist, bleibt aktivierte Nachtruhe vorsorglich
+stumm. Fehlende Einstellungen entsprechen ausgeschalteter Nachtruhe.
