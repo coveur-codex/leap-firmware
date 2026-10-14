@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.11 – 2026-10-14
+- News-Titel, Flugzeugkennungen, Quizfragen und Mathe-Aufgaben nutzen Helvetica Regular 10 ohne Fettzeichnung oder Pixelverdopplung.
+- Proportionaler Zeilenumbruch mit Umlauten, ß, é, è und °; lange Quizfragen bleiben in der scrollbaren Vollansicht lesbar.
+- Schrift direkt in der Firmware enthalten, ohne zusätzliche Library oder Download am Gerät.
+
 ## 1.0.10 – 2026-10-13
 - Kommunikationsverlauf zeichnet Absender, Text und Icon in der Absenderfarbe.
 - News- und Flugzeughinweise dauern 10 Sekunden, Kommunikation weiterhin 5 Sekunden.

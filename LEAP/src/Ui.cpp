@@ -1,5 +1,6 @@
 #include "Ui.h"
 #include "DisplayText.h"
+#include "HeadingText.h"
 #include "AccentColor.h"
 #include "NotificationNavigation.h"
 #include "ChillAssets.h"
@@ -228,32 +229,31 @@ void Ui::glyphText(const String &s, int x, int y, int size, uint16_t color) {
   canvas->setTextColor(color);
   canvas->print(s);
 }
-void Ui::body(const String &raw, int x, int y, int width, int height, const String &heading, uint16_t color) {
-  String title = displayText(heading);
-  String s = (title.length() ? title + "\n\n" : String()) + displayText(raw);
+void Ui::body(const String &raw, int x, int y, int width, int height, const String &heading, uint16_t color, bool headingFont) {
+  auto title = displayGlyphs(heading.c_str());
+  auto s = title + (!title.empty() && raw.length() ? "\n\n" : "") + displayGlyphs(raw.c_str());
   int line = 0, drawn = 0, used = 0;
-  unsigned pos = 0;
-  while (pos < s.length()) {
-    bool emphasized = pos < title.length();
-    int advance = 6, lineHeight = emphasized ? 12 : 10;
-    if (line >= scroll && used + lineHeight > height) break;
-    unsigned end = std::min(pos + width / advance, unsigned(s.length()));
-    int nl = s.indexOf('\n', pos);
-    if (nl >= 0 && unsigned(nl) < end) end = nl;
-    else if (end < s.length()) {
-      int space = s.lastIndexOf(' ', end);
-      if (space > int(pos)) end = space;
-    }
+  size_t pos = 0;
+  while (pos < s.size()) {
+    bool emphasized = pos < title.size(), large = emphasized || headingFont;
+    int lineHeight = large ? HeadingLineHeight : 10;
+    int inkHeight = large ? HeadingHeight : 8;
+    if (line >= scroll && used + inkHeight > height) break;
+    // Keep a separate margin for the scroll marker, including on quiz questions.
+    auto row = fitDisplayLine(s, pos, width - 8, large);
     if (line++ >= scroll) {
-      glyphText(s.substring(pos, end), x, y + used, 1, emphasized ? Accent : color);
+      auto glyphs = s.substr(pos, row.end - pos);
+      if (large)
+        printHeadingLine(*canvas, glyphs, x, y + used, row.bounds.left, emphasized ? Accent : color);
+      else
+        glyphText(glyphs.c_str(), x, y + used, 1, color);
       used += lineHeight;
       drawn++;
     }
-    pos = end;
-    if (pos < s.length() && (s[pos] == ' ' || s[pos] == '\n')) pos++;
+    pos = row.next;
   }
   if (!drawn && scroll > 0) scroll = std::max(0, scroll - 1);
-  if (pos < s.length()) text("v", x + width - 6, y + height - 8, 1, Accent);
+  if (pos < s.size()) text("v", x + width - 6, y + height - 8, 1, Accent);
 }
 void Ui::list(const std::vector<String> &labels, int x, int y, int width) {
   if (labels.empty()) {
@@ -812,7 +812,7 @@ void Ui::drawPage(const String &id) {
     bool math = quizCatalog == int(quiz["catalogs"].size()) - 1;
     if (quizDetail) {
       body(quizDetail == 1 ? String(q["q"] | "") : String(q["a"][answerOrder[selection]] | ""), 94,
-           12, 326, 110);
+           12, 326, 110, "", 0xffff, quizDetail == 1);
       notice = "Oben/Unten: lesen | Mitte: zurück";
       return;
     }
@@ -824,13 +824,13 @@ void Ui::drawPage(const String &id) {
            (math ? String(q["result"].as<int>()) : String(q["a"][0] | "")) + "\n" + String(q["explanation"] | "") +
            "\nRechts: weiter | Mitte: Kataloge");
     } else if (math) {
-      text(q["q"] | "", 94, 12, 2);
+      body(q["q"] | "", 94, 12, 326, HeadingHeight, "", 0xffff, true);
       text(mathAnswer.value.empty() ? "_" : mathAnswer.value.c_str(), 94, 42, 2, Accent);
       text(String("< ") + char('0' + mathAnswer.digit) + " >", 94, 72, 2);
       text("Oben: + | Unten: löschen", 94, 102);
       notice = "Links/Rechts: Ziffer | Mitte: bestätigen";
     } else {
-      body(q["q"] | "", 94, 12, 326, 30);
+      body(q["q"] | "", 94, 12, 326, HeadingLineHeight + HeadingHeight, "", 0xffff, true);
       std::vector<String> labels;
       for (int i : answerOrder)
         labels.push_back(q["a"][i] | "");

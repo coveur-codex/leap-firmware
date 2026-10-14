@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.10`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.0.11`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -17,8 +17,18 @@ in einer Cloud-Umgebung nicht gemessen werden. Siehe [Abnahme](docs/acceptance.m
 Deutsche Displaytexte verwenden ä, ö, ü, Ä, Ö, Ü und ß. Die Firmware bildet
 UTF-8 erst bei der Anzeige auf die vorhandenen CP437-Glyphen der eingebauten
 6×8-Schrift ab. Dadurch funktionieren auch Kürzungen, Zeilenumbrüche und
-normal gezeichnete Artikelüberschriften ohne zusätzliche Schriftdatei. Gespeicherte
+normal gezeichnete Displaytexte. Gespeicherte
 Inhalte und die Kommunikation mit dem Homeserver bleiben UTF-8.
+
+News-Titel, Flugzeugkennungen und Quizfragen einschließlich Mathe-Aufgaben nutzen
+ab 1.0.11 eine eingebundene **Helvetica Regular 10**: 11 Pixel hohe Großbuchstaben,
+13 Pixel mit Umlaut, proportional und ohne Fettzeichnung oder Skalierung.
+Die Schrift enthält die gleichen CP437-Zeichen für ä, ö, ü, Ä, Ö, Ü, ß, é, è und °.
+Zeilenumbrüche berücksichtigen Zeichenbreiten und Überhänge. Lange Quizfragen
+zeigen bis zu zwei Zeilen; LINKS öffnet die vollständige Frage zum Scrollen.
+Fließtexte, Antworten, Menüs und Spiele behalten die eingebaute 6×8-Schrift.
+Es ist keine weitere Arduino-Library nötig. Herkunft, Lizenz und reproduzierbare
+Konvertierung stehen in `LEAP/src/HeadingFont.h` und `tools/generate_heading_font.py`.
 
 ## Arduino IDE: Einrichtung und Upload
 
