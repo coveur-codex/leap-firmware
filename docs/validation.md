@@ -1,6 +1,19 @@
 # Durchgeführte Prüfungen
 
-Stand: 2026-10-10. Dragon Run und bisherige Firmwaremodule.
+Stand: 2026-10-14. Überschriftenschrift und bisherige Firmwaremodule.
+
+## Helvetica-Überschriften (1.0.11)
+
+- Vollständige native Firmware-Regressionssuite mit ArduinoJson 7.4.2 bestanden.
+- Neue Schrift gegen die echten GFXfont-/GFXglyph-Typen von Arduino_GFX 1.6.3
+  und den nativen Fallback geprüft: Bitmapgrenzen, Ascent/Descent, alle deutschen
+  Sonderzeichen, é, è und °, proportionale Breiten und der Überhang von „j“.
+- Exakte Breiten, Wortumbrüche, lange Wörter, Leerzeilen, zwei Quizzeilen ohne
+  Überlappung mit Antworten und Rückkehr zur eingebauten Schrift geprüft.
+- Konvertierung aus der festgelegten U8g2-BDF-Quelle bytegleich reproduziert;
+  Pixelvorschau für News, Flugzeugkennung, Quizfrage und Mathe visuell geprüft.
+- ESP32-S3-Cross-Build wird durch den GitHub-PR-Workflow geprüft.
+  Physische Lesbarkeit bleibt Teil der Geräteabnahme.
 
 ## Deutsche Displayzeichen (1.0.7)
 

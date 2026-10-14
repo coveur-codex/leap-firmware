@@ -7,6 +7,8 @@ c++ -std=c++17 -Wall -Wextra -Werror -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests
 build/tests/notifications
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_display_text.cpp -o build/tests/display-text
 build/tests/display-text
+c++ -std=c++17 -Wall -Wextra -Werror -I "${ARDUINOGFX_INCLUDE:-tests/font_fakes}" -I LEAP/src tests/test_heading_text.cpp -o build/tests/heading-text
+build/tests/heading-text
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_theme_endpoint.cpp -o build/tests/theme-endpoint
 build/tests/theme-endpoint
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/communication_fakes -I tests/storage_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_communication_relay.cpp LEAP/src/Communication.cpp -o build/tests/communication-relay

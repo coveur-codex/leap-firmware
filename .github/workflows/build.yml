@@ -20,6 +20,7 @@ jobs:
       - name: Native protocol and partition tests
         env:
           ARDUINOJSON_INCLUDE: /home/runner/Arduino/libraries/ArduinoJson/src
+          ARDUINOGFX_INCLUDE: /home/runner/Arduino/libraries/GFX_Library_for_Arduino/src
         run: tools/test.sh
       - name: German glyphs in the pinned display font
         run: |
