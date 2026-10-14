@@ -40,7 +40,7 @@ def generate(source: str) -> str:
         entries.append(f"  {{{offsets[unicode]}, {width}, {height}, {advance}, {dx}, {dy}}}, // 0x{code:02x}")
 
     license_lines = source.split("STARTPROPERTIES")[0].splitlines()
-    license_text = '\n'.join(line[7:] if line.startswith("COMMENT ") else ''
+    license_text = '\n'.join(line[7:].rstrip() if line.startswith("COMMENT ") else ''
                              for line in license_lines if line.startswith("COMMENT"))
     bitmap_text = '\n'.join('  ' + ', '.join(f'0x{b:02x}' for b in bitmaps[i:i + 16]) + ','
                             for i in range(0, len(bitmaps), 16))

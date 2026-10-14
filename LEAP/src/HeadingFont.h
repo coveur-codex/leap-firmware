@@ -4,7 +4,7 @@
 // tools/font/bdf/helvR10.bdf
 /*
  ISO10646-1 extension by Markus Kuhn <mkuhn@acm.org>, 2001-03-20
- 
+
  +
   Copyright 1984-1989, 1994 Adobe Systems Incorporated.
   Copyright 1988, 1994 Digital Equipment Corporation.
