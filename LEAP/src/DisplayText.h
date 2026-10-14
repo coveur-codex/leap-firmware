@@ -4,8 +4,8 @@
 
 namespace leap {
 // Arduino_GFX 1.6.3's built-in 6x8 font uses CP437 glyph indices, not UTF-8.
-// Convert only at the display boundary. Each output byte occupies one cell,
-// so wrapping, clipping and the enlarged article headings use the same glyphs.
+// Convert only at the display boundary. Each output byte identifies one glyph;
+// the built-in font uses fixed cells, Helvetica headings use glyph metrics.
 inline std::string displayGlyphs(const char *utf8) {
   std::string out;
   const auto *p = reinterpret_cast<const unsigned char *>(utf8);

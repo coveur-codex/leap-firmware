@@ -15,7 +15,7 @@ int main() {
   assert(displayGlyphs("LEAP 123\nHallo!") == "LEAP 123\nHallo!");
   assert(displayGlyphs("äöüÄÖÜß") == std::string("\x84\x94\x81\x8e\x99\x9a\xe1", 7));
 #ifdef LEAP_GFX_FONT_TEST
-  // Verify the actual pinned library's pixels, also used by enlarged UI headings.
+  // Verify the actual pinned library's pixels for built-in-font display text.
   const unsigned char germanBitmaps[][5] = {
       {0x22, 0x54, 0x54, 0x78, 0x42}, {0x3a, 0x44, 0x44, 0x44, 0x3a},
       {0x3a, 0x40, 0x40, 0x20, 0x7a}, {0x7d, 0x12, 0x11, 0x12, 0x7d},

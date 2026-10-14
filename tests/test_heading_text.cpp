@@ -2,7 +2,6 @@
 #include "HeadingText.h"
 #include <cassert>
 #include <iostream>
-#include <vector>
 
 struct Display {
   const GFXfont *font = nullptr;

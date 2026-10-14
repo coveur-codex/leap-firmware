@@ -235,18 +235,19 @@ void Ui::body(const String &raw, int x, int y, int width, int height, const Stri
   int line = 0, drawn = 0, used = 0;
   size_t pos = 0;
   while (pos < s.size()) {
-    bool emphasized = pos < title.size(), large = emphasized || headingFont;
-    int lineHeight = large ? HeadingLineHeight : 10;
-    int inkHeight = large ? HeadingHeight : 8;
+    bool emphasized = pos < title.size();
+    bool large = headingFont && (title.empty() || emphasized);
+    int lineHeight = large ? HeadingLineHeight : emphasized ? 12 : 10;
+    int inkHeight = large ? HeadingHeight : lineHeight;
     if (line >= scroll && used + inkHeight > height) break;
     // Keep a separate margin for the scroll marker, including on quiz questions.
-    auto row = fitDisplayLine(s, pos, width - 8, large);
+    auto row = fitDisplayLine(s, pos, width - (headingFont ? 8 : 0), large);
     if (line++ >= scroll) {
       auto glyphs = s.substr(pos, row.end - pos);
       if (large)
         printHeadingLine(*canvas, glyphs, x, y + used, row.bounds.left, emphasized ? Accent : color);
       else
-        glyphText(glyphs.c_str(), x, y + used, 1, color);
+        glyphText(glyphs.c_str(), x, y + used, 1, emphasized ? Accent : color);
       used += lineHeight;
       drawn++;
     }
@@ -641,7 +642,7 @@ void Ui::drawPage(const String &id) {
     bool shown = hash.length() && picture.draw(*canvas, storage.blob(hash), image, 320, 12, 96, 80);
     body(String(a["summary"] | "") + "\n" +
              String(a["source"] | "") + " | " + String(a["published"] | ""),
-         94, 12, shown ? 216 : 326, 112, a["title"] | "");
+         94, 12, shown ? 216 : 326, 112, a["title"] | "", 0xffff, true);
   } else if (id == "weather") {
     auto w = content["weather"];
     if (w["current"].isNull()) {
@@ -790,7 +791,7 @@ void Ui::drawPage(const String &id) {
     body(String(a["typeName"] | "Unbekannter Flugzeugtyp") +
          "\nEntfernung: " + String(a["distanceKm"].isNull() ? a["distanceNm"].as<double>() * 1.852 : a["distanceKm"].as<double>(), 1) +
          " km\nHöhe: " + altitude + " m\nTempo: " + speed + " km/h" + route,
-         94, 8, 204, 110, a["callsign"] | a["registration"] | a["hex"] | "Flugzeug");
+         94, 8, 204, 110, a["callsign"] | a["registration"] | a["hex"] | "Flugzeug", 0xffff, true);
     text(a["oldPosition"] == true ? "Alte Position" : a["predicted"] == true ? "Position geschätzt" : "Gemeldete Position",
          94, 124, 1, Muted);
   } else if (id == "quiz") {
