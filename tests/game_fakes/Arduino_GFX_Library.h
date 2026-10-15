@@ -6,7 +6,8 @@
 #include <vector>
 struct Arduino_GFX {
   std::string text;
-  bool recordAll = false;
+  bool recordAll = false, recordTextBounds = false;
+  int textX = 0, textY = 0, textSize = 1;
   struct Rect {
     int x, y, w, h;
     uint16_t color;
@@ -16,10 +17,13 @@ struct Arduino_GFX {
   void drawPixel(int x,int y,uint16_t c) { if (recordAll) rects.push_back({x,y,1,1,c}); }
   void drawFastHLine(int x,int y,int w,uint16_t c) { if (recordAll) rects.push_back({x,y,w,1,c}); }
   void setTextColor(uint16_t) {}
-  void setTextSize(int) {}
-  void setCursor(int, int) {}
+  void setTextSize(int size) { textSize = size; }
+  void setCursor(int x, int y) { textX = x; textY = y; }
   void print(const char *s) {
     text += s;
+    if (recordTextBounds) {
+      rects.push_back({textX,textY,int(std::string(s).size())*6*textSize,8*textSize,0});
+    }
   }
   void printf(const char *format, ...) {
     char out[256];

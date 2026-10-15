@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.1.0`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.1.1`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -726,3 +726,11 @@ zugeschnitten. Rechts steuert der bisherige Slider die Intensität beziehungswei
 30–300 Sekunden Bildabstand; jede Mitteltaste führt zurück. Ohne Eingabe bleiben
 Chill-Bild, konfigurierte Hintergrundbeleuchtung und Musik dauerhaft aktiv.
 Details zu Synthese, Puffergrenzen, Bildproxy und Hardware-Abnahme: [Chill](docs/chill.md).
+
+
+## Mathe-Labor (1.1.1)
+
+Ein neuer Spieleintrag `math_lab` bündelt Würfellabor, Zahlenwerkstatt,
+Würfelarchitekt und Würfeldetektiv. Lokal gezeichnet, ohne Bildpakete oder WLAN.
+Im Homeserver ab 1.1.1 für das Gerät aktivieren und einmal synchronisieren.
+Bedienung, Übungsvarianten und Abnahme: [Mathe-Labor](docs/math-lab.md).

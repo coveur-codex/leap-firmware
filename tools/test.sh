@@ -56,7 +56,7 @@ build/tests/motion-calibration
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/motion_fakes -I tests/storage_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_motion.cpp LEAP/src/Motion.cpp -o build/tests/motion
 build/tests/motion
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_games.cpp -o build/tests/games
-c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_game_lifecycle.cpp LEAP/src/Games.cpp LEAP/src/CrabJourneyDraw.cpp LEAP/src/DragonRunDraw.cpp LEAP/src/KitchenEditor.cpp -o build/tests/game-lifecycle
+c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_game_lifecycle.cpp LEAP/src/Games.cpp LEAP/src/CrabJourneyDraw.cpp LEAP/src/DragonRunDraw.cpp LEAP/src/KitchenEditor.cpp LEAP/src/MathLab.cpp -o build/tests/game-lifecycle
 build/tests/game-lifecycle
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_chill.cpp LEAP/src/Chill.cpp -o build/tests/chill
 build/tests/chill
@@ -77,3 +77,6 @@ c++ -std=c++17 -O2 -Wall -Wextra -Werror -I LEAP/src tests/test_chill_music.cpp 
 build/tests/chill-music
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/photo_fakes -I tests/storage_fakes -I tests/communication_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_chill_photos.cpp LEAP/src/ChillPhotos.cpp -o build/tests/chill-photos
 build/tests/chill-photos
+
+c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_math_lab.cpp LEAP/src/MathLab.cpp -o build/tests/math-lab
+build/tests/math-lab

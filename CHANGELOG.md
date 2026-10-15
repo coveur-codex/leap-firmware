@@ -1,3 +1,12 @@
+# 1.1.1 – Mathe-Labor
+
+- Ein Spieleintrag mit vier offline verfügbaren Lernaktivitäten und frei wählbaren Stufen.
+- Würfelbilder, unabhängige Zufallswürfe, Häufigkeiten, Mengenfelder, Zahlzerlegung,
+  Mengenvergleich und Stellenwertbaukasten bis 100.
+- Isometrische Bauwerke zum Nachbauen, Merken und Wiederansehen; Vergleich der Stapelhöhen.
+- Geometrische Kantenrätsel und eindeutig passende Draufsichten mit visuellen Hilfen.
+- Gemeinsame mathematische Logik, prozedurale Grafik und Host-Tests inklusive Bildschirmgrenzen.
+
 # 1.1.0
 
 - Gemeinsame regelbasierte Chill-Komposition mit acht Synthesizer-Stimmen, vier

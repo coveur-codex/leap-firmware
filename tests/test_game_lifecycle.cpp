@@ -59,6 +59,20 @@ static CrabJourneyProgress savedCrab() {
 }
 int main() {
   Arduino_GFX gfx;
+  Games lab;
+  lab.begin(); lab.start("math_lab");
+  assert(lab.active() && lab.isMathLab());
+  assert(!lab.mathLabInput({true, Key::Center, false}));
+  assert(!lab.mathLabInput({true, Key::Center, false}));
+  lab.tick(); lab.draw(gfx, 94, 10);
+  assert(gfx.text.find("Wie viele?") != std::string::npos);
+  assert(!lab.mathLabInput({false, Key::Center, false}));
+  assert(!lab.mathLabInput({false, Key::Center, false}));
+  assert(lab.mathLabInput({false, Key::Center, false}));
+  lab.close(); assert(!lab.active());
+  lab.start("snake"); assert(lab.isSnake() && !lab.isMathLab());
+  lab.close(); gfx.text.clear();
+
   Games maze; maze.begin(); maze.start("tilt_maze");
   gfx.recordAll = true; maze.draw(gfx, 94, 10);
   int cells = 0;

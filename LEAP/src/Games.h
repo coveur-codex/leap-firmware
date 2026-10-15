@@ -1,5 +1,6 @@
 #pragma once
 #include "GameRules.h"
+#include "MathLab.h"
 #include "KitchenEditor.h"
 #include "ConnectFour.h"
 #include "Maze.h"
@@ -38,6 +39,7 @@ class Games {
   int fourDifficulty = 0, fourColumn = 3;
   bool fourSetup = true, fourThinking = false, fourFull = false;
   void drawFour(Arduino_GFX &gfx, int left, int top);
+  MathLab mathLab;
   KitchenEditor kitchen;
   bool kitchenDirty = false;
   uint32_t kitchenSavedAt = 0;
@@ -81,6 +83,12 @@ public:
   }
   bool isKitchen() const {
     return kind == "kitchen";
+  }
+  bool isMathLab() const {
+    return kind == "math_lab";
+  }
+  bool mathLabInput(const InputEvent &event) {
+    return mathLab.input(event);
   }
   bool kitchenInput(const InputEvent &event);
   bool crabInput(const InputEvent &event);
