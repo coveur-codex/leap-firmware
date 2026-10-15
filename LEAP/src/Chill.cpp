@@ -52,7 +52,7 @@ bool Chill::start(const String &id, int nextVersion, JsonVariantConst manifest, 
     return false;
   motion.reset(kind, def["slider"]["default"] | 45, now);
   motion.value = kind == ChillScene::Photos
-                     ? std::clamp(prefs.getInt(sceneKey(), motion.value), 0, 300)
+                     ? std::clamp(int(prefs.getInt(sceneKey(), motion.value)), 0, 300)
                      : std::min(100, int(prefs.getUChar(sceneKey(), motion.value)));
   package = id;
   version = nextVersion;
