@@ -62,3 +62,81 @@ regulären Sync auslösen, dann im Homeserver Szene wechseln; keine gleichzeitig
 Dekorationen im Weltraum und keine hektischen Partikel bei 100. Dies ergänzt
 die nativen Motion-/NVS-/Pakettests, Browserprüfung und den ESP32-Cross-Build;
 reale Display-Laufzeit/Framerate benötigt die Hardware.
+
+## 1.1.0: Generative Musik und Fotos
+
+`ChillMusic.h` trennt Profile, Komposition und den begrenzten `ChillSynth`.
+Der vorhandene Audio-Task besitzt alle musikalischen Zustände; die UI sendet nur
+atomare Profil-/Intensitätswerte und Bildereignisse. Acht Stimmen, kleine
+Sinus-Wavetables mit Obertonvarianten, ADSR, individuelle Instrumentenpegel,
+Übersteuerungsschutz und Gesamtlautstärke erzeugen Mono-16-Bit bei 22.050 Hz.
+Für den vorhandenen Stereo-I2S-Vertrag wird Mono auf beide Slots kopiert. WAVs
+behalten ihre bisherigen Abtastraten; der Synth läuft dann mit derselben Rate.
+Benachrichtigungen und WAV-Jobs werden in jedem Audioblock berücksichtigt.
+Der bestehende Audio-Task hat 6 KiB Stack; es entsteht kein weiterer Task.
+
+Die Komposition verwendet diatonische Tonleitern (Weltraum in Moll), funktionale
+Harmonie mit Dominant-/Tonika-Auflösung, kleine Melodieschritte, gezielte Pausen
+und ein achtstufiges variierendes Motivgedächtnis. Mehrtaktige Harmonien entwickeln
+sich im Weltraum besonders langsam. Zufallszustand und Motive werden fortlaufend
+weiterentwickelt; es gibt keine Musikdatei, vorgegebene Trackdauer oder Loop-Grenze.
+Profilwechsel blenden zuerst 0,7 s aus und danach 1,5 s ein; erst bei Null werden
+Stimmen gelöscht. Intensität, Tempo und Bild-Öffnung folgen geglätteten Zielwerten.
+
+- Lagerfeuer: warme Saiten mit zurückhaltender Fläche, Glocken und Bass.
+- Weltraum: lange schwebende Mollflächen, seltener Sternenklang, langsame Harmonien.
+- Schnee: reduzierte klare Glocken-/Kalimbaklänge und dezente Fläche.
+- LoremFlickr: ruhiges E-Piano-/Saitenmotiv, Fläche, Glocken und weicher Bass.
+
+`ChillPhotos` nutzt den bestehenden Netzwerk-Task, `Transport` mit SHA-256-Prüfung
+und den durch Codec-Mutex geschützten `Media::decode`. Die UI besitzt nur die
+vollständig vorbereiteten RGB565-Puffer und rendert eine abgedunkelte Zeile nach
+der anderen in den vorhandenen Canvas. Maximal zwei Vollbilder benötigen zusammen
+243.104 Bytes PSRAM, dazu 856 Bytes Scanline auf dem UI-Stack. Decode-Arbeit und
+Downloads laufen nicht im Audio- oder Renderpfad. Das letzte erfolgreiche JPEG
+liegt begrenzt unter `/chill-photo.jpg`, ein Download unter `/chill-photo.part`.
+Die Flash-Schreibmenge entspricht dem angeforderten JPEG je erfolgreichem Bild;
+es werden weder PCM-Audio noch gerenderte Frames in Flash geschrieben.
+
+Foto-Paket: `scene=loremflickr`, `minFirmware=1.1.0`, leere `sprites`, Slider
+`min=0,max=300,default=200`. Dieser interne Maßstab ermöglicht exakt lineare
+`IntervallMillis = 300000 - Wert * 900`: 300/165/30 Sekunden bei 0/150/300,
+120 Sekunden bei erstmaliger Nutzung. Der physische Regler ändert weiter in
+5-%-Schritten (hier 15); NVS verwendet nur für den neuen Schlüssel `loremflickr`
+einen Integer. Die drei vorhandenen UChar-Schlüssel bleiben unverändert.
+
+15 Sekunden vor dem geplanten Wechsel wird ein Bild angefordert. Ein gültiges
+neues Bild ist Voraussetzung für alle Bild-/Musikereignisse. 1,2 Sekunden vor
+Fade-out folgt `Prepare`; danach `FadeOut` (1,5 s), `Black` (0,3 s), `FadeIn`
+(1,5 s) und `Complete`. Die Musik reagiert harmonisch mit variierender Vorbereitung,
+reduzierter Aktivität, optionaler Glocke und vorsichtiger Öffnung; sie wird dabei
+nicht neu gestartet. Zeitabstände werden zwischen Fade-out-Starts gemessen.
+Bei verspätetem Bild beginnt erst dann die Vorbereitung. Nach Reglerverkürzung
+erhält ein überfälliger Wechsel 15 Sekunden Vorlauf. Fehler wiederholen nach
+10/20/40/80/160/300 Sekunden; ohne fertiges Bild gibt es keinen Fade.
+
+`IdlePolicy` erhält die bestehende Ausnahme für Chill und die normale Helligkeit.
+Manuelle Mitteltasten und Sperren funktionieren weiter; beim Verlassen werden
+Musikziel, Bildpuffer und Anfragen freigegeben/invalidiert. Laufende Downloads
+können noch bis zum Timeout fertig werden, ihr Sitzungsergebnis wird verworfen.
+Andere Seiten verwenden weiter die bisherigen 60-/180-Sekunden-Idle-Regeln.
+
+### Validierung 1.1.0
+
+Native Suite: Profile und Audio über 30 simulierte Minuten je Profil, WAV plus
+Synth plus Benachrichtigung, sanfte Profilwechsel/Stop, Motivfortentwicklung,
+Stimmen-/Pegelgrenzen, 5-/30-Minuten-Idle-Ausnahme, 59 weitere Bildwechsel,
+Millis-Rollover, echtes Foto-Lifecycle/Rendering mit gemocktem Transport,
+Offline-/Backoff, ungültiges JPEG-Ergebnis, Cache-Restore und Download-Abbruch.
+Die bisherige Spiele-/PNG-/Storage-/Eingabesuite bleibt enthalten.
+
+Offene Hardware-Abnahme: jede Szene 5 und 30 reale Minuten bei 0/50/100 %, alle
+Profilwechsel per Homeserver-Sync, Rückkehr ins Hauptmenü und erneuter Start,
+WLAN-Unterbrechung/-Rückkehr und Homeserver-Neustart. Am NV3007 Fades auf Flackern,
+10-Hz-Animationen auf Stalls und I2S auf Aussetzer/Knacken prüfen. Freien Heap/PSRAM,
+Task-Stack und reale CPU-Auslastung protokollieren. Es ist keine Hardware verbunden.
+Der Live-Test von LoremFlickr ist in dieser Umgebung durch HTTP-403-Netzwerkregeln
+blockiert; Redirect-, Cache- und Fehlerverhalten sind mit HTTPX-Mocks geprüft.
+Lokaler ESP32-Cross-Build: Toolchain-Installation durch gesperrtes
+`downloads.arduino.cc` blockiert; der bestehende GitHub-Arduino-Workflow ist der
+verbindliche Cross-Build einschließlich Provisionierungsvariante.

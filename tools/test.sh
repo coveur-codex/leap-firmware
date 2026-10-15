@@ -73,3 +73,7 @@ python3 tests/test_partitions.py
 
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I LEAP/src tests/test_dragon_run.cpp LEAP/src/DragonRunDraw.cpp -o build/tests/dragon-run
 build/tests/dragon-run
+c++ -std=c++17 -O2 -Wall -Wextra -Werror -I LEAP/src tests/test_chill_music.cpp -o build/tests/chill-music
+build/tests/chill-music
+c++ -std=c++17 -Wall -Wextra -Werror -I tests/photo_fakes -I tests/storage_fakes -I tests/communication_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_chill_photos.cpp LEAP/src/ChillPhotos.cpp -o build/tests/chill-photos
+build/tests/chill-photos

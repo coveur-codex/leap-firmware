@@ -1,9 +1,11 @@
 #pragma once
 #include <cstdint>
+#include <algorithm>
 #include <vector>
 struct Arduino_GFX {
   static constexpr int Width = 428, Height = 142;
   std::vector<uint16_t> pixels = std::vector<uint16_t>(Width * Height, 0);
+  void fillScreen(uint16_t color) { std::fill(pixels.begin(), pixels.end(), color); }
   void drawPixel(int x, int y, uint16_t color) {
     pixels[y * Width + x] = color;
   }

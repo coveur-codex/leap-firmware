@@ -69,7 +69,7 @@ bool Transport::read(HTTPClient &http, size_t size,
   }
   return true;
 }
-bool Transport::json(const String &path, JsonDocument &response, JsonDocument *body) {
+bool Transport::json(const String &path, JsonDocument &response, JsonDocument *body, uint32_t timeout) {
   error = "";
   WiFiClient plain;
   WiFiClientSecure tls;
@@ -79,6 +79,7 @@ bool Transport::json(const String &path, JsonDocument &response, JsonDocument *b
     log("HTTP", error.c_str());
     return false;
   }
+  http.setTimeout(timeout);
   if (body) {
     String raw;
     serializeJson(*body, raw);

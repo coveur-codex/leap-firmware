@@ -38,5 +38,25 @@ int main() {
     try { fakeTask(fakeContext); } catch(const Complete &) {}
     assert(blocks==75 && resumed && (volume==0 || mixed));
   }
+  assert(audio.begin()); audio.volume = 35;
+  audio.music(MusicProfile::Fire, 80);
+  unsigned blocks = 0;
+  bool sounded = false, mixed = false, stopped = false;
+  fakeAudioWrite = [&](const int16_t *samples, size_t size) {
+    ++blocks;
+    for (size_t i = 0; i < size; ++i) {
+      if (blocks > 100 && blocks < 200 && samples[i]) sounded = true;
+      if (blocks > 201 && blocks < 250 && samples[i] != 350) mixed = true;
+    }
+    if (blocks == 200) assert(audio.play(path)); // WAV job consumed while the synth keeps running
+    if (blocks == 300) audio.music(MusicProfile::Space, 20);
+    if (blocks == 600) audio.music(MusicProfile::Off);
+    if (blocks > 600 && std::all_of(samples, samples + size, [](int16_t value) { return value == 0; })) {
+      stopped = true;
+      throw Complete{};
+    }
+  };
+  try { fakeTask(fakeContext); } catch (const Complete &) {}
+  assert(sounded && mixed && stopped);
   puts("PASS: actual Audio task mixes notifications into a running WAV immediately, keeps music playing and honors mute");
 }

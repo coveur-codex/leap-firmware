@@ -1,5 +1,6 @@
 #pragma once
 #include "ChillMotion.h"
+#include "ChillPhotos.h"
 #include "Input.h"
 #include "Media.h"
 #include <memory>
@@ -22,6 +23,7 @@ class Chill {
   };
   std::vector<Sprite> sprites;
   Preferences prefs;
+  ChillPhotos photos;
   bool dirty = false;
   uint32_t changedAt = 0;
   String package;

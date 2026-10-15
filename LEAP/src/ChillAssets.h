@@ -5,12 +5,16 @@ namespace leap {
 // Same bounded sprite contract as the homeserver; paths refer to hashed package files.
 inline bool validChill(JsonVariantConst def, JsonVariantConst files) {
   std::string scene = def["scene"] | "";
-  if (scene != "space" && scene != "fire" && scene != "snow")
+  if (scene != "space" && scene != "fire" && scene != "snow" && scene != "loremflickr")
     return false;
   auto slider = def["slider"];
-  if (slider["min"] != 0 || slider["max"] != 100 || !slider["default"].is<int>() ||
-      slider["default"].as<int>() < 0 || slider["default"].as<int>() > 100)
+  if (slider["min"] != 0 || slider["max"] != (scene == "loremflickr" ? 300 : 100) ||
+      !slider["default"].is<int>() || slider["default"].as<int>() < 0 ||
+      slider["default"].as<int>() > (scene == "loremflickr" ? 300 : 100))
     return false;
+  if (scene == "loremflickr")
+    return def["minFirmware"] == "1.1.0" && def["sprites"].is<JsonArrayConst>() &&
+           def["sprites"].size() == 0;
   auto sprites = def["sprites"].as<JsonArrayConst>();
   if (sprites.isNull() || !sprites.size() || sprites.size() > 16)
     return false;

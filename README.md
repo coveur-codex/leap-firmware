@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.0.11`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.1.0`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -715,3 +715,14 @@ von der Startminute einschließlich bis zur Endminute ausschließlich, auch
 über Mitternacht. Anzeige und Standby-Seitenwechsel bleiben aktiv. Solange die
 Serverzeit noch nicht synchronisiert ist, bleibt aktivierte Nachtruhe vorsorglich
 stumm. Fehlende Einstellungen entsprechen ausgeschalteter Nachtruhe.
+
+
+## Chill-Musik und LoremFlickr (1.1.0)
+
+Alle vier Chill-Szenen spielen offline erzeugte Musik über den vorhandenen I2S-Task.
+LoremFlickr im Homeserver unter **Gerät → Chill** wählen und ein Thema (Standard
+`nature`) speichern. Die Bilder werden im bestehenden Querformat 428×142 passend
+zugeschnitten. Rechts steuert der bisherige Slider die Intensität beziehungsweise
+30–300 Sekunden Bildabstand; jede Mitteltaste führt zurück. Ohne Eingabe bleiben
+Chill-Bild, konfigurierte Hintergrundbeleuchtung und Musik dauerhaft aktiv.
+Details zu Synthese, Puffergrenzen, Bildproxy und Hardware-Abnahme: [Chill](docs/chill.md).

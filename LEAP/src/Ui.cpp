@@ -4,6 +4,7 @@
 #include "AccentColor.h"
 #include "NotificationNavigation.h"
 #include "ChillAssets.h"
+#include "IdlePolicy.h"
 #include "AircraftMap.h"
 #include "WeatherIcon.h"
 #include "Audio.h"
@@ -1387,8 +1388,8 @@ void Ui::tick() {
   }
   if (notifications.tick(millis())) {
     const auto &message = *notifications.visible();
-    bool chillVisible = !locked && !menu && !pages.empty() && pages[page].id == "chill";
-    bool standby = !chillVisible && !diagnosticsVisible() && !calibrationVisible && elapsed(millis(), lastInput, 60000);
+    bool chillActive = chillVisible();
+    bool standby = !chillActive && !diagnosticsVisible() && !calibrationVisible && elapsed(millis(), lastInput, 60000);
     if (standby) openNotification(message);
     auto quiet = state["config"]["notificationQuietHours"];
     tm local{};
@@ -1400,12 +1401,14 @@ void Ui::tick() {
   }
   if (!locked && !menu && !pages.empty()) notifications.markRead(pages[page].id.c_str());
   game.tick();
+  if (!chillVisible()) chill.close();
   chill.tick(millis());
-  bool chillVisible = !locked && !menu && !pages.empty() && pages[page].id == "chill";
+  bool chillActive = chillVisible();
   bool diagnosticVisible = diagnosticsVisible() || calibrationVisible;
-  bool dim = !chillVisible && !diagnosticVisible && elapsed(millis(), lastInput, 60000);
+  auto idle = IdlePolicy::evaluate(millis(), lastInput, chillActive, diagnosticVisible);
+  bool dim = idle.dim;
   ledcWrite(hw::Backlight, dim ? 20 : brightness);
-  if (!chillVisible && !diagnosticVisible && elapsed(millis(), lastInput, 180000)) {
+  if (idle.lock) {
     locked = true;
     game.close();
     gameOpen = false;
