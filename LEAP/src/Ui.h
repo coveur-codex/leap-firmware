@@ -80,6 +80,7 @@ class Ui {
   void drawPage(const String &id);
   void action(const InputEvent &event);
   String assetOfType(const char *type);
+  bool chillVisible() const { return !locked && !menu && !pages.empty() && pages[page].id == "chill"; }
   bool drawSidebarAvatar(const String &id, const String &pageId);
 
 public:

@@ -1,4 +1,5 @@
 #include "Chill.h"
+#include "Audio.h"
 #include "ChillAssets.h"
 namespace leap {
 static constexpr uint16_t SpaceBackground = 0x0001, FireBackground = 0x0800,
@@ -9,6 +10,8 @@ const char *Chill::sceneKey() const {
     return "space";
   case ChillScene::Fire:
     return "fire";
+  case ChillScene::Photos:
+    return "loremflickr";
   case ChillScene::Snow:
     return "snow";
   default:
@@ -16,12 +19,19 @@ const char *Chill::sceneKey() const {
   }
 }
 void Chill::save() {
-  if (dirty && active())
-    prefs.putUChar(sceneKey(), motion.value);
+  if (dirty && active()) {
+    if (motion.scene == ChillScene::Photos)
+      prefs.putInt(sceneKey(), motion.value);
+    else
+      prefs.putUChar(sceneKey(), motion.value);
+  }
   dirty = false;
 }
 void Chill::close() {
   save();
+  if (active())
+    audio.music(MusicProfile::Off);
+  photos.close();
   sprites.clear();
   package = "";
   version = 0;
@@ -33,16 +43,22 @@ bool Chill::start(const String &id, int nextVersion, JsonVariantConst manifest, 
   close();
   auto def = manifest["definition"];
   String scene = def["scene"] | "";
-  ChillScene kind = scene == "space"  ? ChillScene::Space
-                    : scene == "fire" ? ChillScene::Fire
-                    : scene == "snow" ? ChillScene::Snow
-                                      : ChillScene::None;
+  ChillScene kind = scene == "space"         ? ChillScene::Space
+                    : scene == "fire"        ? ChillScene::Fire
+                    : scene == "loremflickr" ? ChillScene::Photos
+                    : scene == "snow"        ? ChillScene::Snow
+                                             : ChillScene::None;
   if (kind == ChillScene::None || !nextVersion || !validChill(def, manifest["files"]))
     return false;
   motion.reset(kind, def["slider"]["default"] | 45, now);
-  motion.value = std::min(100, int(prefs.getUChar(sceneKey(), motion.value)));
+  motion.value = kind == ChillScene::Photos
+                     ? std::clamp(int(prefs.getInt(sceneKey(), motion.value)), 0, 300)
+                     : std::min(100, int(prefs.getUChar(sceneKey(), motion.value)));
   package = id;
   version = nextVersion;
+  audio.music(MusicProfile(unsigned(kind)), motion.value);
+  if (kind == ChillScene::Photos)
+    photos.start(now, motion.value);
   // Resolve from the immutable in-RAM manifest once. Decode only via the existing media worker.
   auto addFrame = [&](Sprite &s, String path) {
     for (JsonObjectConst f : manifest["files"].as<JsonArrayConst>())
@@ -85,13 +101,18 @@ bool Chill::input(const InputEvent &event, uint32_t now) {
     return false;
   int delta = (event.key == Key::Right || event.key == Key::Up) -
               (event.key == Key::Left || event.key == Key::Down);
-  if (motion.input(delta * 5, now)) {
+  if (motion.input(delta * (motion.scene == ChillScene::Photos ? 15 : 5), now)) {
     dirty = true;
     changedAt = now;
+    audio.music(MusicProfile(unsigned(motion.scene)), motion.value);
+    if (motion.scene == ChillScene::Photos)
+      photos.adjust(motion.value, now);
   }
   return false;
 }
 void Chill::tick(uint32_t now) {
+  if (motion.scene == ChillScene::Photos)
+    photos.tick(now);
   if (dirty && uint32_t(now - changedAt) >= 2000)
     save();
 }
@@ -107,9 +128,12 @@ void Chill::sprite(Arduino_GFX &gfx, Sprite &s, int x, int y, int width, int hei
 void Chill::draw(Arduino_GFX &gfx, uint32_t now) {
   motion.step(now);
   auto scene = motion.scene;
-  gfx.fillScreen(scene == ChillScene::Fire   ? FireBackground
-                 : scene == ChillScene::Snow ? SnowBackground
-                                             : SpaceBackground);
+  if (scene == ChillScene::Photos)
+    photos.draw(gfx, now);
+  else
+    gfx.fillScreen(scene == ChillScene::Fire   ? FireBackground
+                   : scene == ChillScene::Snow ? SnowBackground
+                                               : SpaceBackground);
   if (scene == ChillScene::Snow) {
     for (auto &s : sprites)
       sprite(gfx, s, s.x, s.y, s.role == "foreground" ? 428 : s.width, s.height);
@@ -146,12 +170,15 @@ void Chill::draw(Arduino_GFX &gfx, uint32_t now) {
       gfx.drawPixel(int(p.x), int(p.y), color);
   }
   // A small back chevron is the only persistent UI element.
-  gfx.drawLine(12, 8, 6, 14, 0x8c71);
-  gfx.drawLine(6, 14, 12, 20, 0x8c71);
+  if (scene != ChillScene::Photos) {
+    gfx.drawLine(12, 8, 6, 14, 0x8c71);
+    gfx.drawLine(6, 14, 12, 20, 0x8c71);
+  }
   if (motion.sliderVisible(now)) {
     gfx.fillRoundRect(122, 116, 184, 20, 5, 0x18e3);
     gfx.drawFastHLine(138, 126, 152, 0x8c71);
-    gfx.fillCircle(138 + motion.value * 152 / 100, 126, 4, 0xce79);
+    gfx.fillCircle(138 + motion.value * 152 / (scene == ChillScene::Photos ? 300 : 100), 126, 4,
+                   0xce79);
   }
 }
 } // namespace leap

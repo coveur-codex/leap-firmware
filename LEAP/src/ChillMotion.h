@@ -4,7 +4,7 @@
 #include <cmath>
 #include <cstdint>
 namespace leap {
-enum class ChillScene { None, Space, Fire, Snow };
+enum class ChillScene { None, Space, Fire, Snow, Photos };
 // No images or framebuffer: shared bounded particle simulation, time in seconds.
 class ChillMotion {
   uint32_t rng = 0x4c454150, previous = 0, touched = 0;
@@ -26,7 +26,7 @@ public:
   float time = 0;
   void reset(ChillScene next, int level, uint32_t now) {
     scene = next;
-    value = std::clamp(level, 0, 100);
+    value = std::clamp(level, 0, next == ChillScene::Photos ? 300 : 100);
     previous = now;
     time = 0;
     overlay = false;
@@ -36,7 +36,7 @@ public:
   bool input(int delta, uint32_t now) {
     overlay = true;
     touched = now;
-    int next = std::clamp(value + delta, 0, 100);
+    int next = std::clamp(value + delta, 0, scene == ChillScene::Photos ? 300 : 100);
     bool changed = value != next;
     value = next;
     return changed;

@@ -1,4 +1,5 @@
 #include "Network.h"
+#include "ChillPhotos.h"
 #include "Core.h"
 #include "Media.h"
 #include "MemoryUsage.h"
@@ -415,6 +416,7 @@ void Network::run() {
       if (net.json(base + "/news", value) && value["articles"].is<JsonArray>())
         publishNews(value); // RAM only: timely headlines without extra flash writes.
     }
+    photoInbox.service(net, base, connected);
     KnowledgeRequest request;
     if (xQueueReceive(requests, &request, 0) == pdTRUE && connected) {
       JsonDocument state(&jsonRam);

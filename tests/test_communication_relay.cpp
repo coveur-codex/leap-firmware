@@ -23,7 +23,7 @@ bool Storage::readJson(const String &, JsonDocument &out, size_t) {
   return true;
 }
 String Transport::encode(const String &s) { return s; }
-bool Transport::json(const String &, JsonDocument &, JsonDocument *) { return false; }
+bool Transport::json(const String &, JsonDocument &, JsonDocument *, uint32_t) { return false; }
 }
 
 static JsonDocument config(bool enabled = true) {

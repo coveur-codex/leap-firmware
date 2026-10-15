@@ -1,5 +1,6 @@
 #include "Chill.h"
 #include "ChillAssets.h"
+#include "Audio.h"
 #include <cassert>
 #include <fstream>
 #include <iostream>
@@ -10,6 +11,12 @@ void *RamAllocator::allocate(size_t n) { return malloc(n); }
 void RamAllocator::deallocate(void *p) { free(p); }
 void *RamAllocator::reallocate(void *p, size_t n) { return realloc(p, n); }
 Storage storage;
+Audio audio;
+PhotoInbox photoInbox;
+void ChillPhotos::start(uint32_t, int) {}
+void ChillPhotos::close() {}
+void ChillPhotos::tick(uint32_t) {}
+void ChillPhotos::draw(Arduino_GFX &, uint32_t) {}
 Media::~Media() {}
 std::vector<std::string> paths;
 bool Media::draw(Arduino_GFX &, const String &, const String &path, int, int, int, int, bool,
@@ -136,6 +143,21 @@ int main(int argc, char **argv) {
   assert(chill.active());
   assert(chill.input({true, Key::Center, false}, 160));
   assert(chill.input({false, Key::Center, false}, 170)); // Back also works before assets start.
+  JsonDocument photo;
+  photo["definition"]["scene"] = "loremflickr";
+  photo["definition"]["minFirmware"] = "1.1.0";
+  photo["definition"]["slider"]["min"] = 0;
+  photo["definition"]["slider"]["max"] = 300;
+  photo["definition"]["slider"]["default"] = 200;
+  photo["definition"]["sprites"].to<JsonArray>();
+  assert(chill.start("chill-loremflickr", 1, photo, 200));
+  assert(chill.motion.value == 200);
+  chill.input({true, Key::Right, false}, 250);
+  assert(chill.motion.value == 215);
+  chill.close();
+  assert(chill.start("chill-loremflickr", 1, photo, 300));
+  assert(chill.motion.value == 215);
+  chill.close();
   for (int i = 1; i < argc; ++i) {
     std::ifstream in(argv[i]);
     JsonDocument m;

@@ -1,3 +1,13 @@
+# 1.1.0
+
+- Gemeinsame regelbasierte Chill-Komposition mit acht Synthesizer-Stimmen, vier
+  Profilen, Motivgedächtnis, ADSR, Instrumentenpegeln und weichen Profilwechseln.
+- LoremFlickr über den Homeserver, Prefetch und persistentes letztes Bild,
+  Übergänge 1,5 s → 0,3 s Schwarz → 1,5 s mit harmonischen Ereignissen.
+- Pro Szene gespeicherter Slider; für Fotos linear 30–300 s, initial 120 s.
+- Gemeinsame überprüfbare Idle-Ausnahme für den gesamten Chill-Bereich.
+- WAV- und Benachrichtigungs-Mixing bleiben im vorhandenen I2S-Task verfügbar.
+
 # Changelog
 
 ## 1.0.11 – 2026-10-14
