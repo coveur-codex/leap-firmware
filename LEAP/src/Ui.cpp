@@ -27,6 +27,8 @@ static String displayText(const String &s) {
   return String(displayGlyphs(s.c_str()).c_str());
 }
 static String gameTitle(const String &id) {
+  if (id == "math_lab")
+    return "Mathe-Labor";
   if (id == "dragon_run")
     return "Drachenrennen";
   if (id == "crab_journey")
@@ -1040,7 +1042,7 @@ void Ui::render() {
   }
   if (!locked && !menu && gameOpen &&
       (game.isPet() || game.isConnectFour() || game.isKitchen() || game.isCrabJourney() ||
-       game.isDragonRun())) {
+       game.isDragonRun() || game.isMathLab())) {
     canvas->flush();
     return;
   }
@@ -1098,6 +1100,14 @@ void Ui::input(const InputEvent &e) {
     return;
   if (!locked && !menu && gameOpen && game.isCrabJourney() && game.crabInput(e))
     return;
+  if (!locked && !menu && gameOpen && game.isMathLab() && !e.longPress) {
+    if (game.mathLabInput(e)) {
+      game.close();
+      gameOpen = false;
+      selection = scroll = 0;
+    }
+    return;
+  }
   // Only the kitchen uses the additional hold; other pages keep one long action.
   if (e.longPress && e.heldMs >= Input::ExtendedCenterHoldMs)
     return;

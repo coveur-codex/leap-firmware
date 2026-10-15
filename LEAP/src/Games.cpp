@@ -142,6 +142,8 @@ void Games::start(const String &id) {
   if (opened)
     close();
   kind = id;
+  if (isMathLab())
+    mathLab.start();
   if (isDragonRun()) {
     dragon.start(esp_random());
     dragonJumpHeld = false;
@@ -183,6 +185,8 @@ void Games::start(const String &id) {
     s = esp_random() % 4;
 }
 void Games::input(Key key) {
+  if (isMathLab())
+    return;
   if (isDragonRun())
     return; // Only full right-switch events enter this game.
   if (isCrabJourney())
@@ -283,6 +287,8 @@ void Games::input(Key key) {
 }
 void Games::tick() {
   uint32_t now = millis();
+  if (opened && isMathLab())
+    mathLab.tick(now);
   if (dragonDirty && elapsed(now, dragonSavedAt, 5000))
     saveDragon();
   if (crabDirty && elapsed(now, crabSavedAt, 5000))
@@ -383,6 +389,10 @@ void Games::tick() {
   }
 }
 void Games::draw(Arduino_GFX &gfx, int left, int top) {
+  if (isMathLab()) {
+    mathLab.draw(gfx);
+    return;
+  }
   if (isDragonRun()) {
     drawDragonRun(gfx, dragon, dragonBest, dragonDirty);
     return;
