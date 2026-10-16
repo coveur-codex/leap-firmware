@@ -10,6 +10,7 @@
 #include "ChatSelection.h"
 #include <vector>
 #include "Notifications.h"
+#include "TimeModule.h"
 namespace leap {
 struct Page {
   String id, title;
@@ -59,6 +60,11 @@ class Ui {
   bool reload(bool initial = false);
   void render();
   void sidebar();
+  TimeModule timeModule;
+  bool stopwatchView = false, timeEditing = false, editSeconds = false;
+  int timePreset = 0, customSeconds = 5 * 60, lapScroll = 0;
+  void drawTime();
+  void timeAction(const InputEvent &event);
   Notifications notifications;
   NewsNotifications newsNotifications;
   AircraftProximity aircraftProximity;
