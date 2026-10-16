@@ -34,7 +34,8 @@ int main() {
   }
   assert(displayTextBounds("WWW", 0, 3, true).width >
          displayTextBounds("iii", 0, 3, true).width * 3);
-  assert(displayTextBounds("j", 0, 1, true).left == -1);
+  const auto &descender = HeadingGlyphs['j' - HeadingFont.first];
+  assert(descender.yOffset + descender.height > 0);
 
   // Exact fits, word boundaries, explicit blank lines and a long unbroken token.
   auto exact = fitDisplayLine("WW rest", 0, displayTextBounds("WW", 0, 2, true).width, true);
@@ -60,12 +61,14 @@ int main() {
     auto glyphs = displayGlyphs(example);
     assert(fitDisplayLine(glyphs, 0, 196, true).end == glyphs.size());
   }
-  assert(HeadingLineHeight + HeadingHeight <= 28); // Two quiz rows above y=49 answers.
-  assert(12 + HeadingLineHeight + HeadingHeight <= 49 - 3);
-  assert(HeadingGlyphs['H' - HeadingFont.first].height == 8);
+  // Two enlarged question rows cannot touch the selected answer's background.
+  assert(QuizQuestionTop + HeadingLineHeight + HeadingHeight < QuizAnswersTop - 3);
+  assert(QuizAnswersTop + 3*19 + 8 <= 132); // All four answers above the footer.
+  assert(HeadingGlyphs['H' - HeadingFont.first].height == 11);
+  assert(HeadingHeight == 17);
   Display display;
   printHeadingLine(display, "j", 94, 12, -1, 0x1234);
   assert(display.printed == "j" && display.x == 95 && display.y == 12 + HeadingAscent);
   assert(display.color == 0x1234 && display.font == nullptr);
-  std::cout << "PASS: compact Helvetica Bold glyphs, German characters, proportional wrapping, quiz bounds and font restoration\n";
+  std::cout << "PASS: Helvetica Bold 10 glyphs, German characters, proportional wrapping, quiz bounds and font restoration\n";
 }
