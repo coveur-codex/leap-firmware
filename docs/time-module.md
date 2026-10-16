@@ -15,7 +15,7 @@ Seiten- und Menütasten verfügbar. Beide Messungen können gleichzeitig laufen.
 - Stoppuhr: MITTE startet/pausiert, RECHTS speichert eine Zwischenzeit
   (Gesamtzeit und Abstand zur vorherigen Runde, höchstens 20).
   LINKS blättert während der Messung durch ältere Runden und setzt im pausierten
-  Zustand zurück. Anzeige auf Hundertstelsekunden, Bildschirmaktualisierung 100 ms.
+  Zustand zurück. RECHTS blättert im pausierten Zustand durch ältere Runden. Anzeige auf Hundertstelsekunden, Bildschirmaktualisierung 100 ms.
 
 Der Ring aus 60 Punkten leert sich in der Geräte-Akzentfarbe im Uhrzeigersinn.
 Die Messung nutzt monotone Millisekunden und läuft auf anderen Seiten, in Spielen,

@@ -617,13 +617,14 @@ void Ui::drawTime() {
   if (stopwatchView) {
     text(timeLabel(timeModule.elapsedMs(), true), 100, 30, 3, Accent);
     text(timeModule.measuring() ? "Läuft" : "Bereit / Pause", 100, 59, 1, Muted);
+    text(String(timeModule.lapCount) + "/20 Runden", 280, 59, 1, Muted);
     int first = std::max(0, int(timeModule.lapCount) - 3 - lapScroll);
     for (int row = 0; row < 3 && first + row < int(timeModule.lapCount); ++row) {
       int i = first + row;
       text(String(i + 1) + ". " + timeLabel(timeModule.laps[i], true) + "  +" +
            timeLabel(timeModule.laps[i] - (i ? timeModule.laps[i - 1] : 0), true), 100, 78 + row * 16);
     }
-    notice = "OK Start/Pause  R Runde  L Reset/ältere";
+    notice = timeModule.measuring() ? "OK Pause  R Runde  L ältere" : "OK Start  R ältere  L Reset";
     return;
   }
   // A ring of 60 beads empties clockwise, using the device accent throughout.
@@ -658,7 +659,10 @@ void Ui::timeAction(const InputEvent &e) {
   if (e.key == Key::Up || e.key == Key::Down) { stopwatchView = !stopwatchView; return; }
   if (stopwatchView) {
     if (e.key == Key::Center) timeModule.toggleStopwatch(millis());
-    if (e.key == Key::Right) { timeModule.lap(millis()); lapScroll = 0; }
+    if (e.key == Key::Right) {
+      if (timeModule.measuring()) { timeModule.lap(millis()); lapScroll = 0; }
+      else lapScroll = (lapScroll + 3) % std::max(1, int(timeModule.lapCount));
+    }
     if (e.key == Key::Left) {
       if (timeModule.measuring()) lapScroll = (lapScroll + 3) % std::max(1, int(timeModule.lapCount));
       else { timeModule.resetStopwatch(); lapScroll = 0; }
