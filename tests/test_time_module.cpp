@@ -24,8 +24,11 @@ int main() {
   time.setSeconds(UINT32_MAX); assert(time.secondsLeft() == TimeModule::MaxSeconds);
   time.setSeconds(1); time.toggleTimer(11000); time.toggleTimer(12000);
   assert(time.tick(12000)); // input exactly at expiry cannot swallow the alarm
-  for (unsigned i = 0; i < 25; ++i) { time.toggleStopwatch(13000 + i * 2); time.lap(13001 + i * 2); }
-  assert(time.lapCount <= 20);
+  time.toggleStopwatch(13000);
+  for (unsigned i = 0; i < 25; ++i) time.lap(13001 + i * 2);
+  assert(time.lapCount == 20 && time.laps[19] == 39);
+  time.resetStopwatch(); assert(time.lapCount == 20); // a running measurement cannot be discarded
+  time.toggleStopwatch(14000); time.resetStopwatch(); assert(time.lapCount == 0);
   Notifications notices;
   notices.submit({"news", "News", "", ""}); notices.tick(0);
   notices.submit({"time", "Fertig", "", "", 0x1234, NotificationSound::Alarm});
