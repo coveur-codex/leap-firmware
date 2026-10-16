@@ -115,6 +115,25 @@ int main() {
   photos.close(); // cancel an enqueued request before the worker gets it
   photoInbox.service(transport, "/api/v1/devices/test", true);
   assert(!photoInbox.busy);
+  // Local albums are decoded by the same worker, without any HTTP request or cache writes.
+  online = false; color = 0x001f;
+  fakeFiles["/chill-photo.jpg"] = std::make_shared<std::string>("network-cache");
+  fakeFiles["/blob/album-a"] = std::make_shared<std::string>("a");
+  fakeFiles["/blob/album-b"] = std::make_shared<std::string>("b");
+  before = requests;
+  photos.startAlbum(3000000, 300, {String("/blob/album-a"), String("/blob/album-b")});
+  photos.tick(3000000);
+  photoInbox.service(transport, "/api/v1/devices/test", false);
+  for (uint32_t now : {3000100u,3001300u,3002800u,3003100u,3004600u}) photos.tick(now);
+  photos.draw(gfx,3004600); assert(gfx.pixels[1000] == 0x001f && requests == before);
+  assert(*fakeFiles.at("/chill-photo.jpg") == "network-cache");
+  color = 0xffe0; photos.tick(3016300);
+  photoInbox.service(transport, "/api/v1/devices/test", false);
+  for (uint32_t now : {3030100u,3031300u,3032800u,3033100u,3034600u}) photos.tick(now);
+  photos.draw(gfx,3034600); assert(gfx.pixels[1000] == 0xffe0 && requests == before);
+  photos.close();
+  photos.startAlbum(4000000, 200, {String("/blob/album-a")}); photos.tick(4000000); photos.close();
+  photoInbox.service(transport, "", false); assert(!photoInbox.busy && !photoInbox.take());
   puts("PASS: real photo lifecycle, rendering, offline/backoff, invalid decode, black swap, cache "
        "restore and in-flight cancellation");
 }

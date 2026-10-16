@@ -388,9 +388,9 @@ void Games::tick() {
     }
   }
 }
-void Games::draw(Arduino_GFX &gfx, int left, int top) {
+void Games::draw(Arduino_GFX &gfx, int left, int top, uint16_t accent) {
   if (isMathLab()) {
-    mathLab.draw(gfx);
+    mathLab.draw(gfx, accent);
     return;
   }
   if (isDragonRun()) {

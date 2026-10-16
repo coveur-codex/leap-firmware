@@ -64,3 +64,9 @@ bleibt erforderlich: Augenbilder, Kantennummern und 5×2-Felder auf dem kleinen
 Panel prüfen; Original/Nachbau und Hilfefarben auch bei leerem Stapel testen.
 Die Kantenübungen beginnen bewusst mit Einzelwürfeln; die drei Stufen erweitern dort
 die Anzahl der auswählbaren Kanten. Bei Draufsichten steigt die Gebäudegröße mit der Stufe.
+
+
+Ab 1.1.2 kommen Menüauswahl, Titel, Mengen und Bauwerke aus der konfigurierten
+Geräteakzentfarbe. Der Text ausgewählter Menüzeilen wechselt abhängig von deren
+Helligkeit zwischen hell und dunkel. Die beiden Würfel behalten unabhängig von
+der Akzentfarbe dunkle Augen auf Weiß, beim zweiten Würfel dunkelviolett.

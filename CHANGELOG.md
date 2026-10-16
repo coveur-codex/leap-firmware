@@ -1,3 +1,13 @@
+# 1.1.2 – Farben, kompakte Überschriften, eigene Chill-Bilder und Chatavatare
+
+- Mathe-Labor verwendet die Geräteakzentfarbe für Menü, Mengen, Bauwerke und Markierungen.
+  Kontrastabhängige Menüs und dunkelviolette Würfelaugen ersetzen Gelb auf Weiß.
+- Helvetica Bold 8 für News-Titel, Flugzeugkennungen und Quizfragen: kleinere, echte fette Glyphen.
+- Eigene Offline-Chill-Alben verwenden die normale Asset-Verteilung und bestehende
+  Überblendungs-/Musiklogik; höchstens zwei dekodierte Fotos gleichzeitig im RAM.
+- Rechtsbündige 48px-Absenderbilder im Chat; neues gemeinsames Paket mit unveränderlichen
+  Porträts statt vollständiger fremder Avatarpakete. Ältere Nachrichten/Server bleiben nutzbar.
+
 # 1.1.1 – Mathe-Labor
 
 - Ein Spieleintrag mit vier offline verfügbaren Lernaktivitäten und frei wählbaren Stufen.

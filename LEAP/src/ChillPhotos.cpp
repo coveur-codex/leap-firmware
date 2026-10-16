@@ -1,6 +1,7 @@
 #include "ChillPhotos.h"
 #include "Audio.h"
 #include "Transport.h"
+#include <memory>
 namespace leap {
 PhotoInbox photoInbox;
 void PhotoInbox::service(Transport &net, const String &base, bool connected) {
@@ -9,16 +10,23 @@ void PhotoInbox::service(Transport &net, const String &base, bool connected) {
   uint32_t id = requested.exchange(0);
   if (!id)
     return;
+  std::unique_ptr<String> source(localSource.exchange(nullptr));
+  const bool local = source && source->length();
   PhotoFrame *frame = nullptr;
+  if (local && active == id) {
+    auto *pixels = Media::decode(*source, "photo.jpg", 428, 142);
+    if (pixels)
+      frame = new PhotoFrame{id, pixels};
+  }
   // Restore once per session; only successful new photos replace this bounded cache.
   static uint32_t restored = 0;
-  if (id != restored && active == id) {
+  if (!local && id != restored && active == id) {
     restored = id;
     auto *pixels = Media::decode("/chill-photo.jpg", "photo.jpg", 428, 142);
     if (pixels)
       frame = new PhotoFrame{id, pixels};
   }
-  if (!frame && connected && active == id) {
+  if (!local && !frame && connected && active == id) {
     log("PHOTO", "Prefetch started");
     JsonDocument info(&jsonRam);
     if (storage.freeBytes() > ReserveBytes + 128 * 1024 &&
@@ -54,7 +62,13 @@ void ChillPhotos::start(uint32_t now, int value) {
   backoff = 10000;
   attempted = false;
 }
+void ChillPhotos::startAlbum(uint32_t now, int value, std::vector<String> sources) {
+  start(now, value);
+  album = std::move(sources);
+  albumIndex = 0;
+}
 void ChillPhotos::close() {
+  album.clear();
   if (!session)
     return;
   photoInbox.close();
@@ -72,12 +86,14 @@ void ChillPhotos::tick(uint32_t now) {
       delete next;
       next = frame;
       backoff = 10000;
+      if (!album.empty())
+        albumIndex = (albumIndex + 1) % album.size();
     } else
       delete frame;
   }
-  if (!next && !photoInbox.busy && transition.prefetch(now, current != nullptr) &&
-      (!attempted || int32_t(now - retryAt) >= 0)) {
-    photoInbox.request(session);
+  if (!next && !photoInbox.busy && (album.size() != 1 || !current) &&
+      transition.prefetch(now, current != nullptr) && (!attempted || int32_t(now - retryAt) >= 0)) {
+    photoInbox.request(session, album.empty() ? String() : album[albumIndex]);
     attempted = true;
     retryAt = now + backoff;
     backoff = std::min(backoff * 2, uint32_t(300000));

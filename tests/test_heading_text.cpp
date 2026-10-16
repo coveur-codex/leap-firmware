@@ -60,11 +60,12 @@ int main() {
     auto glyphs = displayGlyphs(example);
     assert(fitDisplayLine(glyphs, 0, 196, true).end == glyphs.size());
   }
-  assert(HeadingLineHeight + HeadingHeight == 34); // Two quiz rows above y=49 answers.
+  assert(HeadingLineHeight + HeadingHeight <= 28); // Two quiz rows above y=49 answers.
   assert(12 + HeadingLineHeight + HeadingHeight <= 49 - 3);
+  assert(HeadingGlyphs['H' - HeadingFont.first].height == 8);
   Display display;
   printHeadingLine(display, "j", 94, 12, -1, 0x1234);
-  assert(display.printed == "j" && display.x == 95 && display.y == 25);
+  assert(display.printed == "j" && display.x == 95 && display.y == 12 + HeadingAscent);
   assert(display.color == 0x1234 && display.font == nullptr);
-  std::cout << "PASS: Helvetica glyphs, German characters, proportional wrapping, quiz bounds and font restoration\n";
+  std::cout << "PASS: compact Helvetica Bold glyphs, German characters, proportional wrapping, quiz bounds and font restoration\n";
 }

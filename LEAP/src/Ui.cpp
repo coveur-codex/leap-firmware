@@ -16,6 +16,7 @@
 #include "GameSelection.h"
 #include "Communication.h"
 #include "ChatSymbols.h"
+#include "ChatAvatar.h"
 #include <algorithm>
 #include <time.h>
 namespace leap {
@@ -842,7 +843,7 @@ void Ui::drawPage(const String &id) {
     }
   } else if (id == "games") {
     if (gameOpen)
-      game.draw(*canvas, 94, 10);
+      game.draw(*canvas, 94, 10, Accent);
     else {
       std::vector<String> labels;
       for (const auto &id : enabledGames(state["config"]))
@@ -882,7 +883,14 @@ void Ui::drawPage(const String &id) {
       scroll = 0;
       uint16_t ownAccent = Accent; Accent = senderColor;
       chatSymbol(last.symbol, 94, 26, last.text[0] ? 1 : 2);
-      body(last.text, 112, 26, 308, 28, "", senderColor);
+      body(last.text, 112, 26, 252, 28, "", senderColor);
+      auto portrait = chatAvatarBlob(manifestFor("communication-avatars"), last.avatarImage);
+      bool shown = !portrait.empty() && senderAvatar.draw(*canvas, storage.blob(portrait.c_str()),
+          "sender.png", 372, 6, 48, 48, true, Background, true, false, true);
+      if (!shown) {
+        canvas->fillCircle(396, 20, 7, senderColor);
+        canvas->fillRoundRect(383, 31, 26, 18, 6, senderColor);
+      }
       Accent = ownAccent;
       scroll = old;
     } else

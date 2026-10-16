@@ -13,4 +13,11 @@ inline uint16_t accentColor(const char *hex) {
   }
   return ((rgb >> 19) << 11) | (((rgb >> 10) & 63) << 5) | ((rgb >> 3) & 31);
 }
+// Relative RGB565 luminance for readable text on an arbitrary configured color.
+inline uint16_t contrastInk(uint16_t color) {
+  int r = (color >> 11) * 255 / 31;
+  int g = ((color >> 5) & 63) * 255 / 63;
+  int b = (color & 31) * 255 / 31;
+  return 299*r + 587*g + 114*b >= 140000 ? 0x0841 : 0xffff;
+}
 } // namespace leap

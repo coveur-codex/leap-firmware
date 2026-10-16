@@ -110,6 +110,18 @@ int main() {
         }
       }
   lab.start();
+  Arduino_GFX palette; palette.recordAll = true;
+  lab.draw(palette, 0xf81f);
+  bool themed = false;
+  for (auto &rect : palette.rects) themed |= rect.color == 0xf81f;
+  assert(themed);
+  lab.screen = MathLab::Screen::Play; lab.activity = 0; lab.diceCount = 2; lab.a = lab.b = 5;
+  palette.rects.clear(); lab.draw(palette, 0xf81f);
+  bool purplePips = false;
+  for (auto &r : palette.rects) if (r.x >= 180 && r.x <= 218 && r.y >= 35 && r.y <= 73)
+    purplePips |= r.color == 0x3010;
+  assert(purplePips);
+  lab.start();
   lab.activity = 1;
   lab.variant = 3;
   lab.difficulty = 3;

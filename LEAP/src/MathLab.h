@@ -21,7 +21,7 @@ public:
   // Returns true only when leaving the laboratory for the existing games menu.
   bool input(const InputEvent &e);
   void tick(uint32_t now);
-  void draw(Arduino_GFX &gfx);
+  void draw(Arduino_GFX &gfx, uint16_t accent = 0x06b8);
   void newTask();
   void check();
 };

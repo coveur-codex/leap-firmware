@@ -1,4 +1,5 @@
 #include "MathLab.h"
+#include "AccentColor.h"
 #include "DisplayText.h"
 namespace leap {
 namespace {
@@ -34,13 +35,14 @@ void die(Arduino_GFX &g, int x, int y, int n, uint16_t color) {
   }
 }
 // Ordered five/ten frames; each outlined group contains exactly ten slots.
-void quantity(Arduino_GFX &g, int x, int y, int n, int split = -1, int step = 10) {
+void quantity(Arduino_GFX &g, int x, int y, int n, int split = -1, int step = 10,
+              uint16_t accent = Teal) {
   for (int block = 0; block < (n + 9) / 10; ++block) {
     int bx = x + (block % 5) * (5 * step + 4), by = y + (block / 5) * (2 * step + 5);
     g.drawRect(bx - 3, by - 3, 5 * step, 2 * step, Muted);
     for (int j = 0; j < 10; ++j) {
       int i = block * 10 + j, px = bx + (j % 5) * step, py = by + (j / 5) * step;
-      g.fillCircle(px, py, step / 3, i < n ? (split >= 0 && i >= split ? Gold : Teal) : Bg);
+      g.fillCircle(px, py, step / 3, i < n ? (split >= 0 && i >= split ? Gold : accent) : Bg);
     }
   }
 }
@@ -60,7 +62,7 @@ void cube(Arduino_GFX &g, int ox, int oy, int scale, uint16_t c) {
     line(g, v[e[0]], v[e[1]], ox, oy, Ink);
 }
 void building(Arduino_GFX &g, const mathlab::Building &b, int ox, int oy, int cursor = -1,
-              unsigned diff = 0) {
+              unsigned diff = 0, uint16_t accent = Teal) {
   const int s = 10;
   for (int depth = 0; depth <= 4; ++depth)
     for (int y = 0; y < b.size; ++y)
@@ -69,7 +71,7 @@ void building(Arduino_GFX &g, const mathlab::Building &b, int ox, int oy, int cu
           continue;
         int i = y * 3 + x;
         auto p = mathlab::project(x, y, 0, s);
-        uint16_t c = diff & (1u << i) ? Gold : Teal;
+        uint16_t c = diff & (1u << i) ? Gold : accent;
         auto v = mathlab::vertices(s);
         for (int e = 0; e < 4; ++e)
           line(g, v[mathlab::edges[e][0]], v[mathlab::edges[e][1]], ox + p.x, oy + p.y + s, c);
@@ -255,16 +257,16 @@ bool MathLab::input(const InputEvent &e) {
   }
   return false;
 }
-void MathLab::draw(Arduino_GFX &g) {
-  label(g, 94, 3, screen == Screen::Activities ? "Mathe-Labor" : activities[activity], Teal);
+void MathLab::draw(Arduino_GFX &g, uint16_t accent) {
+  label(g, 94, 3, screen == Screen::Activities ? "Mathe-Labor" : activities[activity], accent);
   if (screen == Screen::Activities) {
     label(g, 100, 20, "Zahlen entdecken", Muted);
     label(g, 100, 77, "Räumlich denken", Muted);
     for (int i = 0; i < 4; ++i) {
       int y = 34 + (i / 2) * 57 + (i % 2) * 20;
       if (i == activity)
-        g.fillRoundRect(96, y - 3, 322, 17, 3, 0x2390);
-      label(g, 104, y, activities[i]);
+        g.fillRoundRect(96, y - 3, 322, 17, 3, accent);
+      label(g, 104, y, activities[i], i == activity ? contrastInk(accent) : Ink);
     }
     label(g, 94, 133, "R: wählen/OK   L OK: Spiele", Muted);
     return;
@@ -274,30 +276,31 @@ void MathLab::draw(Arduino_GFX &g) {
     for (int i = 0; i < 4; ++i) {
       int y = 27 + i * 24;
       if (setting == i)
-        g.fillRoundRect(96, y - 4, 322, 20, 3, 0x2390);
+        g.fillRoundRect(96, y - 4, 322, 20, 3, accent);
+      const uint16_t rowInk = setting == i ? contrastInk(accent) : Ink;
       if (i == 0)
-        label(g, 102, y, variants[activity][variant]);
+        label(g, 102, y, variants[activity][variant], rowInk);
       if (i == 1) {
         snprintf(s, sizeof(s), activity == 1 ? "Zahlenraum: bis %d" : "Baustufe / Stufe: %d",
                  activity == 1 ? mathlab::numberLimit(difficulty) : difficulty + 1);
-        label(g, 102, y, s);
+        label(g, 102, y, s, rowInk);
       }
       if (i == 2) {
         snprintf(s, sizeof(s), "Merkzeit: %d s", seconds);
-        label(g, 102, y, activity == 2 ? s : "Alle Stufen frei wählbar");
+        label(g, 102, y, activity == 2 ? s : "Alle Stufen frei wählbar", rowInk);
       }
       if (i == 3)
-        label(g, 102, y, "Los geht's!");
+        label(g, 102, y, "Los geht's!", rowInk);
     }
     label(g, 94, 133, "R: Zeile / <> ändern / OK starten", Muted);
     return;
   }
   label(g, 94, 17, variants[activity][variant], Muted);
   if (activity == 0) {
-    die(g, 110, 35, a, Teal);
+    die(g, 110, 35, a, 0x0841);
     if (diceCount == 2 || variant != 0) {
       label(g, 158, 49, "+", Ink, 2);
-      die(g, 180, 35, b, Gold);
+      die(g, 180, 35, b, 0x3010);
     }
     if (variant == 2) {
       uint32_t max = 1;
@@ -305,7 +308,7 @@ void MathLab::draw(Arduino_GFX &g) {
         max = std::max(max, n);
       for (int i = 0; i < 11; ++i) {
         int h = uint64_t(histogram.bins[i]) * 42 / max;
-        g.fillRect(240 + i * 16, 95 - h, 10, h, Teal);
+        g.fillRect(240 + i * 16, 95 - h, 10, h, accent);
         number(g, 240 + i * 16, 99, i + 2, Ink, 1);
       }
       number(g, 110, 83, histogram.throws, Gold, 1);
@@ -315,7 +318,7 @@ void MathLab::draw(Arduino_GFX &g) {
       label(g, 245, 34, "Ziel");
       number(g, 289, 31, target, Gold);
       label(g, 245, 57, selectedDie ? "Würfel 2 ändern" : "Würfel 1 ändern");
-      number(g, 245, 79, __builtin_popcount(found), Teal, 1);
+      number(g, 245, 79, __builtin_popcount(found), accent, 1);
       label(g, 263, 79, "Paare entdeckt");
     } else {
       label(g, 245, 35, "Wie viele?");
@@ -325,11 +328,11 @@ void MathLab::draw(Arduino_GFX &g) {
       char s[40];
       snprintf(s, sizeof(s), "%d + %d = %d", a, (variant == 0 && diceCount == 1) ? 0 : b,
                a + ((variant == 0 && diceCount == 1) ? 0 : b));
-      label(g, 110, 87, s, Teal, 2);
+      label(g, 110, 87, s, accent, 2);
     }
   } else if (activity == 1) {
     if (variant == 0 || variant == 1) {
-      quantity(g, 104, 39, target, variant == 1 ? part : -1, difficulty == 3 ? 6 : 10);
+      quantity(g, 104, 39, target, variant == 1 ? part : -1, difficulty == 3 ? 6 : 10, accent);
       if (variant == 0) {
         label(g, 104, 91, "Wie viele?");
         number(g, 185, 87, answer, Gold);
@@ -340,25 +343,25 @@ void MathLab::draw(Arduino_GFX &g) {
         label(g, 280, 94, selectedPart ? "Teil 2" : "Teil 1");
       }
       if (help && variant == 0)
-        number(g, 340, 91, target, Teal);
+        number(g, 340, 91, target, accent);
     } else if (variant == 2) {
-      quantity(g, 102, 38, a, -1, 5);
-      quantity(g, 270, 38, b, -1, 5);
+      quantity(g, 102, 38, a, -1, 5, accent);
+      quantity(g, 270, 38, b, -1, 5, accent);
       const char *choices[] = {"Links kleiner <", "Gleich viel =", "Links größer >"};
       label(g, 154, 94, choices[answer], Gold);
       if (help) {
-        number(g, 108, 87, a, Teal);
+        number(g, 108, 87, a, accent);
         number(g, 360, 87, b, Gold);
       }
     } else {
       label(g, 103, 33, "Baue");
       number(g, 140, 30, target, Gold);
       // Up to nine ten frames, each with ten visible points.
-      quantity(g, 104, 59, tens * 10, -1, 6);
-      quantity(g, 290, 59, ones, -1, 9);
+      quantity(g, 104, 59, tens * 10, -1, 6, accent);
+      quantity(g, 290, 59, ones, -1, 9, accent);
       char s[48];
       snprintf(s, sizeof(s), "%d Z + %d E = %d", tens, ones, tens * 10 + ones);
-      label(g, 104, 94, s, Teal);
+      label(g, 104, 94, s, accent);
       label(g, 270, 94, selectedPart ? "> Einer" : "> Zehner");
       if (help) {
         snprintf(s, sizeof(s), "%d Zehner + %d Einer", target / 10, target % 10);
@@ -368,12 +371,12 @@ void MathLab::draw(Arduino_GFX &g) {
   } else if (activity == 2) {
     unsigned diff = feedback ? original.differences(built) : 0;
     if (preview || variant == 0 || feedback) {
-      building(g, original, 170, 70, -1, diff);
+      building(g, original, 170, 70, -1, diff, accent);
       label(g, 128, 100, "Vorlage");
     } else
       label(g, 106, 57, "Im Kopf ...", Muted);
     if (!preview || variant == 0 || feedback) {
-      building(g, built, 337, 70, cursor, diff);
+      building(g, built, 337, 70, cursor, diff, accent);
       label(g, 294, 100, "Dein Bau");
     } else
       label(g, 273, 55, "R OK: bauen", Gold);
@@ -395,7 +398,8 @@ void MathLab::draw(Arduino_GFX &g) {
       }
       // Numbers sit at edge midpoints; the selected candidate is also drawn right.
       if (i < 3 + 3 * difficulty)
-        number(g, 169 + (p.x + q.x) / 2, 69 + (p.y + q.y) / 2, i + 1, i == chosen ? Gold : Teal, 1);
+        number(g, 169 + (p.x + q.x) / 2, 69 + (p.y + q.y) / 2, i + 1, i == chosen ? Gold : accent,
+               1);
     }
     label(g, 250, 35, "Welche Kante?");
     number(g, 290, 53, chosen + 1, Gold);
@@ -403,7 +407,7 @@ void MathLab::draw(Arduino_GFX &g) {
     if (help)
       label(g, 240, 99, "Kanten bleiben parallel", Gold);
   } else {
-    building(g, original, 153, 64);
+    building(g, original, 153, 64, -1, 0, accent);
     label(g, 112, 98, "Vorlage");
     for (int i = 0; i < 3; ++i) {
       // Plan view exposes all columns, making hidden-stack ambiguities impossible.
@@ -412,7 +416,7 @@ void MathLab::draw(Arduino_GFX &g) {
         for (int x = 0; x < original.size; ++x) {
           int n = views[i].heights[y * 3 + x];
           g.drawRect(ox + x * 15, 42 + y * 15, 15, 15, Muted);
-          number(g, ox + 4 + x * 15, 46 + y * 15, n, help && i == solution ? Teal : Ink, 1);
+          number(g, ox + 4 + x * 15, 46 + y * 15, n, help && i == solution ? accent : Ink, 1);
         }
       number(g, ox + 14, 98, i + 1, chosen == i ? Gold : Ink, 1);
     }
@@ -421,7 +425,7 @@ void MathLab::draw(Arduino_GFX &g) {
   if (feedback && activity != 2)
     label(g, 94, 121,
           correct ? "Entdeckt! Probiere weiter." : "Schau auf die farbigen Gruppen / Kanten.",
-          correct ? Teal : Gold);
+          correct ? accent : Gold);
   const char *footer = "L OK zurück  < Hilfe  > neu | R wählen/OK";
   if (activity == 0 && variant == 0)
     footer = "L v: 1/2 Würfel  > Wurf  R wählen/OK";
