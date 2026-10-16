@@ -7,14 +7,14 @@
 #include <string>
 #include <set>
 namespace leap {
-enum class NotificationSound : uint8_t { Silent, Pling, Plong, Swish };
+enum class NotificationSound : uint8_t { Silent, Pling, Plong, Swish, Alarm };
 struct Notification {
   std::string service, title, text, symbol;
   uint16_t color = 0x06b8;
   NotificationSound sound = NotificationSound::Pling;
   unsigned count = 1;
   std::string target{};
-  uint32_t duration() const { return service == "news" || service == "aircraft" ? 10000 : 5000; }
+  uint32_t duration() const { return service == "time" || service == "news" || service == "aircraft" ? 10000 : 5000; }
 };
 // UI-task owned. Services submit presentation data; the UI owns timing and acknowledgement.
 class Notifications {
@@ -35,7 +35,11 @@ public:
       }
     }
     if (pending.size() == 12) pending.pop_front();
-    pending.push_back(std::move(message));
+    if (message.service == "time") {
+      // A child's countdown must ring at its deadline even with other cards queued.
+      showing = false;
+      pending.push_front(std::move(message));
+    } else pending.push_back(std::move(message));
   }
   // True only on a new presentation, so sound plays once per visible card.
   bool tick(uint32_t now) {

@@ -6,12 +6,12 @@
 namespace leap {
 // Short decaying chime mixed into music/game audio, never queued behind a WAV.
 class NotificationTone {
-  double seconds = 1;
+  double seconds = 2;
   NotificationSound sound = NotificationSound::Pling;
   uint32_t noise = 0x9e3779b9;
-  double duration() const { return sound == NotificationSound::Swish ? 0.3 : 0.18; }
+  double duration() const { return sound == NotificationSound::Alarm ? 1.2 : sound == NotificationSound::Swish ? 0.3 : 0.18; }
 public:
-  void start(NotificationSound kind = NotificationSound::Pling) { sound = kind; seconds = kind == NotificationSound::Silent ? 1 : 0; }
+  void start(NotificationSound kind = NotificationSound::Pling) { sound = kind; seconds = kind == NotificationSound::Silent ? 2 : 0; }
   bool active() const { return seconds < duration(); }
   int16_t next(uint32_t rate) {
     if (!active() || !rate) return 0;
@@ -21,6 +21,11 @@ public:
       noise ^= noise << 13; noise ^= noise >> 17; noise ^= noise << 5;
       wave = (int32_t(noise & 65535) - 32768) / 32768.0;
       envelope *= std::min(1.0, seconds / 0.015);
+    }
+    if (sound == NotificationSound::Alarm) {
+      double beat = std::fmod(seconds, 0.3);
+      wave = beat < 0.18 ? std::sin(seconds * 880 * 6.283185307179586) : 0;
+      envelope = beat < 0.18 ? 1 - beat / 0.18 : 0;
     }
     int16_t sample = std::lround(wave * 6500 * envelope * envelope);
     seconds += 1.0 / rate;

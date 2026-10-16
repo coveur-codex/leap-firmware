@@ -759,3 +759,11 @@ Bereich 11 ±1 pt; auf dem Gerät wird die Original-Bitmap ohne Skalierung gezei
 Die beiden Quizfragezeilen passen oberhalb der ab y=52 beginnenden Antworten;
 alle vier Antworten bleiben oberhalb der Fußzeile sichtbar. Die vollständige
 Frage ist weiterhin mit LINKS erreichbar. Keine Homeserver-Änderung erforderlich.
+
+## Zeit-Modul
+
+Timer mit 1/3/10/60 Minuten und eigener Zeit bis 99:59, dazu Stoppuhr mit
+Zwischenzeiten. Beide laufen auch offline im Hintergrund. Ein sich leerender
+Ring nutzt die Geräte-Akzentfarbe; nach Ablauf erscheinen Hinweis und Warnton.
+Homeserver mit Migration 0018 zuerst installieren.
+Bedienung, Tonregeln und Abnahme: [Zeit-Modul](docs/time-module.md).

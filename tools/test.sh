@@ -80,3 +80,6 @@ build/tests/chill-photos
 
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_math_lab.cpp LEAP/src/MathLab.cpp -o build/tests/math-lab
 build/tests/math-lab
+
+c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_time_module.cpp -o build/tests/time-module
+build/tests/time-module

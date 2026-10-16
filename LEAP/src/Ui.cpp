@@ -160,7 +160,7 @@ bool Ui::reload(bool initial) {
     if (id == "communication" && state["config"]["communicationEnabled"] != true)
       continue;
     if (id == "home" || id == "news" || id == "weather" || id == "aircraft" || id == "quiz" ||
-        id == "games" || id == "communication" || id == "knowledge" || id == "settings")
+        id == "time" || id == "games" || id == "communication" || id == "knowledge" || id == "settings")
       pages.push_back({id, p["title"] | id, p["order"] | 0});
   }
   std::stable_sort(pages.begin(), pages.end(),
@@ -307,7 +307,7 @@ bool Ui::drawSidebarAvatar(const String &id, const String &pageId) {
   // Do not retain an image from the previous page or avatar while decoding.
   return avatar.draw(*canvas, resolve(path), path, 3, 38, 80, 80, false, Panel, true, false);
 }
-// Seven-pixel page glyphs keep all ten supported pages visible in their configured order.
+// Seven-pixel page glyphs; a moving window keeps the active page visible.
 static const uint8_t pageIcons[][7] = {
     {8, 28, 62, 127, 34, 42, 62},     // home
     {127, 65, 93, 65, 93, 65, 127},   // news
@@ -318,9 +318,10 @@ static const uint8_t pageIcons[][7] = {
     {62, 65, 85, 65, 62, 16, 32},    // communication
     {54, 73, 73, 73, 73, 73, 62},    // knowledge
     {8, 42, 28, 99, 28, 42, 8},      // settings
-    {2, 6, 14, 30, 62, 60, 24}};     // chill
+    {2, 6, 14, 30, 62, 60, 24},
+    {28, 34, 73, 77, 65, 34, 28}};     // chill
 static const char *pageIds[] = {"home", "news", "weather", "aircraft", "quiz", "games",
-                                "communication", "knowledge", "settings", "chill"};
+                                "communication", "knowledge", "settings", "chill", "time"};
 void Ui::observeNews(bool initial) {
   auto news = state["content"]["news"];
   int64_t bootEpoch = news["notificationBootEpoch"] | int64_t(0);
@@ -389,6 +390,7 @@ void Ui::openNotification(const Notification &message) {
     page = int(i); selection = item = scroll = 0;
     notice = "";
     selectedNewsId.clear(); selectedAircraftHex.clear();
+    if (message.service == "time") { stopwatchView = false; timeEditing = false; }
     if (message.service == "news") selectedNewsId = message.target;
     if (message.service == "aircraft") { selectedAircraftHex = message.target; aircraftFrame.clear(); }
     if (message.service == "communication") {
@@ -487,7 +489,7 @@ void Ui::sidebar() {
   int left = (86 - count * 8) / 2;
   for (int i = 0; i < count; ++i) {
     int index = start + i, glyph = 0, x = left + i * 8;
-    for (int j = 0; j < 10; ++j)
+    for (int j = 0; j < 11; ++j)
       if (pages[index].id == pageIds[j]) glyph = j;
     bool selected = !locked && index == active;
     bool unread = notifications.unread(pages[index].id.c_str());
@@ -604,7 +606,84 @@ void Ui::recordQuizAnswer(uint32_t clickedAt) {
   quizTrackingFailed = !quizTracking.enqueue(attempt);
   if (quizTrackingFailed) log("QUIZ", "Answer could not be saved; queue full or storage unavailable");
 }
+static String timeLabel(uint64_t ms, bool hundredths = false) {
+  char value[32];
+  unsigned long seconds = ms / 1000;
+  snprintf(value, sizeof(value), "%02lu:%02lu", seconds / 60, seconds % 60);
+  return String(value) + (hundredths ? String(".") + (ms / 10 % 100 < 10 ? "0" : "") + String(unsigned(ms / 10 % 100)) : "");
+}
+void Ui::drawTime() {
+  text(stopwatchView ? "Timer     [Stoppuhr]" : "[Timer]     Stoppuhr", 100, 8, 1, Accent);
+  if (stopwatchView) {
+    text(timeLabel(timeModule.elapsedMs(), true), 100, 30, 3, Accent);
+    text(timeModule.measuring() ? "Läuft" : "Bereit / Pause", 100, 59, 1, Muted);
+    text(String(timeModule.lapCount) + "/20 Runden", 280, 59, 1, Muted);
+    int first = std::max(0, int(timeModule.lapCount) - 3 - lapScroll);
+    for (int row = 0; row < 3 && first + row < int(timeModule.lapCount); ++row) {
+      int i = first + row;
+      text(String(i + 1) + ". " + timeLabel(timeModule.laps[i], true) + "  +" +
+           timeLabel(timeModule.laps[i] - (i ? timeModule.laps[i - 1] : 0), true), 100, 78 + row * 16);
+    }
+    notice = timeModule.measuring() ? "OK Pause  R Runde  L ältere" : "OK Start  R ältere  L Reset";
+    return;
+  }
+  // A ring of 60 beads empties clockwise, using the device accent throughout.
+  unsigned beads = (uint64_t(timeModule.leftMs()) * 60 + timeModule.totalMs() - 1) / timeModule.totalMs();
+  for (unsigned i = 0; i < 60; ++i) {
+    float angle = i * 6.2831853f / 60 - 1.5707963f;
+    canvas->fillCircle(151 + std::cos(angle) * 43, 77 + std::sin(angle) * 43, 2, i < beads ? Accent : Panel);
+  }
+  text(timeLabel(uint64_t(timeModule.secondsLeft()) * 1000), 122, 73, 2, Accent);
+  const char *presets[] = {"1 Minute", "3 Minuten", "10 Minuten", "60 Minuten", "Eigene Zeit"};
+  text(presets[timePreset], 217, 35, 2, Accent);
+  if (timeEditing) {
+    text(timeLabel(uint64_t(customSeconds) * 1000), 217, 61, 3);
+    text(editSeconds ? "Sekunden ändern" : "Minuten ändern", 217, 92, 1, Muted);
+    notice = "L/R Feld  Ob/Un ändern  OK starten";
+  } else {
+    text(timeModule.done() ? "Geschafft!" : timeModule.running() ? "Läuft auch im Hintergrund" : "Bereit / Pause", 217, 71);
+    text("Ob/Un: Timer / Stoppuhr", 217, 103, 1, Muted);
+    notice = "OK Start/Pause  L Zeitwahl  R Reset/Zeitwahl";
+  }
+}
+void Ui::timeAction(const InputEvent &e) {
+  if (timeEditing) {
+    if (e.key == Key::Left || e.key == Key::Right) editSeconds = !editSeconds;
+    int delta = (e.key == Key::Up) - (e.key == Key::Down);
+    customSeconds = std::clamp(customSeconds + delta * (editSeconds ? 1 : 60), 1, int(TimeModule::MaxSeconds));
+    if (e.key == Key::Center) {
+      timeModule.setSeconds(customSeconds); timeModule.toggleTimer(millis()); timeEditing = false;
+    }
+    return;
+  }
+  if (e.key == Key::Up || e.key == Key::Down) { stopwatchView = !stopwatchView; return; }
+  if (stopwatchView) {
+    if (e.key == Key::Center) timeModule.toggleStopwatch(millis());
+    if (e.key == Key::Right) {
+      if (timeModule.measuring()) { timeModule.lap(millis()); lapScroll = 0; }
+      else lapScroll = (lapScroll + 3) % std::max(1, int(timeModule.lapCount));
+    }
+    if (e.key == Key::Left) {
+      if (timeModule.measuring()) lapScroll = (lapScroll + 3) % std::max(1, int(timeModule.lapCount));
+      else { timeModule.resetStopwatch(); lapScroll = 0; }
+    }
+    return;
+  }
+  if (e.key == Key::Center) {
+    if (timePreset == 4 && !timeModule.running() && timeModule.leftMs() == timeModule.totalMs()) timeEditing = true;
+    else timeModule.toggleTimer(millis());
+  }
+  if (e.key == Key::Right && (timeModule.running() || timeModule.leftMs() != timeModule.totalMs())) {
+    timeModule.resetTimer(); return;
+  }
+  if ((e.key == Key::Left || e.key == Key::Right) && !timeModule.running() && timeModule.leftMs() == timeModule.totalMs()) {
+    timePreset = (timePreset + (e.key == Key::Right ? 1 : 4)) % 5;
+    const uint32_t seconds[] = {60, 180, 600, 3600, uint32_t(customSeconds)};
+    timeModule.setSeconds(seconds[timePreset]);
+  }
+}
 void Ui::drawPage(const String &id) {
+  if (id == "time") { drawTime(); return; }
   auto content = state["content"].as<JsonObject>();
   if (id == "home") {
     String child = state["config"]["childName"] | "";
@@ -1196,6 +1275,7 @@ void Ui::input(const InputEvent &e) {
 void Ui::action(const InputEvent &e) {
   String id = pages[page].id;
   int direction = (e.key == Key::Down) - (e.key == Key::Up);
+  if (id == "time") { timeAction(e); return; }
   if (id == "quiz") {
     if (quizCatalog < 0) {
       selection = constrain(selection + direction, 0, int(quiz["catalogs"].size()) - 1);
@@ -1371,6 +1451,10 @@ void Ui::action(const InputEvent &e) {
 void Ui::tick() {
   if (!healthy)
     return;
+  if (timeModule.tick(millis())) {
+    notifications.submit({"time", "Zeit ist um!", "Dein Timer ist fertig.", "", Accent, NotificationSound::Alarm});
+    frameRequested = true;
+  }
   if (communication.poll()) {
     for (size_t i = 0; i < communication.notificationCount; ++i) {
       const auto &line = communication.notifications[i];
