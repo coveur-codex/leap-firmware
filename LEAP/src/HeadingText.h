@@ -4,6 +4,10 @@
 #include <string>
 
 namespace leap {
+constexpr int QuizQuestionTop = 12;
+// Leave a clear pixel between the last heading row and the answer highlight.
+constexpr int QuizAnswersTop = std::max(49, QuizQuestionTop + HeadingLineHeight + HeadingHeight + 4);
+
 struct TextBounds {
   int left = 0, width = 0;
 };

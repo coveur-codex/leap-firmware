@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.1.2`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.1.3`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -21,9 +21,9 @@ normal gezeichnete Displaytexte. Gespeicherte
 Inhalte und die Kommunikation mit dem Homeserver bleiben UTF-8.
 
 News-Titel, Flugzeugkennungen und Quizfragen einschließlich Mathe-Aufgaben nutzen
-ab 1.1.2 die eingebundene **Helvetica Bold 8**: 8 Pixel hohe Großbuchstaben,
-10 Pixel mit Umlaut, proportional und mit echten fetten Glyphen ohne Skalierung.
-Sie ersetzt die höhere Helvetica Regular 10 aus 1.0.11.
+ab 1.1.3 die eingebundene **Helvetica Bold 10 (10 pt)**: 11 Pixel hohe Großbuchstaben,
+14 Pixel mit Umlaut, proportional und mit echten fetten Glyphen ohne Skalierung.
+Sie vergrößert die Helvetica Bold 8 aus 1.1.2 innerhalb derselben Schriftfamilie.
 Die Schrift enthält die gleichen CP437-Zeichen für ä, ö, ü, Ä, Ö, Ü, ß, é, è und °.
 Zeilenumbrüche berücksichtigen Zeichenbreiten und Überhänge. Lange Quizfragen
 zeigen bis zu zwei Zeilen; LINKS öffnet die vollständige Frage zum Scrollen.
@@ -749,3 +749,13 @@ verteilten Paket `communication-avatars`. Bevorzugt wird die Avatar-Datei
 `data/pet/pagestatics/communication.png` (auch mit äußerem Ordner).
 Homeserver 1.1.2 mit Migration 0017 zuerst installieren. Details:
 [Chill](docs/chill.md), [Serververtrag](docs/server-contract.md).
+
+
+## Größere fette Überschriften (1.1.3)
+
+News-Titel, Flugzeugkennungen und Quizfragen verwenden Helvetica Bold 10 (10 pt,
+14 nominale Pixel bei den 100 dpi der BDF-Quelle). Das liegt im gewünschten
+Bereich 11 ±1 pt; auf dem Gerät wird die Original-Bitmap ohne Skalierung gezeichnet.
+Die beiden Quizfragezeilen passen oberhalb der ab y=52 beginnenden Antworten;
+alle vier Antworten bleiben oberhalb der Fußzeile sichtbar. Die vollständige
+Frage ist weiterhin mit LINKS erreichbar. Keine Homeserver-Änderung erforderlich.

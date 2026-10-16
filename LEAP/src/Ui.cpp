@@ -835,11 +835,11 @@ void Ui::drawPage(const String &id) {
       text("Oben: + | Unten: löschen", 94, 102);
       notice = "Links/Rechts: Ziffer | Mitte: bestätigen";
     } else {
-      body(q["q"] | "", 94, 12, 326, HeadingLineHeight + HeadingHeight, "", 0xffff, true);
+      body(q["q"] | "", 94, QuizQuestionTop, 326, HeadingLineHeight + HeadingHeight, "", 0xffff, true);
       std::vector<String> labels;
       for (int i : answerOrder)
         labels.push_back(q["a"][i] | "");
-      list(labels, 94, 49, 326);
+      list(labels, 94, QuizAnswersTop, 326);
     }
   } else if (id == "games") {
     if (gameOpen)

@@ -1,3 +1,10 @@
+# 1.1.3 – Größere Helvetica-Bold-Überschriften
+
+- Helvetica Bold von 8 auf 10 pt für News-Titel, Flugzeugkennungen und Quizfragen
+  vergrößert (innerhalb 11 ±1 pt); echte Bitmap-Glyphen ohne Skalierung.
+- Quizantworten beginnen passend zu den größeren Fragezeilen bei y=52.
+- Deutsche Glyphen, Umbrüche, Schriftmetriken und alle vier Antwortzeilen geprüft.
+
 # 1.1.2 – Farben, kompakte Überschriften, eigene Chill-Bilder und Chatavatare
 
 - Mathe-Labor verwendet die Geräteakzentfarbe für Menü, Mengen, Bauwerke und Markierungen.
