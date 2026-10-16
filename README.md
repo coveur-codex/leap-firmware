@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.1.1`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.1.2`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -21,8 +21,9 @@ normal gezeichnete Displaytexte. Gespeicherte
 Inhalte und die Kommunikation mit dem Homeserver bleiben UTF-8.
 
 News-Titel, Flugzeugkennungen und Quizfragen einschließlich Mathe-Aufgaben nutzen
-ab 1.0.11 eine eingebundene **Helvetica Regular 10**: 11 Pixel hohe Großbuchstaben,
-13 Pixel mit Umlaut, proportional und ohne Fettzeichnung oder Skalierung.
+ab 1.1.2 die eingebundene **Helvetica Bold 8**: 8 Pixel hohe Großbuchstaben,
+10 Pixel mit Umlaut, proportional und mit echten fetten Glyphen ohne Skalierung.
+Sie ersetzt die höhere Helvetica Regular 10 aus 1.0.11.
 Die Schrift enthält die gleichen CP437-Zeichen für ä, ö, ü, Ä, Ö, Ü, ß, é, è und °.
 Zeilenumbrüche berücksichtigen Zeichenbreiten und Überhänge. Lange Quizfragen
 zeigen bis zu zwei Zeilen; LINKS öffnet die vollständige Frage zum Scrollen.
@@ -734,3 +735,17 @@ Ein neuer Spieleintrag `math_lab` bündelt Würfellabor, Zahlenwerkstatt,
 Würfelarchitekt und Würfeldetektiv. Lokal gezeichnet, ohne Bildpakete oder WLAN.
 Im Homeserver ab 1.1.1 für das Gerät aktivieren und einmal synchronisieren.
 Bedienung, Übungsvarianten und Abnahme: [Mathe-Labor](docs/math-lab.md).
+
+
+## Eigene Chill-Bilder und Nachrichtenavatare (1.1.2)
+
+Im Homeserver unter **Gerät → Chill → Eigene Bilder auswählen / hochladen** ein
+Album zusammenstellen. Der normale Asset-Sync lädt nur die gewählten, bereits
+auf 428×142 verkleinerten JPEGs. Wechsel, Überblendungen, Musik und Bildabstand
+entsprechen LoremFlickr; das Album funktioniert vollständig offline.
+
+Chatnachrichten zeigen rechts ein 48×48-Bild des Absenders aus dem automatisch
+verteilten Paket `communication-avatars`. Bevorzugt wird die Avatar-Datei
+`data/pet/pagestatics/communication.png` (auch mit äußerem Ordner).
+Homeserver 1.1.2 mit Migration 0017 zuerst installieren. Details:
+[Chill](docs/chill.md), [Serververtrag](docs/server-contract.md).

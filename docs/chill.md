@@ -140,3 +140,24 @@ blockiert; Redirect-, Cache- und Fehlerverhalten sind mit HTTPX-Mocks geprüft.
 Lokaler ESP32-Cross-Build: Toolchain-Installation durch gesperrtes
 `downloads.arduino.cc` blockiert; der bestehende GitHub-Arduino-Workflow ist der
 verbindliche Cross-Build einschließlich Provisionierungsvariante.
+
+
+## Eigene Bilder (1.1.2)
+
+Im Homeserver je Gerät über „Eigene Bilder auswählen / hochladen“ eine Auswahl
+von 1–24 Bildern speichern. Uploads dürfen je 8 MiB und 20 Megapixel enthalten.
+Der Server richtet EXIF-gedrehte Bilder aus, schneidet auf 428×142 zu und speichert
+nur ein optimiertes Baseline-JPEG ohne EXIF; Originale werden nicht aufbewahrt.
+Identische Ergebnisse teilen einen Inhalts-Hash in der Bibliothek. Ein kopiertes
+Gerät erhält eine unabhängige Auswahl mit denselben Bilddateien.
+
+Das geräteeigene Paket trägt `scene: album`, `photos: ["photos/<hash>.jpg", …]`,
+einen Slider 0–300 und `minFirmware: 1.1.2`. Das normale Installationsverfahren
+prüft Dateien/Hashes und entfernt ältere Gerätepakete erst nach erfolgreichem Sync.
+Die Fotos liegen vor dem Öffnen des Albums vollständig in LittleFS. Kein WLAN oder
+Homeserver ist für die Wiedergabe nötig. `ChillPhotos`/`PictureTransition` nutzen
+weiterhin den Netzwerk-Hintergrundtask zum Dekodieren; lokale Aufträge erzeugen
+keine HTTP-Anfragen und überschreiben nicht den LoremFlickr-Cache. Nur aktuelles
+und nächstes Bild liegen als RGB565-Puffer im RAM (~238 KiB zusammen), unabhängig
+von der Albumgröße. Eigene Bilder haben einen separaten gespeicherten Bildabstand.
+Bei einem einzigen Bild entfällt ein unnötiger wiederholter Bildwechsel.

@@ -1,4 +1,5 @@
 #include "Communication.h"
+#include "ChatAvatar.h"
 #include "Assets.h"
 #include "Core.h"
 #include "ChatSymbols.h"
@@ -82,6 +83,8 @@ static bool validLine(JsonVariantConst value, uint64_t previous) {
   if (!value["id"].is<uint64_t>() || value["id"].as<uint64_t>() <= previous) return false;
   for (auto field : {"senderId", "name", "text", "symbol"})
     if (!value[field].is<const char *>()) return false;
+  if (!value["avatarImage"].isNull() &&
+      (!value["avatarImage"].is<const char *>() || !validAvatarImage(value["avatarImage"]))) return false;
   return strlen(value["senderId"]) <= 80 && strlen(value["name"]) <= 400 &&
       strlen(value["text"]) <= 480 && strlen(value["symbol"]) <= 64;
 }
@@ -113,6 +116,7 @@ bool Communication::deliver(JsonDocument &response, uint32_t generation) {
   for (JsonVariantConst row : rows) {
     delivery.line = RelayLine{};
     delivery.line.id = row["id"];
+    strlcpy(delivery.line.avatarImage, row["avatarImage"] | "", sizeof(delivery.line.avatarImage));
     strlcpy(delivery.line.accent, row["accentColor"] | "", sizeof(delivery.line.accent));
     delivery.line.mine = !strcmp(row["senderId"], deviceSettings.deviceId);
     strlcpy(delivery.line.name, row["name"], sizeof(delivery.line.name));

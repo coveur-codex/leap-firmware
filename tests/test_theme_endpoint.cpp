@@ -9,6 +9,8 @@ int main() {
   assert(accentColor("#00ff00") == 0x07e0);
   assert(accentColor("#0000ff") == 0x001f);
   for (auto bad : {"", "#123", "#gggggg", "red", "#1234567"}) assert(accentColor(bad)==0x06b8);
+  assert(contrastInk(0xffff) == 0x0841);
+  assert(contrastInk(0x0000) == 0xffff);
   WebSocketEndpoint e;
   assert(webSocketEndpoint("http://leap:8080/", e) && !e.tls && e.port==8080 && e.host=="leap" && e.path.empty());
   assert(webSocketEndpoint("https://leap/prefix/", e) && e.tls && e.port==443 && e.path=="/prefix");

@@ -276,3 +276,26 @@ Uhrzeiten `HH:MM`. Fehlend/leer bedeutet deaktiviert. Aktivierte Zeiträume
 haben unterschiedliche Start- und Endzeiten und dürfen Mitternacht überschreiten.
 Firmware wertet die lokale Gerätezeit aus; Start inklusive, Ende exklusive.
 Die Nachtruhe unterdrückt Benachrichtigungstöne, Anzeige und Seitensprung bleiben aktiv.
+
+
+## 1.1.2: Nachrichtenavatare und Offline-Fotoalben
+
+Homeserver 1.1.2 ergänzt Migration `0017`: `devices.chill_album_id`,
+`devices.chill_photos`, `chill_photos` und `communication_relay_events.avatar_image`.
+HTTP- und WebSocket-Nachrichten enthalten optional `avatarImage` als 64-stelligen
+kleingeschriebenen SHA256-Hash. Leere/fehlende Werte bleiben kompatibel mit älteren
+Servern und Nachrichten. Die Firmware zeigt rechts bei (372,6) ein 48×48-Porträt;
+Text endet davor. Fehlende/nicht synchronisierte Porträts erhalten ein gezeichnetes
+Platzhalterbild. Fremde vollständige Avatarpakete werden nicht installiert.
+
+Der Homeserver generiert `communication-avatars` als Common-Paket für alle Geräte.
+Es enthält nur auf 48×48 verkleinerte transparente PNGs unter `<hash>.png`.
+Bevorzugte Quelle ist `…/pagestatics/communication.png`, danach ein explizites
+Kommunikationsbild, PNG-Preview oder Idle-Bild. Der Server speichert den Porträt-Hash
+beim Senden; Wiederholungen und spätere Avataränderungen verändern ihn nicht.
+Aktuelle Avatarbilder und Porträts noch gespeicherter Nachrichten bleiben im Paket.
+Unveränderte Quelldateien werden nicht erneut konvertiert oder versioniert.
+
+Eigene Chill-Alben verwenden unverändert die Asset-Manifeste und den Sync-Ablauf.
+Die Firmware akzeptiert `scene: album` erst ab 1.1.2; ältere Geräte erhalten den
+bestehenden Hinweis auf die Firmware-Mindestversion statt inkompatibler Inhalte.

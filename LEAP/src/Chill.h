@@ -28,6 +28,7 @@ class Chill {
   uint32_t changedAt = 0;
   String package;
   int version = 0;
+  bool localAlbum = false;
   const char *sceneKey() const;
   void save();
   void sprite(Arduino_GFX &gfx, Sprite &s, int x, int y, int width, int height, size_t frame = 0);

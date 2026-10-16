@@ -2,6 +2,7 @@
 #include "Media.h"
 #include "PictureTransition.h"
 #include <atomic>
+#include <vector>
 namespace leap {
 class Transport;
 struct PhotoFrame {
@@ -15,6 +16,7 @@ struct PhotoFrame {
 class PhotoInbox {
   std::atomic<uint32_t> active{0}, requested{0};
   std::atomic<PhotoFrame *> ready{nullptr};
+  std::atomic<String *> localSource{nullptr};
   uint32_t serial = 0;
 
 public:
@@ -30,9 +32,11 @@ public:
     active = 0;
     delete ready.exchange(nullptr);
   }
-  void request(uint32_t id) {
-    if (!busy.exchange(true))
+  void request(uint32_t id, const String &blob = "") {
+    if (!busy.exchange(true)) {
+      localSource = new String(blob);
       requested = id;
+    }
   }
   PhotoFrame *take() {
     return ready.exchange(nullptr);
@@ -45,12 +49,15 @@ class ChillPhotos {
   uint32_t session = 0, retryAt = 0, backoff = 10000;
   bool attempted = false;
   PictureTransition transition;
+  std::vector<String> album;
+  size_t albumIndex = 0;
 
 public:
   ~ChillPhotos() {
     close();
   }
   void start(uint32_t now, int value);
+  void startAlbum(uint32_t now, int value, std::vector<String> sources);
   void close();
   void adjust(int value, uint32_t now) {
     transition.adjust(value, now);

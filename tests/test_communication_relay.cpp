@@ -1,4 +1,5 @@
 #include "Communication.h"
+#include "ChatAvatar.h"
 #include "Assets.h"
 #include "Transport.h"
 #include <cassert>
@@ -46,7 +47,7 @@ static std::string page(uint64_t start, unsigned count, bool reset=false, bool m
   for (unsigned i=0;i<count;++i) {
     auto row=rows.add<JsonObject>(); row["id"]=start+i+1;
     row["senderId"]=i%2 ? "local" : "remote";
-    row["accentColor"]="#ff9933"; row["name"]="Name"; row["text"]="Hallo"; row["symbol"]="!";
+    row["avatarImage"]=std::string(64,'a'); row["accentColor"]="#ff9933"; row["name"]="Name"; row["text"]="Hallo"; row["symbol"]="!";
   }
   std::string raw; serializeJson(doc,raw); return raw;
 }
@@ -55,6 +56,14 @@ static JsonDocument last(WebSocketsClient &socket) {
   assert(!deserializeJson(doc,socket.sent.back())); return doc;
 }
 int main() {
+  const std::string portrait(64,'a');
+  assert(validAvatarImage("") && validAvatarImage(portrait.c_str()));
+  for (auto bad : {"../escape", "sender.png", "abc"}) assert(!validAvatarImage(bad));
+  JsonDocument bank;
+  auto file=bank["files"].to<JsonArray>().add<JsonObject>();
+  file["path"]=portrait+".png"; file["sha256"]=portrait;
+  assert(chatAvatarBlob(bank,portrait.c_str())==portrait);
+  file["sha256"]=std::string(64,'b'); assert(chatAvatarBlob(bank,portrait.c_str()).empty());
   strcpy(deviceSettings.deviceId,"local");
   strcpy(deviceSettings.server,"http://homeserver:8080");
   auto state=config();
@@ -68,6 +77,7 @@ int main() {
   event(c,s,WStype_TEXT,page(0,2),1020);
   assert(c.online && !c.poll() && c.count==2 && !c.unread); // Silent boot.
   assert(last(s)["since"]==2);
+  assert(std::string(c.history[0].avatarImage)==portrait);
   auto sent=s.sent.size(); step(c,15000); assert(s.sent.size()==sent); // No idle polling.
   event(c,s,WStype_TEXT,page(2,2),15010);
   assert(c.poll() && c.unread);

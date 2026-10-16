@@ -11,7 +11,7 @@ const char *Chill::sceneKey() const {
   case ChillScene::Fire:
     return "fire";
   case ChillScene::Photos:
-    return "loremflickr";
+    return localAlbum ? "album" : "loremflickr";
   case ChillScene::Snow:
     return "snow";
   default:
@@ -32,6 +32,7 @@ void Chill::close() {
   if (active())
     audio.music(MusicProfile::Off);
   photos.close();
+  localAlbum = false;
   sprites.clear();
   package = "";
   version = 0;
@@ -43,13 +44,14 @@ bool Chill::start(const String &id, int nextVersion, JsonVariantConst manifest, 
   close();
   auto def = manifest["definition"];
   String scene = def["scene"] | "";
-  ChillScene kind = scene == "space"         ? ChillScene::Space
-                    : scene == "fire"        ? ChillScene::Fire
-                    : scene == "loremflickr" ? ChillScene::Photos
-                    : scene == "snow"        ? ChillScene::Snow
-                                             : ChillScene::None;
+  ChillScene kind = scene == "space"                               ? ChillScene::Space
+                    : scene == "fire"                              ? ChillScene::Fire
+                    : (scene == "loremflickr" || scene == "album") ? ChillScene::Photos
+                    : scene == "snow"                              ? ChillScene::Snow
+                                                                   : ChillScene::None;
   if (kind == ChillScene::None || !nextVersion || !validChill(def, manifest["files"]))
     return false;
+  localAlbum = scene == "album";
   motion.reset(kind, def["slider"]["default"] | 45, now);
   motion.value = kind == ChillScene::Photos
                      ? std::clamp(int(prefs.getInt(sceneKey(), motion.value)), 0, 300)
@@ -57,8 +59,17 @@ bool Chill::start(const String &id, int nextVersion, JsonVariantConst manifest, 
   package = id;
   version = nextVersion;
   audio.music(MusicProfile(unsigned(kind)), motion.value);
-  if (kind == ChillScene::Photos)
-    photos.start(now, motion.value);
+  if (kind == ChillScene::Photos) {
+    if (localAlbum) {
+      std::vector<String> sources;
+      for (JsonVariantConst path : def["photos"].as<JsonArrayConst>())
+        for (JsonObjectConst file : manifest["files"].as<JsonArrayConst>())
+          if (file["path"] == path)
+            sources.push_back(storage.blob(file["sha256"].as<String>()));
+      photos.startAlbum(now, motion.value, std::move(sources));
+    } else
+      photos.start(now, motion.value);
+  }
   // Resolve from the immutable in-RAM manifest once. Decode only via the existing media worker.
   auto addFrame = [&](Sprite &s, String path) {
     for (JsonObjectConst f : manifest["files"].as<JsonArrayConst>())

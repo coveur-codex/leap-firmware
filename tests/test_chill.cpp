@@ -14,6 +14,7 @@ Storage storage;
 Audio audio;
 PhotoInbox photoInbox;
 void ChillPhotos::start(uint32_t, int) {}
+void ChillPhotos::startAlbum(uint32_t, int, std::vector<String>) {}
 void ChillPhotos::close() {}
 void ChillPhotos::tick(uint32_t) {}
 void ChillPhotos::draw(Arduino_GFX &, uint32_t) {}
@@ -158,6 +159,21 @@ int main(int argc, char **argv) {
   assert(chill.start("chill-loremflickr", 1, photo, 300));
   assert(chill.motion.value == 215);
   chill.close();
+  JsonDocument album;
+  album.set(photo);
+  album["definition"]["scene"] = "album";
+  album["definition"]["minFirmware"] = "1.1.2";
+  album["definition"]["photos"].to<JsonArray>().add("photos/a.jpg");
+  auto file = album["files"].to<JsonArray>().add<JsonObject>();
+  file["path"] = "photos/a.jpg"; file["sha256"] = "a";
+  assert(validChill(album["definition"], album["files"]));
+  assert(chill.start("chill-album-test", 1, album, 310));
+  assert(chill.motion.value == 200); // Separate slider setting from LoremFlickr.
+  chill.close();
+  album["definition"]["photos"].as<JsonArray>().add("missing.jpg");
+  assert(!validChill(album["definition"], album["files"]));
+  album["definition"]["photos"][1] = "photos/a.jpg";
+  assert(!validChill(album["definition"], album["files"]));
   for (int i = 1; i < argc; ++i) {
     std::ifstream in(argv[i]);
     JsonDocument m;

@@ -94,7 +94,7 @@ public:
   bool crabInput(const InputEvent &event);
   void input(Key key);
   void tick();
-  void draw(Arduino_GFX &gfx, int left, int top);
+  void draw(Arduino_GFX &gfx, int left, int top, uint16_t accent = 0x06b8);
   bool active() const {
     return running;
   }

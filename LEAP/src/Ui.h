@@ -27,7 +27,7 @@ class Ui {
   std::vector<Page> pages;
   std::vector<uint16_t> questionOrder;
   bool quizLoaded = false;
-  Media avatar, picture;
+  Media avatar, picture, senderAvatar;
   Games game;
   Chill chill;
   Preferences prefs;
