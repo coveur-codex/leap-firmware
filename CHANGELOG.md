@@ -1,3 +1,9 @@
+# 1.1.4 – Zeit-Modul
+
+- Zeit-Modul: Hintergrundtimer mit Akzentfarben-Ring, 1/3/10/60 Minuten und
+  eigener Zeit, Stoppuhr mit 20 Zwischenzeiten, priorisierter Ablaufhinweis und
+  vierfacher Warnton. Benötigt Homeserver-Migration 0018 für die Seitenfreigabe.
+
 # 1.1.3 – Größere Helvetica-Bold-Überschriften
 
 - Helvetica Bold von 8 auf 10 pt für News-Titel, Flugzeugkennungen und Quizfragen
@@ -101,8 +107,3 @@
   Wiederholung fehlgeschlagener NVS-Schreibvorgänge.
 - Vollständiger 342×142-Spielbereich neben der bestehenden 86-Pixel-Sidebar,
   Canvas-Rendering mit Zielintervall 33 ms und begrenztem Simulationsspeicher.
-
-## Unreleased
-- Zeit-Modul: Hintergrundtimer mit Akzentfarben-Ring, 1/3/10/60 Minuten und
-  eigener Zeit, Stoppuhr mit 20 Zwischenzeiten, priorisierter Ablaufhinweis und
-  vierfacher Warnton. Benötigt Homeserver-Migration 0018 für die Seitenfreigabe.

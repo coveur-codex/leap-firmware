@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.1.3`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.1.4`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -760,10 +760,10 @@ Die beiden Quizfragezeilen passen oberhalb der ab y=52 beginnenden Antworten;
 alle vier Antworten bleiben oberhalb der Fußzeile sichtbar. Die vollständige
 Frage ist weiterhin mit LINKS erreichbar. Keine Homeserver-Änderung erforderlich.
 
-## Zeit-Modul
+## Zeit-Modul (1.1.4)
 
 Timer mit 1/3/10/60 Minuten und eigener Zeit bis 99:59, dazu Stoppuhr mit
 Zwischenzeiten. Beide laufen auch offline im Hintergrund. Ein sich leerender
 Ring nutzt die Geräte-Akzentfarbe; nach Ablauf erscheinen Hinweis und Warnton.
-Homeserver mit Migration 0018 zuerst installieren.
+Homeserver 1.1.3 mit Migration 0018 zuerst installieren.
 Bedienung, Tonregeln und Abnahme: [Zeit-Modul](docs/time-module.md).

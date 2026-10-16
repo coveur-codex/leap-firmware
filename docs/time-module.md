@@ -1,6 +1,6 @@
 # Zeit-Modul
 
-Homeserver mit Migration 0018 zuerst installieren, danach Firmware aktualisieren
+Homeserver 1.1.3 mit Migration 0018 zuerst installieren, danach Firmware 1.1.4 installieren
 und synchronisieren. Die Seite `time` („Zeit“) ist für neue und vorhandene Geräte
 aktiviert und lässt sich im Geräteeditor abschalten oder verschieben.
 
