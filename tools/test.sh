@@ -83,3 +83,8 @@ build/tests/math-lab
 
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_time_module.cpp -o build/tests/time-module
 build/tests/time-module
+
+c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_finance.cpp -o build/tests/finance
+build/tests/finance
+c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_finance_draw.cpp LEAP/src/FinanceDraw.cpp -o build/tests/finance-draw
+build/tests/finance-draw

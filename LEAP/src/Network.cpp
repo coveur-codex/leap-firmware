@@ -131,13 +131,13 @@ void Network::checkin(JsonDocument &state) {
 void Network::content(JsonDocument &state) {
   JsonDocument versions(&jsonRam);
   bool hasVersions = net.json(base + "/sync", versions);
-  for (const char *key : {"news", "weather", "aircraft", "quiz"}) {
+  for (const char *key : {"news", "weather", "aircraft", "quiz", "finance"}) {
     if (!enabled(state, key))
       continue;
     String versionKey = String(key) + "Version";
     // Weather/aircraft refresh on every scheduled sync: provider freshness is not
     // reliably represented by the current server's device version counters.
-    bool live = String(key) == "weather" || String(key) == "aircraft" || (String(key) == "news" && !newsFetched);
+    bool live = String(key) == "finance" || String(key) == "weather" || String(key) == "aircraft" || (String(key) == "news" && !newsFetched);
     if (!live && hasVersions && !state["content"][key].isNull() &&
         state["versions"][versionKey] == versions[versionKey] &&
         state["contentConfig"] == state["config"]["configVersion"])
@@ -151,7 +151,8 @@ void Network::content(JsonDocument &state) {
       endpoint += packaged ? "?metadataOnly=true" : "?limitPerCatalog=200";
     }
     if (net.json(endpoint, value)) {
-      bool shape = String(key) == "news"       ? value["articles"].is<JsonArray>()
+      bool shape = String(key) == "finance" ? value["schemaVersion"] == 1 && value["securities"].is<JsonArray>() && value["securities"].size() <= 48
+                   : String(key) == "news"       ? value["articles"].is<JsonArray>()
                    : String(key) == "quiz"     ? value["questions"].is<JsonArray>()
                    : String(key) == "aircraft" ? value["aircraft"].is<JsonArray>()
                                                : value["current"].is<JsonObject>();
@@ -402,6 +403,22 @@ void Network::run() {
       lastSync = millis();
       interval = ok ? SyncInterval : std::min(interval * 2, SyncInterval);
       log("SYNC", ok ? "Complete" : "Deferred; previous usable data retained");
+    }
+    // Same network task and atomic offline snapshot as all other content.
+    // No HTTP or flash operations take place in rendering/input handlers.
+    static uint32_t lastFinance = 0;
+    if (connected && storage.ready && ota.locallyConfirmed && elapsed(millis(), lastFinance, 300000)) {
+      lastFinance = millis();
+      JsonDocument snapshot(&jsonRam);
+      if (storage.load(snapshot) && enabled(snapshot, "finance")) {
+        JsonDocument value(&jsonRam);
+        if (net.json(base + "/finance", value) && value["schemaVersion"] == 1 &&
+            value["securities"].is<JsonArray>() && value["securities"].size() <= 48)
+          snapshot["content"]["finance"] = value;
+        else
+          for (JsonObject q : snapshot["content"]["finance"]["securities"].as<JsonArray>()) q["stale"] = true;
+        storage.commit(snapshot);
+      }
     }
     if (connected && storage.ready && ota.locallyConfirmed && aircraftVisible && elapsed(millis(), lastAircraft, 15000)) {
       lastAircraft = millis();

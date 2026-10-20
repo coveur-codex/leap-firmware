@@ -11,6 +11,7 @@
 #include <vector>
 #include "Notifications.h"
 #include "TimeModule.h"
+#include "Finance.h"
 namespace leap {
 struct Page {
   String id, title;
@@ -63,6 +64,9 @@ class Ui {
   TimeModule timeModule;
   bool stopwatchView = false, timeEditing = false, editSeconds = false;
   int timePreset = 0, customSeconds = 5 * 60, lapScroll = 0;
+  FinanceNavigation financeNavigation;
+  bool financeWasVisible = false;
+  void drawFinance();
   void drawTime();
   void timeAction(const InputEvent &event);
   Notifications notifications;

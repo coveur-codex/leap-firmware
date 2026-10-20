@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.1.4`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.2.0`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -767,3 +767,7 @@ Zwischenzeiten. Beide laufen auch offline im Hintergrund. Ein sich leerender
 Ring nutzt die Geräte-Akzentfarbe; nach Ablauf erscheinen Hinweis und Warnton.
 Homeserver 1.1.3 mit Migration 0018 zuerst installieren.
 Bedienung, Tonregeln und Abnahme: [Zeit-Modul](docs/time-module.md).
+
+## Finanzen (1.2.0)
+
+Die optionale Finanzseite benötigt Homeserver 1.2.0. Aktivierung und Symbolauswahl erfolgen ausschließlich am Server. Bedienung, Datenformat und Grenzen: [docs/finance.md](docs/finance.md).

@@ -160,7 +160,7 @@ bool Ui::reload(bool initial) {
     if (id == "communication" && state["config"]["communicationEnabled"] != true)
       continue;
     if (id == "home" || id == "news" || id == "weather" || id == "aircraft" || id == "quiz" ||
-        id == "time" || id == "games" || id == "communication" || id == "knowledge" || id == "settings")
+        id == "finance" || id == "time" || id == "games" || id == "communication" || id == "knowledge" || id == "settings")
       pages.push_back({id, p["title"] | id, p["order"] | 0});
   }
   std::stable_sort(pages.begin(), pages.end(),
@@ -319,9 +319,10 @@ static const uint8_t pageIcons[][7] = {
     {54, 73, 73, 73, 73, 73, 62},    // knowledge
     {8, 42, 28, 99, 28, 42, 8},      // settings
     {2, 6, 14, 30, 62, 60, 24},
-    {28, 34, 73, 77, 65, 34, 28}};     // chill
+    {28, 34, 73, 77, 65, 34, 28},
+    {65, 67, 69, 73, 81, 97, 127}};     // chill
 static const char *pageIds[] = {"home", "news", "weather", "aircraft", "quiz", "games",
-                                "communication", "knowledge", "settings", "chill", "time"};
+                                "communication", "knowledge", "settings", "chill", "time", "finance"};
 void Ui::observeNews(bool initial) {
   auto news = state["content"]["news"];
   int64_t bootEpoch = news["notificationBootEpoch"] | int64_t(0);
@@ -726,6 +727,8 @@ void Ui::drawPage(const String &id) {
     body(String(a["summary"] | "") + "\n" +
              String(a["source"] | "") + " | " + String(a["published"] | ""),
          94, 12, shown ? 216 : 326, 112, a["title"] | "", 0xffff, true);
+  } else if (id == "finance") {
+    drawFinance();
   } else if (id == "weather") {
     auto w = content["weather"];
     if (w["current"].isNull()) {
@@ -1415,6 +1418,16 @@ void Ui::action(const InputEvent &e) {
         scroll = 0;
       }
     }
+  } else if (id == "finance") {
+    size_t count = state["content"]["finance"]["securities"].size();
+    auto &nav = financeNavigation;
+    if (nav.detail) {
+      if (e.key == Key::Up || e.key == Key::Down) nav.move(e.key == Key::Up ? -1 : 1, count, millis());
+      if (e.key == Key::Left || e.key == Key::Center) nav.back(millis());
+    } else {
+      if (e.key == Key::Left || e.key == Key::Right) nav.move(e.key == Key::Left ? -1 : 1, count, millis());
+      if (e.key == Key::Center) nav.center(count, millis());
+    }
   } else if (id == "settings") {
     selection = constrain(selection + direction, 0, 6);
     if (selection == 5 && e.key == Key::Center) {
@@ -1471,6 +1484,10 @@ void Ui::tick() {
   }
   if (generation != storage.generation.load())
     reload();
+  bool financeVisible = !locked && !menu && !pages.empty() && pages[page].id == "finance";
+  if (financeVisible && !financeWasVisible) financeNavigation.enter(millis());
+  if (financeVisible && financeNavigation.tick(state["content"]["finance"]["securities"].size(), millis())) frameRequested = true;
+  financeWasVisible = financeVisible;
   bool radarVisible = !locked && !menu && !pages.empty() && pages[page].id == "aircraft";
   bool radarEnabled = std::any_of(pages.begin(), pages.end(), [](const Page &p) { return p.id == "aircraft"; });
   network.aircraftVisible = radarVisible || radarEnabled;
