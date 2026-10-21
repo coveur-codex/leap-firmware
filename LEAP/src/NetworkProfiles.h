@@ -71,20 +71,34 @@ public:
   bool begin() {
     std::lock_guard<std::mutex> lock(mutex);
     Preferences prefs;
-    if (!prefs.begin("leap-network", true)) return false;
+    // NVS_READONLY cannot open a namespace that does not exist yet on 1.2.x.
+    // Read/write opening creates only the namespace; existing records are still
+    // validated below and never replaced on corruption or a future schema.
+    if (!prefs.begin("leap-network", false)) {
+      log("CONFIG", "Cannot open/create network profile namespace");
+      return false;
+    }
     size_t size = prefs.getBytesLength("profiles");
     NetworkRecord loaded;
     bool ok = size == sizeof(loaded) && prefs.getBytes("profiles", &loaded, size) == size && loaded.valid();
     prefs.end();
-    if (size && !ok) return false;
+    if (size && !ok) {
+      log("CONFIG", "Existing network profile record is invalid; retained unchanged");
+      return false;
+    }
     if (!size) {
+      log("CONFIG", "Creating network profiles from saved device settings");
       strcpy(loaded.server, "http://ndk.tstromi.de:8080");
       strncpy(loaded.fallback, deviceSettings.server, sizeof(loaded.fallback)-1);
       strncpy(loaded.bootstrap.ssid, deviceSettings.ssid, 32);
       strncpy(loaded.bootstrap.password, deviceSettings.password, 64);
-      if (!commit(loaded)) return false;
+      if (!commit(loaded)) {
+        log("CONFIG", "Cannot validate/save initial network profiles");
+        return false;
+      }
     } else record = loaded;
     ready = true;
+    log("CONFIG", "Network profiles loaded from NVS");
     return true;
   }
   String endpoint() const {
