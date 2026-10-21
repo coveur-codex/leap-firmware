@@ -17,6 +17,8 @@ public:
   std::array<mathlab::Building, 3> views;
   int solution = 0, chosen = 0;
   unsigned found = 0;
+  std::array<int, 100> targets{{10}};
+  size_t targetCount = 1;
   void start();
   // Returns true only when leaving the laboratory for the existing games menu.
   bool input(const InputEvent &e);

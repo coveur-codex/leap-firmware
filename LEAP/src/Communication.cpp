@@ -1,4 +1,5 @@
 #include "Communication.h"
+#include "NetworkProfiles.h"
 #include "ChatAvatar.h"
 #include "Assets.h"
 #include "Core.h"
@@ -180,6 +181,12 @@ void Communication::socketEvent(WStype_t type, uint8_t *payload, size_t length) 
              type == WStype_FRAGMENT_BIN_START) socket.disconnect();
 }
 void Communication::service(uint32_t now, bool connected) {
+  String endpointUrl = networkProfiles.endpoint();
+  if (serverEndpoint != endpointUrl) {
+    serverEndpoint = endpointUrl;
+    socket.disconnect();
+    socketStarted = false;
+  }
   uint32_t generation = epoch.load();
   if (workerEpoch != generation) {
     socketStarted = false;
@@ -199,7 +206,7 @@ void Communication::service(uint32_t now, bool connected) {
   }
   if (!socketStarted) {
     WebSocketEndpoint endpoint;
-    if (!webSocketEndpoint(deviceSettings.server, endpoint) ||
+    if (!webSocketEndpoint(serverEndpoint.c_str(), endpoint) ||
         (endpoint.tls && !strlen(deviceSettings.tlsCa))) return;
     String path = String(endpoint.path.c_str()) + "/api/v1/devices/" +
         Transport::encode(deviceSettings.deviceId) + "/communication/ws";

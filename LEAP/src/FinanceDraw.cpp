@@ -83,7 +83,7 @@ void drawFinance(Arduino_GFX &display, JsonVariantConst data, FinanceNavigation 
       int x = 86 + int(i - first) * 114;
       auto q = rows[i];
       canvas->drawRect(x + 2, 3, 110, 114, i == nav.selected ? 0xffff : panelColor);
-      fit(q["symbol"] | "", x + 7, 10, 99, 1, 0xffff);
+      fit(q["displaySymbol"] | (q["symbol"] | ""), x + 7, 10, 99, 1, 0xffff);
       if (q["market"] == "closed") moon(x + 101, 15);
       if (!(q["available"] | false)) {
         text("Kein Kurs", x + 7, 42, 1, muted);
@@ -91,7 +91,7 @@ void drawFinance(Arduino_GFX &display, JsonVariantConst data, FinanceNavigation 
         continue;
       }
       fit(String(financeNumber(q["price"] | NAN).c_str()), x + 7, 32, 100, 2, 0xffff);
-      fit(q["currency"] | "", x + 7, 52, 100, 1, muted);
+      fit(String(q["currency"] | "") + (q["exchange"].is<const char *>() ? String(" ") + q["exchange"].as<const char *>() : String()), x + 7, 52, 100, 1, muted);
       change(q, x + 7, 70, 98);
       fit(q["quoteTime"] | "", x + 7, 88, 100, 1, muted);
       fit(status(q), x + 7, 102, 100, 1, muted);
@@ -101,14 +101,14 @@ void drawFinance(Arduino_GFX &display, JsonVariantConst data, FinanceNavigation 
     return;
   }
   auto q = rows[nav.detailSelected];
-  fit(q["symbol"] | "", 94, 6, 145, 1, 0xffff);
+  fit(q["displaySymbol"] | (q["symbol"] | ""), 94, 6, 145, 1, 0xffff);
   if (q["market"] == "closed") moon(246, 10);
   if (!(q["available"] | false)) {
     body(q["error"] | "Kein Kurs verfügbar", 94, 30, 320, 90);
     return;
   }
   fit(String(financeNumber(q["price"] | NAN).c_str()), 94, 23, 158, 2, 0xffff);
-  fit(q["currency"] | "", 94, 42, 158, 1, muted);
+  fit(String(q["currency"] | "") + (q["exchange"].is<const char *>() ? String(" ") + q["exchange"].as<const char *>() : String()), 94, 42, 158, 1, muted);
   change(q, 94, 55, 155);
   fit(String(q["quoteTime"] | "") + " " + String(q["timezone"] | ""), 265, 6, 155, 1, muted);
   fit(status(q), 265, 19, 155, 1, muted);

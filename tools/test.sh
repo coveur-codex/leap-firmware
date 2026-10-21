@@ -88,3 +88,6 @@ c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_finance.cpp -o build
 build/tests/finance
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_finance_draw.cpp LEAP/src/FinanceDraw.cpp -o build/tests/finance-draw
 build/tests/finance-draw
+
+c++ -std=c++17 -Wall -Wextra -Werror -I tests/storage_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_network_profiles.cpp -o build/tests/network-profiles
+build/tests/network-profiles

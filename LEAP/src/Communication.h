@@ -16,6 +16,7 @@ struct RelayRequest {
 };
 enum class RelaySendStatus { Idle, Queued, Sent, Retrying, Rejected, LocalBlocked };
 class Communication : public RelayInbox {
+  String serverEndpoint;
   QueueHandle_t incoming = nullptr, outgoing = nullptr;
   JsonDocument templates{&jsonRam};
   std::atomic<uint32_t> epoch{0};

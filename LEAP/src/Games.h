@@ -87,6 +87,15 @@ public:
   bool isMathLab() const {
     return kind == "math_lab";
   }
+  void mathLabTargets(JsonVariantConst config) {
+    auto values = config["targets"].as<JsonArrayConst>();
+    mathLab.targetCount = 0;
+    for (auto value : values) {
+      if (value.is<int>() && value.as<int>() >= 1 && value.as<int>() <= 100 && mathLab.targetCount < 100)
+        mathLab.targets[mathLab.targetCount++] = value.as<int>();
+    }
+    if (!mathLab.targetCount) { mathLab.targets[0]=10; mathLab.targetCount=1; }
+  }
   bool mathLabInput(const InputEvent &event) {
     return mathLab.input(event);
   }
