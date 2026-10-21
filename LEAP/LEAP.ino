@@ -18,11 +18,19 @@ void setup() {
   Serial.begin(115200); // Never wait for a USB host.
   Serial.printf("\n[BOOT] LEAP %s reset=%d flash=%u psram=%u\n", FirmwareVersion,
                 esp_reset_reason(), unsigned(ESP.getFlashChipSize()), unsigned(ESP.getPsramSize()));
-  if (!beginDeviceConfig() || !networkProfiles.begin()) {
+  if (!beginDeviceConfig()) {
     log("CONFIG", "Missing/invalid NVS configuration; install via USB with LocalConfig.h. "
                   "For corrupt records use deliberate NVS erase and reprovision.");
     ota.begin();
     ota.confirm(false); // Pending OTA must roll back if its schema is incompatible.
+    for (;;)
+      delay(1000);
+  }
+  if (!networkProfiles.begin()) {
+    log("CONFIG", "Network profile initialization failed; original device settings retained. "
+                  "See CONFIG diagnostics above; no automatic NVS erase.");
+    ota.begin();
+    ota.confirm(false);
     for (;;)
       delay(1000);
   }

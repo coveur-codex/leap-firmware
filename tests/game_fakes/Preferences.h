@@ -1,6 +1,7 @@
 #pragma once
 #include <cstring>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 class Preferences {
@@ -11,9 +12,16 @@ public:
   inline static std::map<std::string, std::vector<uint8_t>> bytes;
   inline static std::map<std::string, int> ints;
   inline static bool failWrites = false;
+  inline static std::set<std::string> namespaces;
   inline static std::map<std::string, unsigned> writes;
-  bool begin(const char *name, bool) {
+  bool begin(const char *name, bool readOnly) {
     space = name;
+    bool exists = namespaces.count(space) != 0;
+    // Tests may seed stored keys directly, as if loaded from existing flash.
+    for (const auto &entry : bytes) exists |= entry.first.rfind(space, 0) == 0;
+    for (const auto &entry : ints) exists |= entry.first.rfind(space, 0) == 0;
+    if (readOnly && !exists) return false; // ESP-IDF: ESP_ERR_NVS_NOT_FOUND.
+    namespaces.insert(space); // Read/write opening creates a missing namespace.
     return true;
   }
   size_t getBytesLength(const char *key) {

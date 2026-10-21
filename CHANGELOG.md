@@ -1,3 +1,16 @@
+# 1.3.2 – OTA-Erststart mit fehlendem Netzwerk-Namespace
+
+- Behebt sofortigen Rollback beim OTA-Update von 1.2.x: Der neue Namespace
+  `leap-network` wird vor der ersten Profilmigration lesend/schreibend geöffnet.
+  ESP-IDF kann einen noch fehlenden Namespace nicht nur lesend öffnen.
+- Ursprüngliche Gerätekonfiguration und vorhandene Netzwerkprofile bleiben
+  erhalten. Ungültige bestehende Profile werden weiterhin nicht überschrieben;
+  fehlgeschlagene Erst-Speicherung wird beim nächsten Start erneut versucht.
+- Getrennte CONFIG-Diagnosen für Geräte- und Netzwerkeinstellungen; kein
+  irreführender USB-/NVS-Löschhinweis bei einem Netzwerkfehler.
+- Regressionstest bildet den fehlenden Namespace des ESP32 nach und prüft
+  Erststart, Neustart ohne erneute Migration sowie Erhalt der Provisionierung.
+
 # 1.3.0-beta.1 – WLAN, externer Server und Zahlenzerlegung
 
 - Externer HTTP-Server `http://ndk.tstromi.de:8080` mit der bisherigen
