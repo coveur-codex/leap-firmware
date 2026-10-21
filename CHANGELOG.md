@@ -1,3 +1,17 @@
+# 1.3.0-beta.1 – WLAN, externer Server und Zahlenzerlegung
+
+- Externer HTTP-Server `http://ndk.tstromi.de:8080` mit der bisherigen
+  Serveradresse als Rückweg; HTTP und Chat verwenden dieselbe aktive Adresse.
+- Vier lokale und vier serverseitige WLAN-Profile je Gerät; Eingabe, Änderung
+  und Löschen lokaler Profile unter Einstellungen → WLAN einrichten.
+  Getrennte NVS-Speicherung erhält die ursprüngliche OTA-Gerätekonfiguration.
+- Mathe-Labor: „Fehlenden Teil finden“ mit Zielzahlen je Gerät als Liste oder
+  Bereich (1–100), einschließlich 0 als vorgegebenem oder fehlendem Summanden.
+- Finanzanzeige und Vorschau zeigen kurze Symbole und Handelsplätze für die
+  optionalen Frankfurter EUR-Notierungen des Homeservers.
+- Benötigt Homeserver 1.3.0-beta.1 mit Migration 0020. ESP32-Build und Hosttests
+  bestanden; reale OTA-/WLAN-Abnahme und Live-Kursprüfung stehen noch aus.
+
 # 1.1.4 – Zeit-Modul
 
 - Zeit-Modul: Hintergrundtimer mit Akzentfarben-Ring, 1/3/10/60 Minuten und

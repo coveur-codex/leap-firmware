@@ -1,13 +1,17 @@
 #pragma once
 #include "Assets.h"
 #include "Ota.h"
+#include "NetworkProfiles.h"
 #include <WiFi.h>
 #include <atomic>
 namespace leap {
 struct KnowledgeRequest {
   char path[512];
 };
+struct WifiCommand { WifiProfile profile; int removeIndex=-1; };
 class Network {
+  QueueHandle_t wifiCommands = nullptr;
+  std::atomic<int> wifiResult{0};
   QueueHandle_t requests = nullptr;
   TaskHandle_t task = nullptr;
   Transport net;
@@ -36,6 +40,27 @@ public:
   bool copyNews(JsonDocument &value);
   bool copyAircraft(JsonDocument &value);
   bool begin();
+  bool saveWifi(const WifiProfile &p) {
+    WifiCommand command; command.profile=p;
+    wifiResult=1;
+    if (!wifiCommands || xQueueSend(wifiCommands,&command,0)!=pdTRUE) { wifiResult=3; return false; }
+    return true;
+  }
+  bool removeWifi(int index) {
+    WifiCommand command; command.removeIndex=index;
+    wifiResult=1;
+    if (!wifiCommands || xQueueSend(wifiCommands,&command,0)!=pdTRUE) { wifiResult=3; return false; }
+    return true;
+  }
+  String wifiNotice() const {
+    int result=wifiResult.load();
+    if (result==1) return "WLAN wird gespeichert...";
+    if (result==3) return "Speichern fehlgeschlagen / Profile voll";
+    if (result==4) return "Neues WLAN verbunden";
+    if (result==5) return "Anderes Profil aktiv; neues WLAN prüfen";
+    if (connected) return "WLAN verbunden";
+    return "Suche gespeichertes WLAN (je 15 s)";
+  }
   bool knowledge(const String &suffix);
   void requestSync() {
     requested = true;

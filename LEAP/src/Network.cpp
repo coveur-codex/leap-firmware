@@ -1,4 +1,5 @@
 #include "Network.h"
+#include "NetworkProfiles.h"
 #include "ChillPhotos.h"
 #include "Core.h"
 #include "Media.h"
@@ -76,6 +77,8 @@ static void pruneRadar() {
   }
 }
 bool Network::begin() {
+  wifiCommands=xQueueCreate(1,sizeof(WifiCommand));
+  if (!wifiCommands) return false;
   if (!quizTracking.begin()) log("QUIZ", "Tracking storage unavailable; queued data retained");
   aircraftMutex = xSemaphoreCreateMutex();
   if (!aircraftMutex) return false;
@@ -324,7 +327,8 @@ void Network::run() {
   // Chat relay and content workers share the WLAN connection.
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(true); // Minimum modem sleep: wake at AP DTIM, keep TCP connected.
-  WiFi.setAutoReconnect(true);
+  WiFi.setAutoReconnect(false); // Profile rotation owns reconnection.
+  WiFi.persistent(false); // Credentials live in our atomic NVS record.
   if (!strlen(deviceSettings.ssid))
     log("WIFI", "No SSID configured; check LEAP/LocalConfig.h");
   // Validate cached assets off the UI thread. Input/rendering can start immediately.
@@ -345,13 +349,32 @@ void Network::run() {
   uint32_t lastQuizUpload = millis() - 1000, quizUploadInterval = 1000;
   uint32_t interval = 10000;
   int lastWifiStatus = -1;
+  size_t wifiIndex = 0;
+  String wifiTrialSsid;
+  uint32_t wifiGeneration = networkProfiles.wifiGeneration.load();
   const char *lastBlock = nullptr;
   for (;;) {
+    WifiCommand command;
+    if (xQueueReceive(wifiCommands,&command,0)==pdTRUE) {
+      bool saved=command.removeIndex>=0 ? networkProfiles.removeLocal(command.removeIndex) : networkProfiles.saveLocal(command.profile);
+      wifiResult=saved ? 2 : 3;
+      wifiTrialSsid=saved && command.removeIndex<0 ? command.profile.ssid : "";
+    }
+    if (wifiGeneration != networkProfiles.wifiGeneration.load()) {
+      wifiGeneration = networkProfiles.wifiGeneration.load();
+      wifiIndex = 0;
+      WiFi.disconnect();
+      lastConnect = millis() - 15000;
+    }
     int wifiStatus = WiFi.status();
     connected = wifiStatus == WL_CONNECTED;
+    if (connected && wifiTrialSsid.length())
+      wifiResult=WiFi.SSID()==wifiTrialSsid ? 4 : 5;
     if (wifiStatus != lastWifiStatus) {
       lastWifiStatus = wifiStatus;
       if (connected) {
+        lastSync = millis() - SyncInterval;
+        interval = 10000;
         Serial.printf("[%10lu] [WIFI    ] Connected ip=%s rssi=%d channel=%d\n", millis(),
                       WiFi.localIP().toString().c_str(), WiFi.RSSI(), WiFi.channel());
       } else {
@@ -364,10 +387,18 @@ void Network::run() {
                       wifiStatus);
       }
     }
-    if (!connected && strlen(deviceSettings.ssid) && elapsed(millis(), lastConnect, 30000)) {
+    if (!connected && elapsed(millis(), lastConnect, 15000)) {
       lastConnect = millis();
-      WiFi.begin(deviceSettings.ssid, deviceSettings.password);
-      log("WIFI", "Connection attempt");
+      WifiProfile profile;
+      if (!networkProfiles.profile(wifiIndex++, profile)) {
+        wifiIndex = 1;
+        networkProfiles.profile(0, profile);
+      }
+      if (profile.ssid[0]) {
+        WiFi.disconnect();
+        WiFi.begin(profile.ssid, profile.password);
+        log("WIFI", "Trying saved profile");
+      }
     }
     const char *block = !storage.ready ? "Blocked: LittleFS unavailable; see STORE recovery message"
                         : !selfTestPassed ? "Blocked: cached asset self-test failed"
@@ -402,6 +433,31 @@ void Network::run() {
       busy = false;
       lastSync = millis();
       interval = ok ? SyncInterval : std::min(interval * 2, SyncInterval);
+      if (!ok && (net.status <= 0 || net.status == 404 || net.status >= 500)) {
+        networkProfiles.nextEndpoint();
+        interval = 10000;
+      }
+      if (ok) {
+        // Read credentials separately; never persist them in content snapshots.
+        JsonDocument config(&jsonRam);
+        if (net.json(base + "/network-config", config) && config["schemaVersion"] == 1 &&
+            config["deviceId"] == deviceSettings.deviceId && config["revision"].is<uint32_t>() &&
+            config["serverUrl"].is<const char *>() && config["wifiProfiles"].is<JsonArray>() &&
+            config["wifiProfiles"].size() <= 4) {
+          WifiProfile profiles[4]{};
+          bool valid = true;
+          size_t i=0;
+          for (JsonObjectConst p : config["wifiProfiles"].as<JsonArrayConst>()) {
+            if (!p["ssid"].is<const char *>() || !p["password"].is<const char *>()) { valid=false; break; }
+            const char *ssid = p["ssid"] | "", *password = p["password"] | "";
+            if (!ssid[0] || strlen(ssid)>32 || strlen(password)>64) { valid=false; break; }
+            strcpy(profiles[i].ssid,ssid); strcpy(profiles[i].password,password);
+            if (!profiles[i++].valid()) { valid=false; break; }
+          }
+          if (valid && !networkProfiles.applyRemote(config["revision"], config["serverUrl"], profiles))
+            log("CONFIG", "Network profile update rejected; previous profiles retained");
+        }
+      }
       log("SYNC", ok ? "Complete" : "Deferred; previous usable data retained");
     }
     // Same network task and atomic offline snapshot as all other content.

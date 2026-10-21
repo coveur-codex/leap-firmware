@@ -1,4 +1,5 @@
 #include "Transport.h"
+#include "NetworkProfiles.h"
 #include "Core.h"
 #include <mbedtls/sha256.h>
 namespace leap {
@@ -21,7 +22,7 @@ bool Transport::open(HTTPClient &http, WiFiClient &plain, WiFiClientSecure &tls,
   if (!path.startsWith("/api/") || path.indexOf("..") >= 0 || path.indexOf('\r') >= 0 ||
       path.indexOf('\n') >= 0 || path.indexOf('\\') >= 0)
     return false;
-  String base = deviceSettings.server;
+  String base = networkProfiles.endpoint();
   while (base.endsWith("/"))
     base.remove(base.length() - 1);
   http.setConnectTimeout(HttpTimeout);

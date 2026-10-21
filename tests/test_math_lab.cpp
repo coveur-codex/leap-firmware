@@ -64,7 +64,7 @@ int main() {
   assert(lab.screen == MathLab::Screen::Activities);
   assert(lab.input({false, Key::Center, false}));
   for (int activity = 0; activity < 4; ++activity)
-    for (int variant = 0; variant < (activity == 1 ? 4 : 3); ++variant)
+    for (int variant = 0; variant < (activity == 1 ? 5 : 3); ++variant)
       for (int difficulty = 0; difficulty < 4; ++difficulty) {
         lab.start();
         lab.activity = activity;
@@ -155,6 +155,25 @@ int main() {
   lab.preview = true;
   lab.tick(99999);
   assert(lab.preview);
+  lab.start(); lab.activity=1; lab.variant=4; lab.screen=MathLab::Screen::Play;
+  lab.targets[0]=9; lab.targets[1]=10; lab.targetCount=2;
+  bool zero=false, whole=false, nine=false, ten=false;
+  for (int i=0;i<2000;++i) {
+    lab.newTask();
+    assert(lab.target==9 || lab.target==10);
+    nine |= lab.target==9; ten |= lab.target==10;
+    zero |= lab.part==0; whole |= lab.part==lab.target;
+    int given=lab.part;
+    key(lab,false,Key::Down); key(lab,true,Key::Right);
+    assert(lab.part==given); // Only the missing summand is editable.
+    lab.answer=lab.target-lab.part; lab.check(); assert(lab.correct);
+    ++lab.answer; lab.check(); assert(!lab.correct);
+  }
+  assert(zero && whole && nine && ten);
+  lab.target=100;lab.part=100;lab.answer=0;lab.check();assert(lab.correct);
+  Arduino_GFX complement; complement.recordAll=complement.recordTextBounds=true;
+  lab.draw(complement);
+  for (auto &r : complement.rects) assert(r.x>=86 && r.x+r.w<=428 && r.y+r.h<=142);
   std::cout << "PASS: Math Lab arithmetic, 3000 buildings, geometry, navigation, views, preview "
                "and display bounds\n";
 }

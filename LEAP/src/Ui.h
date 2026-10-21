@@ -12,6 +12,7 @@
 #include "Notifications.h"
 #include "TimeModule.h"
 #include "Finance.h"
+#include "WifiEditor.h"
 namespace leap {
 struct Page {
   String id, title;
@@ -49,6 +50,11 @@ class Ui {
   bool locked = true, menu = false, answered = false, gameOpen = false, dirtySettings = false;
   bool inputDiagnostics = false, calibrationVisible = false;
   void drawCalibration();
+  bool wifiVisible = false;
+  WifiEditor wifiEditor;
+  bool wifiActive() const { return wifiVisible && !locked && !menu && !pages.empty() && pages[page].id == "settings"; }
+  void drawWifi();
+  void wifiAction(const InputEvent &e);
   ChatSelection chatChoice;
   void chatSymbol(const String &symbol, int x, int y, int scale = 1);
   uint16_t heldButtons = 0;

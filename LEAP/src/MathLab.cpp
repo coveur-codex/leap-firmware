@@ -5,13 +5,13 @@ namespace leap {
 namespace {
 constexpr uint16_t Ink = 0xffff, Teal = 0x07ba, Gold = 0xffa0, Muted = 0x9492, Bg = 0x10e5;
 const char *activities[] = {"Würfellabor", "Zahlenwerkstatt", "Würfelarchitekt", "Würfeldetektiv"};
-const char *variants[4][4] = {
+const char *variants[4][5] = {
     {"Würfeln und zählen", "Zahlenkombinationen", "Würfe erforschen", ""},
-    {"Mengen erkennen", "Zahlen zerlegen", "Mengen vergleichen", "Zehner und Einer"},
+    {"Mengen erkennen", "Zahlen zerlegen", "Mengen vergleichen", "Zehner und Einer", "Fehlenden Teil finden"},
     {"Nachbauen", "Merken und nachbauen", "Genau hinschauen", ""},
     {"Fehlende Kante", "Fehler finden", "Richtige Ansicht", ""}};
 int variantCount(int activity) {
-  return activity == 1 ? 4 : 3;
+  return activity == 1 ? 5 : 3;
 }
 void label(Arduino_GFX &g, int x, int y, const char *s, uint16_t c = Ink, int size = 1) {
   g.setTextColor(c);
@@ -103,6 +103,10 @@ void MathLab::newTask() {
     target = 1 + mathlab::below(esp_random, limit);
     a = mathlab::below(esp_random, limit + 1);
     b = mathlab::below(esp_random, limit + 1);
+    if (variant == 4) {
+      target = targets[mathlab::below(esp_random, targetCount)];
+      part = mathlab::below(esp_random, target + 1);
+    }
   } else {
     original = mathlab::generate(esp_random, difficulty, variant == 2 && activity == 2);
     built = {};
@@ -132,7 +136,7 @@ void MathLab::check() {
       found |= 1u << (std::min(a, b) - 1);
   } else if (activity == 1) {
     correct = variant == 0   ? answer == target
-              : variant == 1 ? mathlab::decomposition(target, part, answer)
+              : (variant == 1 || variant == 4) ? mathlab::decomposition(target, part, answer)
               : variant == 2 ? answer == (a < b    ? 0
                                           : a == b ? 1
                                                    : 2)
@@ -243,6 +247,9 @@ bool MathLab::input(const InputEvent &e) {
     if (activity == 0 && variant == 1) {
       int &v = selectedDie ? b : a;
       v = std::max(1, std::min(6, v + delta));
+    } else if (activity == 1 && variant == 4) {
+      answer = std::max(0, std::min(target, answer + delta));
+      help = false;
     } else if (activity == 1 && variant == 1) {
       int &v = selectedPart ? answer : part;
       v = std::max(0, std::min(target, v + delta));
@@ -280,14 +287,17 @@ void MathLab::draw(Arduino_GFX &g, uint16_t accent) {
       const uint16_t rowInk = setting == i ? contrastInk(accent) : Ink;
       if (i == 0)
         label(g, 102, y, variants[activity][variant], rowInk);
-      if (i == 1) {
+      if (i == 1 && activity == 1 && variant == 4) {
+        snprintf(s, sizeof(s), "%u Zielzahlen eingestellt", unsigned(targetCount));
+        label(g, 102, y, s, rowInk);
+      } else if (i == 1) {
         snprintf(s, sizeof(s), activity == 1 ? "Zahlenraum: bis %d" : "Baustufe / Stufe: %d",
                  activity == 1 ? mathlab::numberLimit(difficulty) : difficulty + 1);
         label(g, 102, y, s, rowInk);
       }
       if (i == 2) {
         snprintf(s, sizeof(s), "Merkzeit: %d s", seconds);
-        label(g, 102, y, activity == 2 ? s : "Alle Stufen frei wählbar", rowInk);
+        label(g, 102, y, activity == 2 ? s : activity == 1 && variant == 4 ? "Finde die fehlende Zahl." : "Alle Stufen frei wählbar", rowInk);
       }
       if (i == 3)
         label(g, 102, y, "Los geht's!", rowInk);
@@ -331,7 +341,18 @@ void MathLab::draw(Arduino_GFX &g, uint16_t accent) {
       label(g, 110, 87, s, accent, 2);
     }
   } else if (activity == 1) {
-    if (variant == 0 || variant == 1) {
+    if (variant == 4) {
+      char s[48];
+      snprintf(s, sizeof(s), "%d + ? = %d", part, target);
+      label(g, 104, 36, s, Ink, 2);
+      snprintf(s, sizeof(s), "Deine Antwort: %d", answer);
+      label(g, 104, 62, s, Gold, 2);
+      if (help) {
+        quantity(g, 104, 89, target, part, 4, accent);
+        snprintf(s, sizeof(s), "%d + %d = %d", part, target-part, target);
+        label(g, 290, 95, s, accent);
+      }
+    } else if (variant == 0 || variant == 1) {
       quantity(g, 104, 39, target, variant == 1 ? part : -1, difficulty == 3 ? 6 : 10, accent);
       if (variant == 0) {
         label(g, 104, 91, "Wie viele?");

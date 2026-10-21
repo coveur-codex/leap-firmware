@@ -1014,6 +1014,7 @@ void Ui::drawPage(const String &id) {
       list(labels);
     }
   } else if (id == "settings") {
+    if (wifiVisible) { drawWifi(); return; }
     if (calibrationVisible) {
       drawCalibration();
     } else if (diagnosticsVisible()) {
@@ -1028,7 +1029,7 @@ void Ui::drawPage(const String &id) {
     } else {
       list({"Licht: " + String(brightness * 100 / 255) + "%",
             "Lautstärke: " + String(audio.volume.load()) + "%", "Jetzt synchronisieren",
-            "Info / Geräte-ID", "Speicher", "Taster / MPU (Mitte öffnet)", "MPU kalibrieren"});
+            "Info / Geräte-ID", "Speicher", "Taster / MPU (Mitte öffnet)", "MPU kalibrieren", "WLAN einrichten"});
       text("Runter: Speicher / Taster / MPU", 94, 104, 1, Muted);
     }
     if (selection == 3)
@@ -1151,6 +1152,10 @@ void Ui::input(const InputEvent &e) {
   lastInput = millis();
   frameRequested = true;
   notice = "";
+  if (wifiVisible && !locked && !menu && !pages.empty() && pages[page].id == "settings" && !e.longPress) {
+    wifiAction(e);
+    return;
+  }
   if (calibrationVisible && !locked && !menu) {
     if (!e.right && e.key == Key::Center) {
       calibrationVisible = false;
@@ -1204,6 +1209,7 @@ void Ui::input(const InputEvent &e) {
   if (e.longPress) {
     if (!e.right && e.key == Key::Center) {
       locked = true;
+      wifiVisible=false; wifiEditor={};
       game.close();
       gameOpen = false;
       menu = false;
@@ -1345,6 +1351,7 @@ void Ui::action(const InputEvent &e) {
       selection = constrain(selection + direction, 0, std::max(0, int(available.size()) - 1));
       if (e.key == Key::Center && selection < int(available.size())) {
         game.start(available[selection].c_str());
+        game.mathLabTargets(state["config"]["mathLab"]);
         gameOpen = true;
       }
     }
@@ -1429,7 +1436,8 @@ void Ui::action(const InputEvent &e) {
       if (e.key == Key::Center) nav.center(count, millis());
     }
   } else if (id == "settings") {
-    selection = constrain(selection + direction, 0, 6);
+    selection = constrain(selection + direction, 0, 7);
+    if (selection == 7 && e.key == Key::Center) { wifiVisible=true; wifiEditor={}; }
     if (selection == 5 && e.key == Key::Center) {
       inputDiagnostics = true;
       diagnosticLastKey = "";
@@ -1508,7 +1516,7 @@ void Ui::tick() {
   if (notifications.tick(millis())) {
     const auto &message = *notifications.visible();
     bool chillActive = chillVisible();
-    bool standby = !chillActive && !diagnosticsVisible() && !calibrationVisible && elapsed(millis(), lastInput, 60000);
+    bool standby = !chillActive && !diagnosticsVisible() && !calibrationVisible && !wifiActive() && elapsed(millis(), lastInput, 60000);
     if (standby) openNotification(message);
     auto quiet = state["config"]["notificationQuietHours"];
     tm local{};
@@ -1523,7 +1531,7 @@ void Ui::tick() {
   if (!chillVisible()) chill.close();
   chill.tick(millis());
   bool chillActive = chillVisible();
-  bool diagnosticVisible = diagnosticsVisible() || calibrationVisible;
+  bool diagnosticVisible = diagnosticsVisible() || calibrationVisible || wifiActive();
   auto idle = IdlePolicy::evaluate(millis(), lastInput, chillActive, diagnosticVisible);
   bool dim = idle.dim;
   ledcWrite(hw::Backlight, dim ? 20 : brightness);
@@ -1549,6 +1557,52 @@ void Ui::tick() {
     render();
     // Animated gameplay measures cadence from frame start, including display transfer time.
     lastFrame = gameOpen && (game.isCrabJourney() || game.isDragonRun()) ? frameAt : millis();
+  }
+}
+void Ui::drawWifi() {
+  text("WLAN einrichten",94,8,1,Accent);
+  if (wifiEditor.field != WifiEditor::Field::Menu) {
+    bool password=wifiEditor.field==WifiEditor::Field::Password;
+    text(password ? "Passwort" : "WLAN-Name (SSID)",94,27);
+    std::string visible=password ? std::string(wifiEditor.password.size(), '*') : wifiEditor.ssid;
+    if (visible.size()>34) visible=visible.substr(visible.size()-34);
+    text(String(visible.c_str())+"_",94,47);
+    String c(wifiEditor.glyph().c_str());
+    text(wifiEditor.character==32 ? "Zeichen: [Leerzeichen]" : String("Zeichen: [")+c+"]",94,69,1,Accent);
+    text("L hoch: a/A   L runter: 0/!",94,87);
+    text("R <> Zeichen   Hoch: anfügen",94,101);
+    text("R runter: löschen   Mitte: fertig",94,115);
+    return;
+  }
+  auto record=networkProfiles.snapshot();
+  std::vector<String> rows={"Name: "+String(wifiEditor.ssid.c_str()),
+      "Passwort: "+String(wifiEditor.password.empty() ? "offen" : "********"), "Speichern und verbinden"};
+  for (const auto &p : record.local) if (p.ssid[0]) rows.push_back("Löschen: "+String(p.ssid));
+  int first=wifiEditor.row>3 ? wifiEditor.row-3 : 0;
+  for (int i=first;i<int(rows.size()) && i<first+4;++i) {
+    int y=31+(i-first)*18;
+    if (i==wifiEditor.row) canvas->fillRoundRect(94,y-3,326,16,3,Accent);
+    text(rows[i].substring(0,39),98,y,1,i==wifiEditor.row ? contrastInk(Accent) : 0xffff);
+  }
+  text(network.wifiNotice(),94,105,1,Muted);
+  text("R: wählen / Mitte   L Mitte: zurück",94,123,1,Muted);
+}
+void Ui::wifiAction(const InputEvent &e) {
+  auto record=networkProfiles.snapshot();
+  int count=0;
+  for (const auto &p : record.local) if (p.ssid[0]) ++count;
+  auto result=wifiEditor.input(e,count);
+  if (result==WifiEditor::Action::Close) { wifiVisible=false; wifiEditor={}; selection=7; }
+  if (result==WifiEditor::Action::Save) {
+    WifiProfile p;
+    strcpy(p.ssid,wifiEditor.ssid.c_str()); strcpy(p.password,wifiEditor.password.c_str());
+    if (!p.ssid[0] || !p.valid()) { notice="Name oder Passwort ungültig (8-63 Zeichen)"; return; }
+    if (!network.saveWifi(p)) notice="WLAN-Auftrag bereits in Bearbeitung";
+    else notice="WLAN wird gespeichert und verbunden";
+  }
+  if (result==WifiEditor::Action::Remove) {
+    network.removeWifi(wifiEditor.removeIndex);
+    wifiEditor.row=0;
   }
 }
 } // namespace leap

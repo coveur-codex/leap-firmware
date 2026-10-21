@@ -3,6 +3,7 @@
 #include "src/Input.h"
 #include "src/Motion.h"
 #include "src/Network.h"
+#include "src/NetworkProfiles.h"
 #include "src/Communication.h"
 #include "src/Storage.h"
 #include "src/Ui.h"
@@ -17,7 +18,7 @@ void setup() {
   Serial.begin(115200); // Never wait for a USB host.
   Serial.printf("\n[BOOT] LEAP %s reset=%d flash=%u psram=%u\n", FirmwareVersion,
                 esp_reset_reason(), unsigned(ESP.getFlashChipSize()), unsigned(ESP.getPsramSize()));
-  if (!beginDeviceConfig()) {
+  if (!beginDeviceConfig() || !networkProfiles.begin()) {
     log("CONFIG", "Missing/invalid NVS configuration; install via USB with LocalConfig.h. "
                   "For corrupt records use deliberate NVS erase and reprovision.");
     ota.begin();
