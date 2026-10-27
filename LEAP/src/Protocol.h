@@ -51,12 +51,16 @@ inline std::string avatarFrame(JsonVariantConst manifest, uint32_t now = 0) {
     return frames[(now / 400) % frames.size()].as<std::string>();
   return ""; // Only canonical idle folders are discovered; other expressions are not avatars.
 }
-// Page IDs come from config; aircraft is the API name of the flight radar page.
+// Page IDs come from config; some use different names for their static images.
 inline std::string avatarPageImage(JsonVariantConst manifest, const std::string &page) {
   std::string name = page == "aircraft" ? "flightradar" : page;
+  if (page == "finance")
+    name = "finanzen";
+  else if (page == "time")
+    name = "zeit";
   bool known = false;
   for (const char *id : {"home", "news", "weather", "flightradar", "quiz", "games",
-                         "communication", "knowledge", "settings"})
+                         "communication", "knowledge", "settings", "finanzen", "zeit"})
     known = known || name == id;
   if (!known)
     name = "home";

@@ -1,3 +1,11 @@
+# 1.3.3 – Seitenavatare für Finanzen und Zeit
+
+- Die Seiten `finance` (Finanzen) und `time` (Zeit) verwenden jetzt
+  `data/pet/pagestatics/finanzen.png` bzw. `data/pet/pagestatics/zeit.png`
+  aus dem zugewiesenen Avatarpaket, analog zu den anderen Seiten.
+- Äußere Uploadordner und der Rückfall auf `home.png` bzw. einen statischen
+  Idle-Frame bei älteren Paketen bleiben unterstützt.
+
 # 1.3.2 – OTA-Erststart mit fehlendem Netzwerk-Namespace
 
 - Behebt sofortigen Rollback beim OTA-Update von 1.2.x: Der neue Namespace

@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.3.2`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.3.3`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -215,8 +215,9 @@ Unveränderte alte SVG-Standardpakete erhalten beim Serverstart eine neue Versio
 eigene Pakete bleiben unverändert. Nach dem Sync zeigt die Sidebar den zugewiesenen
 Avatar, bis dahin „Avatar wartet auf Sync“. Die Sidebar zeigt pro Seite das
 80×80-PNG aus `data/pet/pagestatics/`: `home`, `news`, `weather`, `flightradar`,
-`quiz`, `games`, `communication`, `knowledge` oder `settings`. Die interne Seite
-`aircraft` verwendet `flightradar.png`; Menü und Sperrbildschirm verwenden
+`quiz`, `games`, `communication`, `knowledge`, `settings`, `finanzen` oder `zeit`.
+Die internen Seiten `aircraft`, `finance` und `time` verwenden `flightradar.png`,
+`finanzen.png` bzw. `zeit.png`; Menü und Sperrbildschirm verwenden
 `home.png`. Pfade mit einem äußeren Uploadordner werden ebenfalls erkannt.
 Fehlt das Seitenbild, wird `home.png` verwendet, danach der erste Idle-Frame
 bzw. die PNG-Vorschau eines alten Pakets, jeweils ohne Animation. Das Haustierspiel
