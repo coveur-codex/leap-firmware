@@ -11,7 +11,7 @@ protected:
 public:
   static inline std::vector<WebSocketsClient*> instances;
   bool connected = false, started = false, failConnect = false;
-  unsigned interval=0, heartbeat=0;
+  unsigned interval=0, heartbeat=0, callbackDelay=0;
   std::string host, url, ca;
   uint16_t port=0;
   std::vector<std::string> sent;
@@ -31,6 +31,7 @@ public:
     auto event=events.front(); events.erase(events.begin());
     if (event.first==WStype_CONNECTED) { connected=true; _lastConnectionFail=0; }
     if (event.first==WStype_DISCONNECTED) { connected=false; _lastConnectionFail=fakeNow; }
+    fakeNow += callbackDelay;
     callback(event.first, reinterpret_cast<uint8_t*>(event.second.data()), event.second.size());
   }
 };

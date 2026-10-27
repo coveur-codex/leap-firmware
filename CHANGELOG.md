@@ -1,3 +1,14 @@
+# 1.4.0-beta.2 – Snake-Verbindung und Akzentfarbe
+
+- Behebt „Homeserver nicht erreichbar“ unmittelbar nach einer gültigen
+  Multiplayer-Antwort: Die Timeout-Prüfung verwendet jetzt die Uhrzeit nach
+  `socket.loop()`, damit ein späterer Callback-Zeitstempel nicht unterläuft.
+- Die Snake-Modus-/Geschwindigkeitswahl nutzt die konfigurierte Akzentfarbe
+  und die gemeinsame Kontrastfunktion für lesbare Schrift.
+- Regressionstests für verzögerte Netzwerk-Callbacks, fortlaufende Zustände,
+  echte Inaktivität, `millis()`-Überlauf und alle vier Menüoptionen bei drei Farben.
+- Kompatibel mit Homeserver 1.4.0-beta.1; keine Server- oder NVS-Änderung.
+
 # 1.4.0-beta.1 – Kooperatives Multiplayer-Snake
 
 - Zusätzliche Multiplayer-Auswahl im vorhandenen Snake-Menü; Solo-Geschwindigkeiten

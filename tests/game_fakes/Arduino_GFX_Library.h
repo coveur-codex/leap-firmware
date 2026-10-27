@@ -6,6 +6,7 @@
 #include <vector>
 struct Arduino_GFX {
   std::string text;
+  std::vector<uint16_t> textColors;
   bool recordAll = false, recordTextBounds = false;
   int textX = 0, textY = 0, textSize = 1;
   struct Rect {
@@ -16,7 +17,7 @@ struct Arduino_GFX {
   void fillScreen(uint16_t) {}
   void drawPixel(int x,int y,uint16_t c) { if (recordAll) rects.push_back({x,y,1,1,c}); }
   void drawFastHLine(int x,int y,int w,uint16_t c) { if (recordAll) rects.push_back({x,y,w,1,c}); }
-  void setTextColor(uint16_t) {}
+  void setTextColor(uint16_t color) { textColors.push_back(color); }
   void setTextSize(int size) { textSize = size; }
   void setCursor(int x, int y) { textX = x; textY = y; }
   void print(const char *s) {

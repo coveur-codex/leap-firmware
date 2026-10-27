@@ -1,6 +1,7 @@
 #include "DisplayText.h"
 #include "Audio.h"
 #include "Games.h"
+#include "AccentColor.h"
 #include "Motion.h"
 #include "CrabJourneyDraw.h"
 #include <cassert>
@@ -544,6 +545,22 @@ int main() {
   gfx.text.clear();
   recovered.draw(gfx, 94, 10);
   assert(gfx.text.find("Geschwindigkeit") != std::string::npos);
+  // Snake mode selection uses the same configured accent/contrast as other menus.
+  gfx.recordAll=true;
+  for (uint16_t accent : {uint16_t(0xfd20), uint16_t(0x0010), uint16_t(0xf81f)}) {
+    for (int mode=0;mode<4;++mode) {
+      gfx.rects.clear(); gfx.textColors.clear();
+      recovered.draw(gfx,94,10,accent);
+      bool highlighted=false;
+      for (auto r:gfx.rects) if (r.w==150 && r.h==19 && r.color==accent) highlighted=true;
+      assert(highlighted && gfx.textColors.size()>=5);
+      assert(gfx.textColors[mode+1]==contrastInk(accent));
+      recovered.input(mode==3 ? Key::Up : Key::Down);
+    }
+    recovered.start("snake");
+  }
+  gfx.recordAll=false;
+
   // Food index 258 corresponds to the square directly ahead of the initial head.
   recovered.start("snake");
   fakeRandom = 258;

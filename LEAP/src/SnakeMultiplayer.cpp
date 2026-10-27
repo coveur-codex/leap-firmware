@@ -97,6 +97,9 @@ void SnakeMultiplayer::service(uint32_t now,bool connected) {
       }
     }
     if (started) socket.loop();
+    // Callbacks timestamp received frames with millis(). Read the clock again
+    // so a fresh frame cannot appear newer than now and underflow the timeout.
+    now=millis();
     if (socket.isConnected() && now-lastPing>=1000) {
       JsonDocument f(&jsonRam); f["type"]="ping"; writeFrame(f); lastPing=now;
     }

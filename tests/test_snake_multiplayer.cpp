@@ -53,7 +53,11 @@ int main() {
   assert(socket && socket->interval==1000);
   socket->events.push_back({WStype_CONNECTED,{}}); step(200);
   assert(last(*socket)["type"]=="join" && last(*socket)["session"]=="");
+  // Real network callbacks run later than the timestamp at service entry.
+  // Even one millisecond must not wrap the unsigned inactivity subtraction.
+  socket->callbackDelay=1;
   deliver(*socket,valid,300);
+  socket->callbackDelay=0;
   assert(snakeMultiplayer.online && snakeMultiplayer.poll(snapshot));
   assert(snapshot.phase==SnakePhase::Playing && snapshot.count==1);
   snakeMultiplayer.turn(0,0); step(400);
@@ -73,5 +77,29 @@ int main() {
   step(900); socket->events.push_back({WStype_CONNECTED,{}}); step(950);
   assert(last(*socket)["session"]=="");
   step(17000,false); assert(snakeMultiplayer.poll(snapshot) && snapshot.phase==SnakePhase::Error);
-  std::cout << "PASS: bounded Snake decoder, input sequence, latest snapshot, reconnect identity, stale visit and timeout\n";
+  // Keep receiving for longer than the 15s inactivity deadline, with callbacks
+  // crossing millis() on every pass. Only real silence may trigger a timeout.
+  snakeMultiplayer.close(); snakeMultiplayer.start(); step(20000);
+  socket->events.push_back({WStype_CONNECTED,{}}); step(20020);
+  socket->callbackDelay=7;
+  for (unsigned i=0;i<20;++i) {
+    auto frame=state(i,i+1); deliver(*socket,frame,20040+i*1000);
+    assert(snakeMultiplayer.online && snakeMultiplayer.poll(snapshot));
+    assert(snapshot.phase==SnakePhase::Playing && snapshot.tick==i);
+  }
+  socket->callbackDelay=0;
+  step(42048); assert(!snakeMultiplayer.online); // Actual 3001ms of silence.
+  step(54048,false);
+  assert(snakeMultiplayer.poll(snapshot) && snapshot.phase==SnakePhase::Error);
+  // The same receive-time calculation must work at the real millis() rollover.
+  snakeMultiplayer.close(); snakeMultiplayer.start(); step(UINT32_MAX-20);
+  socket->events.push_back({WStype_CONNECTED,{}}); step(UINT32_MAX-10);
+  socket->callbackDelay=1; deliver(*socket,valid,UINT32_MAX); socket->callbackDelay=0;
+  assert(snakeMultiplayer.online && snakeMultiplayer.poll(snapshot));
+  assert(snapshot.phase==SnakePhase::Playing);
+  step(2999); assert(snakeMultiplayer.online);
+  step(3001); assert(!snakeMultiplayer.online);
+  step(15001,false);
+  assert(snakeMultiplayer.poll(snapshot) && snapshot.phase==SnakePhase::Error);
+  std::cout << "PASS: callback timing, millis rollover, genuine inactivity and bounded Snake decoder, input sequence, latest snapshot, reconnect identity, stale visit and timeout\n";
 }
