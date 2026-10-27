@@ -1,5 +1,6 @@
 #include "DisplayText.h"
 #include "Games.h"
+#include "AccentColor.h"
 #include "Audio.h"
 #include "CrabJourneyDraw.h"
 #include "DragonRunDraw.h"
@@ -463,8 +464,8 @@ void Games::draw(Arduino_GFX &gfx, int left, int top, uint16_t accent) {
       for (int i = 0; i < 4; ++i) {
         int yy = top + 24 + i * 21;
         if (i == snakeSpeed)
-          gfx.fillRoundRect(left, yy - 4, 150, 19, 4, 0x06b8);
-        gfx.setTextColor(i == snakeSpeed ? 0x10e5 : 0xffff);
+          gfx.fillRoundRect(left, yy - 4, 150, 19, 4, accent);
+        gfx.setTextColor(i == snakeSpeed ? contrastInk(accent) : 0xffff);
         gfx.setCursor(left + 6, yy);
         printDisplayText(gfx, speeds[i]);
       }

@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.4.0-beta.1`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.4.0-beta.2`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -796,3 +796,11 @@ Benötigt Homeserver 1.4.0-beta.1 und WLAN. **Richtung rechts** steuert die eige
 **L Mitte** verlässt die Partie. Nach dem Ergebnis führt **R Mitte** zurück zur Moduswahl.
 Das Paket `game-avatars` wird beim regulären Asset-Sync automatisch installiert.
 Details und Hardware-Abnahme: [docs/snake-multiplayer.md](docs/snake-multiplayer.md).
+
+### Korrekturen in 1.4.0-beta.2
+
+Ein Zeitstempel aus einem WebSocket-Callback konnte die vorher gelesene Uhrzeit
+überholen und sofort einen falschen Multiplayer-Timeout auslösen. Die Prüfung
+liest die Uhr jetzt nach der Netzwerkverarbeitung erneut. Die Snake-Moduswahl
+verwendet außerdem die Geräte-Akzentfarbe mit passender kontrastreicher Schrift.
+Homeserver 1.4.0-beta.1 bleibt kompatibel; dort ist kein Update erforderlich.
