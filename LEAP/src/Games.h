@@ -1,5 +1,6 @@
 #pragma once
 #include "GameRules.h"
+#include "SnakeMultiplayer.h"
 #include "MathLab.h"
 #include "KitchenEditor.h"
 #include "ConnectFour.h"
@@ -19,6 +20,11 @@ class Games {
   Media petImage, petBackground;
   PetState pet;
   SnakeState snake;
+  bool snakeCoop = false;
+  SnakeSnapshot cooperative;
+  JsonDocument gameAvatars{&jsonRam};
+  Media lobbyImages[4];
+  void drawCooperative(Arduino_GFX &gfx, int left, int top);
   MazeState maze;
   DragonRun dragon;
   int dragonBest = 0;
@@ -57,12 +63,14 @@ class Games {
 
 public:
   void begin();
+  void multiplayerAssets(JsonVariantConst manifest) { gameAvatars.set(manifest); }
   void avatarPackage(const String &id, int version, JsonVariantConst manifest);
   void start(const String &id);
   void close();
   bool isPet() const {
     return kind == "tamagotchi";
   }
+  bool isSnakeMultiplayer() const { return isSnake() && snakeCoop; }
   bool isSnake() const {
     return kind == "snake";
   }

@@ -33,6 +33,9 @@ inline int xQueueSend(QueueHandle_t q, const void *item, TickType_t) {
   q->items.emplace_back(p, p + q->itemSize);
   return pdTRUE;
 }
+inline int xQueueOverwrite(QueueHandle_t q, const void *item) {
+  q->items.clear(); return xQueueSend(q,item,0);
+}
 inline int xQueueReceive(QueueHandle_t q, void *item, TickType_t) {
   if (q->items.empty()) return 0;
   memcpy(item, q->items.front().data(), q->itemSize);

@@ -7,6 +7,17 @@
 #include <iostream>
 using namespace leap;
 namespace leap {
+SnakeMultiplayer snakeMultiplayer;
+static bool coopStarted=false, coopQueued=false;
+static SnakeSnapshot coopFrame;
+static int coopClosed=0, coopDirection=-1;
+bool SnakeMultiplayer::start() { coopStarted=true; return true; }
+void SnakeMultiplayer::close() { ++coopClosed; }
+void SnakeMultiplayer::turn(uint8_t d, uint32_t) { coopDirection=d; }
+bool SnakeMultiplayer::poll(SnakeSnapshot &out) {
+  if (!coopQueued) return false;
+  out=coopFrame; coopQueued=false; return true;
+}
 RamAllocator jsonRam;
 void *RamAllocator::allocate(size_t n) {
   return malloc(n);
@@ -499,6 +510,37 @@ int main() {
   assert(savedPet().food == 83);
   recovered.start("snake");
   assert(recovered.active());
+  for (int i=0;i<3;++i) recovered.input(Key::Down);
+  recovered.input(Key::Center);
+  assert(coopStarted);
+  gfx.text.clear(); recovered.draw(gfx,94,10);
+  assert(gfx.text.find("Homeserver")!=std::string::npos);
+  JsonDocument lobbyAssets;
+  lobbyAssets["definition"]["avatarSources"]["avatar-dragon"]["image"]="avatar-dragon.png";
+  auto portrait=lobbyAssets["files"].to<JsonArray>().add<JsonObject>();
+  portrait["path"]="avatar-dragon.png"; portrait["sha256"]="portrait-blob";
+  recovered.multiplayerAssets(lobbyAssets);
+  coopFrame=SnakeSnapshot{}; coopFrame.phase=SnakePhase::Lobby;
+  coopFrame.count=4; coopFrame.remainingMs=10000;
+  for (auto &player:coopFrame.players) {
+    strcpy(player.avatar,"avatar-dragon"); strcpy(player.accent,"#ff9933");
+  }
+  coopQueued=true; recovered.tick();
+  requests.clear(); recovered.draw(gfx,94,10);
+  assert(requests.size()==4);
+  for (auto r:requests) assert(r.w==80 && r.h==80 && r.x>=86 && r.x+r.w<=428 && r.y+r.h<=142 && r.transparent);
+  coopFrame.phase=SnakePhase::Playing; coopFrame.target=40;
+  for (unsigned i=0;i<4;++i) {
+    coopFrame.players[i].offset=i; coopFrame.players[i].length=1;
+    coopFrame.cells[i]={uint8_t(i+1),1};
+  }
+  coopQueued=true; recovered.tick();
+  gfx.rects.clear(); gfx.recordAll=true; recovered.draw(gfx,94,10);
+  for (auto r:gfx.rects) assert(r.x>=86 && r.x+r.w<=428 && r.y>=0 && r.y+r.h<=142);
+  recovered.input(Key::Up); assert(coopDirection==0);
+  gfx.recordAll=false;
+  recovered.close(); assert(coopClosed>0);
+  recovered.start("snake");
   gfx.text.clear();
   recovered.draw(gfx, 94, 10);
   assert(gfx.text.find("Geschwindigkeit") != std::string::npos);
