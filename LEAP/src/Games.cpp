@@ -124,6 +124,8 @@ String Games::petBlob(const String &path) const {
   return "";
 }
 void Games::close() {
+  if (snakeCoop) snakeMultiplayer.close();
+  snakeCoop = false;
   if (dragonDirty)
     saveDragon();
   dragonJumpHeld = false;
@@ -163,6 +165,8 @@ void Games::start(const String &id) {
   petAction = -1;
   if (isSnake()) {
     snakeSetup = true;
+    snakeCoop = false;
+    cooperative = SnakeSnapshot{};
     snakeSpeed = 0;
   }
   if (id == "tilt_maze")
@@ -234,9 +238,24 @@ void Games::input(Key key) {
     return;
   }
   if (isSnake()) {
+    if (snakeCoop) {
+      if (cooperative.phase == SnakePhase::Playing)
+        snakeMultiplayer.turn(uint8_t(key), cooperative.tick);
+      return;
+    }
     if (snakeSetup) {
-      snakeSpeed = constrain(snakeSpeed + (key == Key::Down) - (key == Key::Up), 0, 2);
+      snakeSpeed = constrain(snakeSpeed + (key == Key::Down) - (key == Key::Up), 0, 3);
       if (key == Key::Center) {
+        if (snakeSpeed == 3) {
+          snakeCoop = true;
+          snakeSetup = false;
+          if (!snakeMultiplayer.start()) {
+            cooperative.phase = SnakePhase::Error;
+            strcpy(cooperative.error, "Netzwerk nicht bereit");
+            running = false;
+          }
+          return;
+        }
         snake.start(esp_random());
         snakeSetup = false;
         last = millis();
@@ -286,6 +305,12 @@ void Games::input(Key key) {
   }
 }
 void Games::tick() {
+  if (isSnake() && snakeCoop && opened) {
+    snakeMultiplayer.poll(cooperative);
+    running = cooperative.phase != SnakePhase::Alone && cooperative.phase != SnakePhase::Finished &&
+              cooperative.phase != SnakePhase::Error;
+    return;
+  }
   uint32_t now = millis();
   if (opened && isMathLab())
     mathLab.tick(now);
@@ -428,14 +453,15 @@ void Games::draw(Arduino_GFX &gfx, int left, int top, uint16_t accent) {
     return;
   }
   if (isSnake()) {
+    if (snakeCoop) { drawCooperative(gfx, left, top); return; }
     if (snakeSetup) {
-      const char *speeds[] = {"Langsam", "Mittel", "Schnell"};
+      const char *speeds[] = {"Solo: Langsam", "Solo: Mittel", "Solo: Schnell", "Multiplayer"};
       gfx.setTextSize(1);
       gfx.setTextColor(0xffff);
       gfx.setCursor(left, top);
-      printDisplayText(gfx, "Snake: Geschwindigkeit wählen");
-      for (int i = 0; i < 3; ++i) {
-        int yy = top + 28 + i * 23;
+      printDisplayText(gfx, "Snake: Modus / Geschwindigkeit");
+      for (int i = 0; i < 4; ++i) {
+        int yy = top + 24 + i * 21;
         if (i == snakeSpeed)
           gfx.fillRoundRect(left, yy - 4, 150, 19, 4, 0x06b8);
         gfx.setTextColor(i == snakeSpeed ? 0x10e5 : 0xffff);
@@ -443,7 +469,7 @@ void Games::draw(Arduino_GFX &gfx, int left, int top, uint16_t accent) {
         printDisplayText(gfx, speeds[i]);
       }
       gfx.setTextColor(0xffff);
-      gfx.setCursor(left, top + 105);
+      gfx.setCursor(left, top + 113);
       printDisplayText(gfx, "R Oben/Unten: Wahl  R Mitte: Start");
       return;
     }
@@ -527,7 +553,7 @@ void Games::drawFour(Arduino_GFX &gfx, int left, int top) {
       printDisplayText(gfx, levels[i]);
     }
     gfx.setTextColor(0xffff);
-    gfx.setCursor(left, top + 105);
+    gfx.setCursor(left, top + 113);
     printDisplayText(gfx, "R Oben/Unten: Wahl  R Mitte: Start");
     gfx.setCursor(left, top + 119);
     printDisplayText(gfx, "Du beginnst. L Mitte: Zurück");

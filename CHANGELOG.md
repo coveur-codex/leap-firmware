@@ -1,3 +1,14 @@
+# 1.4.0-beta.1 – Kooperatives Multiplayer-Snake
+
+- Zusätzliche Multiplayer-Auswahl im vorhandenen Snake-Menü; Solo-Geschwindigkeiten
+  und Rekord bleiben erhalten. Benötigt Homeserver 1.4.0-beta.1.
+- Lobby mit lokalen 80px-Spieleavataren und Akzentlinien; gemeinsame Arena,
+  Teamziel, Restzeit, markierte Köpfe und gemeinsame Ergebnisse.
+- Separater WLAN/WebSocket-Worker mit begrenzten Queues, vollständiger
+  Neusynchronisierung, Eingabesequenzen, Reconnect und verständlichem Timeout.
+- Keine zusätzliche Bibliothek und keine Änderung der Geräte-NVS-Konfiguration.
+- Protokoll und noch erforderliche Hardware-Abnahme: `docs/snake-multiplayer.md`.
+
 # 1.3.3 – Seitenavatare für Finanzen und Zeit
 
 - Die Seiten `finance` (Finanzen) und `time` (Zeit) verwenden jetzt

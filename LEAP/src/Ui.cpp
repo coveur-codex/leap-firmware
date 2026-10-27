@@ -148,6 +148,7 @@ bool Ui::reload(bool initial) {
   String avatarId = state["config"]["avatar"] | "dragon";
   if (!avatarId.startsWith("avatar-"))
     avatarId = "avatar-" + avatarId;
+  game.multiplayerAssets(manifestFor("game-avatars"));
   game.avatarPackage(avatarId, state["assets"][avatarId] | 0, manifestFor(avatarId));
   if (!same || generation == 0)
     communication.configure(state);
@@ -1132,7 +1133,7 @@ void Ui::render() {
     drawPage(pages[page].id);
   }
   if (!locked && !menu && gameOpen &&
-      (game.isPet() || game.isConnectFour() || game.isKitchen() || game.isCrabJourney() ||
+      (game.isPet() || game.isSnakeMultiplayer() || game.isConnectFour() || game.isKitchen() || game.isCrabJourney() ||
        game.isDragonRun() || game.isMathLab())) {
     canvas->flush();
     return;
