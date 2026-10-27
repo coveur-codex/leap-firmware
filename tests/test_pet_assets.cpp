@@ -69,6 +69,24 @@ int main() {
          "Example/data/pet/pagestatics/flightradar.png");
   oldFiles.add<JsonObject>()["path"] = "data/pet/pagestatics/flightradar.png";
   assert(avatarPageImage(oldPackage, "aircraft") == "data/pet/pagestatics/flightradar.png");
+  // API page IDs map to German filenames, with the same legacy fallbacks.
+  for (const char *page : {"finance", "time"}) {
+    const std::string filename = page == std::string("finance") ? "finanzen" : "zeit";
+    const std::string path = "data/pet/pagestatics/" + filename + ".png";
+    JsonDocument pagePackage;
+    auto pageFiles = pagePackage["files"].to<JsonArray>();
+    pageFiles.add<JsonObject>()["path"] = "data/pet/idle/frame_01.png";
+    assert(avatarPageImage(pagePackage, page) == "data/pet/idle/frame_01.png");
+    pageFiles.add<JsonObject>()["path"] = "data/pet/pagestatics/home.png";
+    assert(avatarPageImage(pagePackage, page) == "data/pet/pagestatics/home.png");
+    pageFiles.add<JsonObject>()["path"] = "Example/" + path;
+    assert(avatarPageImage(pagePackage, page) == "Example/" + path);
+    pageFiles.add<JsonObject>()["path"] = path;
+    assert(avatarPageImage(pagePackage, page) == path);
+    assert(requiredAssetFile("avatar", path));
+    assert(avatarImageSize(pagePackage["definition"], path, 80, 80));
+    assert(!avatarImageSize(pagePackage["definition"], path, 256, 142));
+  }
   assert(avatarFrame(manifest, 800) == "Example/data/pet/idle/frame_03.png");
   std::cout << "PASS: page statics, flight radar alias, prefixed paths and static legacy fallback\n";
   std::cout << "PASS: old manifests discover backgrounds and four state frames without altering "
