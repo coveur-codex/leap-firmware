@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.4.1`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.5.0-beta.1`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -834,3 +834,9 @@ und Journalaktivierung. Eine ausstehende Startbestätigung wird bei Abweichung
 zwischen Ziel- und Laufversion verweigert; ein bereits gültiges Fallback bleibt
 weiter nutzbar. Bestätigung erfolgt weiterhin nach lokalen Selbsttests auch ohne
 WLAN. `SSID not found` betrifft die WLAN-Profilsuche und ist kein Versionsnachweis.
+
+## Mein Zimmer (1.5.0-beta.1)
+
+Home-Assistant-Heizung und bis zu zwei Lampen über den LEAP-Homeserver bedienen.
+[Bedienung und Abnahme](docs/home-assistant.md). Zuerst den Homeserver mit
+Zimmer-API und Migration 0022 installieren, anschließend diese Beta-Firmware.

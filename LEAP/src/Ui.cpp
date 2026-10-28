@@ -161,7 +161,7 @@ bool Ui::reload(bool initial) {
     if (id == "communication" && state["config"]["communicationEnabled"] != true)
       continue;
     if (id == "home" || id == "news" || id == "weather" || id == "aircraft" || id == "quiz" ||
-        id == "finance" || id == "time" || id == "games" || id == "communication" || id == "knowledge" || id == "settings")
+        id == "room" || id == "finance" || id == "time" || id == "games" || id == "communication" || id == "knowledge" || id == "settings")
       pages.push_back({id, p["title"] | id, p["order"] | 0});
   }
   std::stable_sort(pages.begin(), pages.end(),
@@ -321,9 +321,10 @@ static const uint8_t pageIcons[][7] = {
     {8, 42, 28, 99, 28, 42, 8},      // settings
     {2, 6, 14, 30, 62, 60, 24},
     {28, 34, 73, 77, 65, 34, 28},
-    {65, 67, 69, 73, 81, 97, 127}};     // chill
+    {65, 67, 69, 73, 81, 97, 127},
+    {8, 28, 62, 127, 65, 93, 127}};     // chill
 static const char *pageIds[] = {"home", "news", "weather", "aircraft", "quiz", "games",
-                                "communication", "knowledge", "settings", "chill", "time", "finance"};
+                                "communication", "knowledge", "settings", "chill", "time", "finance", "room"};
 void Ui::observeNews(bool initial) {
   auto news = state["content"]["news"];
   int64_t bootEpoch = news["notificationBootEpoch"] | int64_t(0);
@@ -491,7 +492,7 @@ void Ui::sidebar() {
   int left = (86 - count * 8) / 2;
   for (int i = 0; i < count; ++i) {
     int index = start + i, glyph = 0, x = left + i * 8;
-    for (int j = 0; j < 11; ++j)
+    for (size_t j = 0; j < sizeof(pageIds)/sizeof(pageIds[0]); ++j)
       if (pages[index].id == pageIds[j]) glyph = j;
     bool selected = !locked && index == active;
     bool unread = notifications.unread(pages[index].id.c_str());
@@ -728,6 +729,8 @@ void Ui::drawPage(const String &id) {
     body(String(a["summary"] | "") + "\n" +
              String(a["source"] | "") + " | " + String(a["published"] | ""),
          94, 12, shown ? 216 : 326, 112, a["title"] | "", 0xffff, true);
+  } else if (id == "room") {
+    drawRoom();
   } else if (id == "finance") {
     drawFinance();
   } else if (id == "weather") {
@@ -1285,6 +1288,7 @@ void Ui::input(const InputEvent &e) {
 void Ui::action(const InputEvent &e) {
   String id = pages[page].id;
   int direction = (e.key == Key::Down) - (e.key == Key::Up);
+  if (id == "room") { roomAction(e); return; }
   if (id == "time") { timeAction(e); return; }
   if (id == "quiz") {
     if (quizCatalog < 0) {
@@ -1493,6 +1497,14 @@ void Ui::tick() {
   }
   if (generation != storage.generation.load())
     reload();
+  bool roomVisible = !locked && !menu && !pages.empty() && pages[page].id == "room";
+  if (roomVisible && !network.roomVisible) roomControls.editing=false;
+  network.roomVisible=roomVisible;
+  uint32_t roomRevision=network.roomRevision.load();
+  if (roomRevision!=lastRoomRevision && network.copyRoom(roomFrame)) {
+    lastRoomRevision=roomRevision;
+    frameRequested=true;
+  }
   bool financeVisible = !locked && !menu && !pages.empty() && pages[page].id == "finance";
   if (financeVisible && !financeWasVisible) financeNavigation.enter(millis());
   if (financeVisible && financeNavigation.tick(state["content"]["finance"]["securities"].size(), millis())) frameRequested = true;

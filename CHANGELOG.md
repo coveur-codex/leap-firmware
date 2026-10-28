@@ -1,3 +1,12 @@
+# 1.5.0-beta.1 – Home Assistant: Mein Zimmer
+
+- Neue Seite „Mein Zimmer“: Heizung −/+1 °C, bis zu zwei Lampen einzeln aus/an
+  und feste RGB-Farben über die vorhandenen Richtungsschalter.
+- Live-Zustand im RAM, Offline-/Frischesperre, ein ausstehender Befehl ohne
+  Wiederholung und ohne gespeicherte Offline-Aufträge.
+- Erfordert die neue Zimmer-API des Homeservers. Gemeinsame Heizungen und
+  Temperaturgrenzen werden dort geprüft; HA-Zugangsdaten bleiben am Server.
+
 # 1.4.1 – OTA-Dateiversion verbindlich prüfen
 
 - Eindeutige eingebettete LEAP-Dateiversion aus derselben Quelle wie Bootbanner

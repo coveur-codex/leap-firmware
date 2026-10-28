@@ -12,6 +12,7 @@
 #include "Notifications.h"
 #include "TimeModule.h"
 #include "Finance.h"
+#include "RoomControls.h"
 #include "WifiEditor.h"
 namespace leap {
 struct Page {
@@ -72,6 +73,11 @@ class Ui {
   int timePreset = 0, customSeconds = 5 * 60, lapScroll = 0;
   FinanceNavigation financeNavigation;
   bool financeWasVisible = false;
+  JsonDocument roomFrame{&jsonRam};
+  uint32_t lastRoomRevision=0;
+  RoomControls roomControls;
+  void drawRoom();
+  void roomAction(const InputEvent &event);
   void drawFinance();
   void drawTime();
   void timeAction(const InputEvent &event);

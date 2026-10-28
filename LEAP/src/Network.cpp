@@ -40,6 +40,35 @@ bool Network::copyAircraft(JsonDocument &value) {
   xSemaphoreGive(aircraftMutex);
   return available;
 }
+void Network::publishRoom(JsonDocument &value, bool fresh) {
+  xSemaphoreTake(aircraftMutex, portMAX_DELAY);
+  if (fresh) {
+    roomLive.set(value);
+    roomLive["receivedMillis"] = millis();
+  } else {
+    roomLive["notice"] = value["notice"] | "Zimmer nicht erreichbar";
+    roomLive.remove("receivedMillis");
+  }
+  xSemaphoreGive(aircraftMutex);
+  ++roomRevision;
+}
+bool Network::copyRoom(JsonDocument &value) {
+  if (!aircraftMutex || xSemaphoreTake(aircraftMutex, 0) != pdTRUE) return false;
+  value.set(roomLive);
+  xSemaphoreGive(aircraftMutex);
+  return true;
+}
+bool Network::roomCommand(const char *target, const char *action, const char *color) {
+  if (!connected || !roomRequests || roomPending.exchange(true)) return false;
+  RoomRequest command{};
+  strlcpy(command.target,target,sizeof(command.target));
+  strlcpy(command.action,action,sizeof(command.action));
+  if (color) strlcpy(command.color,color,sizeof(command.color));
+  command.created=millis();
+  if (xQueueSend(roomRequests,&command,0)==pdTRUE) return true;
+  roomPending=false;
+  return false;
+}
 static bool enabled(JsonDocument &s, const char *id) {
   JsonArray pages = s["config"]["pages"].as<JsonArray>();
   for (JsonObject p : pages)
@@ -83,6 +112,8 @@ bool Network::begin() {
   aircraftMutex = xSemaphoreCreateMutex();
   if (!aircraftMutex) return false;
   base = "/api/v1/devices/" + Transport::encode(deviceSettings.deviceId);
+  roomRequests = xQueueCreate(1, sizeof(RoomRequest));
+  if (!roomRequests) return false;
   requests = xQueueCreate(3, sizeof(KnowledgeRequest));
   if (!requests)
     return false;
@@ -490,6 +521,34 @@ void Network::run() {
       if (net.json(base + "/news", value) && value["articles"].is<JsonArray>())
         publishNews(value); // RAM only: timely headlines without extra flash writes.
     }
+    // Live room state stays in RAM. Commands are never persisted or retried.
+    static uint32_t lastRoom=millis()-3000;
+    static bool wasRoomVisible=false;
+    RoomRequest roomRequest{};
+    bool roomWrite=xQueueReceive(roomRequests,&roomRequest,0)==pdTRUE;
+    bool visible=roomVisible.load();
+    if (roomWrite || (visible && (!wasRoomVisible || elapsed(millis(),lastRoom,3000)))) {
+      lastRoom=millis();
+      JsonDocument snapshot(&jsonRam), response(&jsonRam), body(&jsonRam);
+      bool allowed=connected && storage.load(snapshot) && enabled(snapshot,"room");
+      bool fresh=false;
+      if (allowed && (!roomWrite || uint32_t(millis()-roomRequest.created)<10000)) {
+        if (roomWrite) {
+          body["target"]=roomRequest.target;
+          body["action"]=roomRequest.action;
+          if (roomRequest.color[0]) body["color"]=roomRequest.color;
+        }
+        fresh=net.json(base+"/room",response,roomWrite ? &body : nullptr,20000) &&
+              response["schemaVersion"]==1 && response["lights"].is<JsonArray>() && response["lights"].size()<=2;
+      }
+      if (!fresh) {
+        response["notice"]=response["detail"].is<const char *>() ? response["detail"].as<String>() :
+                           (roomWrite ? "Nicht bestätigt · Zustand wird neu geladen" : "Zimmer nicht erreichbar");
+      }
+      publishRoom(response,fresh);
+      if (roomWrite) roomPending=false;
+    }
+    wasRoomVisible=visible;
     photoInbox.service(net, base, connected);
     KnowledgeRequest request;
     if (xQueueReceive(requests, &request, 0) == pdTRUE && connected) {

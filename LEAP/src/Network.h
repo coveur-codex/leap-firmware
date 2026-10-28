@@ -5,6 +5,7 @@
 #include <WiFi.h>
 #include <atomic>
 namespace leap {
+struct RoomRequest { char target[8], action[8], color[8]; uint32_t created; };
 struct KnowledgeRequest {
   char path[512];
 };
@@ -12,6 +13,9 @@ struct WifiCommand { WifiProfile profile; int removeIndex=-1; };
 class Network {
   QueueHandle_t wifiCommands = nullptr;
   std::atomic<int> wifiResult{0};
+  QueueHandle_t roomRequests = nullptr;
+  JsonDocument roomLive{&jsonRam};
+  void publishRoom(JsonDocument &value, bool fresh);
   QueueHandle_t requests = nullptr;
   TaskHandle_t task = nullptr;
   Transport net;
@@ -37,6 +41,10 @@ public:
   std::atomic<bool> newsEnabled{false};
   std::atomic<uint32_t> newsRevision{0};
   std::atomic<int64_t> newsBootEpoch{0};
+  std::atomic<bool> roomVisible{false}, roomPending{false};
+  std::atomic<uint32_t> roomRevision{0};
+  bool copyRoom(JsonDocument &value);
+  bool roomCommand(const char *target, const char *action, const char *color=nullptr);
   bool copyNews(JsonDocument &value);
   bool copyAircraft(JsonDocument &value);
   bool begin();
