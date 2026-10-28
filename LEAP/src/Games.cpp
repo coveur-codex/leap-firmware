@@ -478,14 +478,17 @@ void Games::draw(Arduino_GFX &gfx, int left, int top, uint16_t accent) {
     gfx.setTextSize(1);
     gfx.setCursor(left, top);
     gfx.printf("Snake   Punkte %d   Rekord %d", snake.score, highscore);
-    int boardY = top + 17;
-    gfx.fillRect(left - 1, boardY - 1, 322, 106, 0x18c3);
-    gfx.drawRect(left - 1, boardY - 1, 322, 106, 0x9d35);
+    constexpr int cell = SnakeGrid::CellSize;
+    int boardX = left + (SnakeGrid::AvailableWidth - SnakeGrid::PixelWidth) / 2;
+    int boardY = top + 17 + (SnakeGrid::AvailableHeight - SnakeGrid::PixelHeight) / 2;
+    gfx.fillRect(boardX - 1, boardY - 1, SnakeGrid::PixelWidth + 2, SnakeGrid::PixelHeight + 2, 0x18c3);
+    gfx.drawRect(boardX - 1, boardY - 1, SnakeGrid::PixelWidth + 2, SnakeGrid::PixelHeight + 2, 0x9d35);
     for (int i = 0; i < snake.length; ++i)
-      gfx.fillRect(left + snake.body[i].x * 8, boardY + snake.body[i].y * 8, 7, 7,
+      gfx.fillRect(boardX + snake.body[i].x * cell, boardY + snake.body[i].y * cell, cell - 1, cell - 1,
                    i == 0 ? 0x07ff : 0x06b8);
     for (int i = 0; i < snake.foodCount; ++i)
-      gfx.fillCircle(left + snake.foods[i].x * 8 + 3, boardY + snake.foods[i].y * 8 + 3, 3, 0xf800);
+      gfx.fillCircle(boardX + snake.foods[i].x * cell + cell / 2,
+                     boardY + snake.foods[i].y * cell + cell / 2, cell / 2 - 1, 0xf800);
     if (!running) {
       gfx.fillRoundRect(left + 42, boardY + 30, 236, 43, 5, 0x10e5);
       gfx.setCursor(left + 55, boardY + 38);

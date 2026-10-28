@@ -26,7 +26,7 @@ bool SnakeMultiplayer::begin() {
     if (type==WStype_DISCONNECTED) { online=false; return; }
     if (!enabled || workerEpoch!=epoch.load()) return;
     if (type==WStype_CONNECTED) {
-      JsonDocument f(&jsonRam); f["type"]="join"; f["session"]=session;
+      JsonDocument f(&jsonRam); f["type"]="join"; f["session"]=session; f["protocolVersion"]=2;
       if (!writeFrame(f)) socket.disconnect();
     } else if (type==WStype_TEXT) {
       JsonDocument f(&jsonRam);

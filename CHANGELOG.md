@@ -1,3 +1,13 @@
+# 1.4.0 – Größeres Snake-Spielfeld und Spielestatus
+
+- Solo- und Multiplayer-Snake auf 53×16 Felder mit quadratischen 6-Pixel-Zellen
+  vergrößert. Gemeinsame Geometriekonstanten für Regeln, Decoder und Zeichnung.
+- Decoder und Zustandsspeicher unterstützen 848 Felder; Randpositionen, volle
+  Arena und Displaygrenzen sind getestet. Kopfmarkierungen bleiben unterscheidbar.
+- Beim Beitritt wird die neue Spielfeldversion bestätigt. Ältere Homeserver mit
+  40×13 Feldern bleiben während des Umstiegs unterstützt.
+- Zum Umstieg zuerst diese Firmware, danach Homeserver 1.4.0 installieren.
+
 # 1.4.0-beta.2 – Snake-Verbindung und Akzentfarbe
 
 - Behebt „Homeserver nicht erreichbar“ unmittelbar nach einer gültigen
