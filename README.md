@@ -81,7 +81,7 @@ arduino-cli compile --fqbn 'esp32:esp32:esp32s3:FlashSize=16M,PSRAM=opi,CDCOnBoo
 Die IDE-Option „Kompilierte Binärdatei exportieren“ erzeugt die App-Datei
 `LEAP.ino.bin`. **Nur diese App-Binary** im Homeserver als Firmware hochladen,
 keine `.merged.bin`, `.bootloader.bin` oder `.partitions.bin`. Vor einem Release
-`FirmwareVersion` in `LEAP/src/Config.h` ändern; die hochgeladene Versionsnummer
+`LEAP_FIRMWARE_VERSION` in `LEAP/src/FirmwareBuild.h` ändern; die hochgeladene Versionsnummer
 muss exakt dazu passen.
 
 ## Finale Pinbelegung
@@ -521,7 +521,7 @@ NVS-Schema-1-Layouts im Gerätekonfigurationsdatensatz.
 
 ## Struktur, Diagnose und Tests
 
-- `LEAP/src/Hardware.h`, `Config.h`: Pins, Version, Grenzen.
+- `LEAP/src/Hardware.h`, `Config.h`: Pins und Grenzen; `FirmwareBuild.h`: Version und Image-Identität.
 - `Storage`, `Transport`, `Assets`, `Network`, `Ota`: persistente Daten und Sync.
 - `Input`, `Ui`, `Media`, `Games`, `Audio`, `Communication`, `Motion`: lokale Gerätefunktionen.
 - `Core.h`, `Protocol.h`: plattformunabhängig getestete Regeln.
