@@ -1,7 +1,9 @@
 #include "Ui.h"
 #include "Network.h"
+#include "AccentColor.h"
 namespace leap {
 void Ui::drawRoom() {
+  const uint16_t accent = accentColor(state["config"]["accentColor"] | "");
   bool fresh = roomFresh(roomFrame,network.connected,millis());
   if (!roomFrame["lights"].is<JsonArray>()) {
     body(roomFrame["notice"] | (network.connected ? "Zimmer wird geladen…" : "Kein WLAN · Steuerung nicht erreichbar"));
@@ -14,9 +16,9 @@ void Ui::drawRoom() {
     int index = i - (roomFrame["climate"].is<JsonObject>() ? 1 : 0);
     JsonVariant row = heater ? roomFrame["climate"].as<JsonVariant>() : roomFrame["lights"][index].as<JsonVariant>();
     int y=8+i*36;
-    if (i == roomControls.selection) canvas->drawRoundRect(92,y,332,34,4,Accent);
+    if (i == roomControls.selection) canvas->drawRoundRect(92,y,332,34,4,accent);
     String name = row["name"] | (heater ? "Heizung" : "Lampe");
-    text(name.substring(0,38),98,y+4,1,i==roomControls.selection ? Accent : 0xffff);
+    text(name.substring(0,38),98,y+4,1,i==roomControls.selection ? accent : 0xffff);
     String status;
     if (!fresh) status="Verbindung fehlt / Stand veraltet";
     else if (row["available"] != true) status="Nicht verfügbar";
