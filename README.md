@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.4.0-beta.2`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.4.0`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -789,10 +789,10 @@ sofort zurückrollen. Vorhandene Geräte-ID, WLAN-Daten und Inhalte bleiben
 unverändert; kein NVS-Löschen und keine USB-Neuinstallation erforderlich.
 Geräte- und Netzwerkfehler erhalten jetzt getrennte Startdiagnosen.
 
-## Snake Multiplayer (1.4.0-beta.1)
+## Snake Multiplayer (1.4.0)
 
 Im vorhandenen Snake-Menü nach den drei Solo-Geschwindigkeiten **Multiplayer** wählen.
-Benötigt Homeserver 1.4.0-beta.1 und WLAN. **Richtung rechts** steuert die eigene Schlange;
+Das neue 53×16-Spielfeld benötigt Homeserver 1.4.0 und WLAN. **Richtung rechts** steuert die eigene Schlange;
 **L Mitte** verlässt die Partie. Nach dem Ergebnis führt **R Mitte** zurück zur Moduswahl.
 Das Paket `game-avatars` wird beim regulären Asset-Sync automatisch installiert.
 Details und Hardware-Abnahme: [docs/snake-multiplayer.md](docs/snake-multiplayer.md).
@@ -804,3 +804,11 @@ Ein Zeitstempel aus einem WebSocket-Callback konnte die vorher gelesene Uhrzeit
 liest die Uhr jetzt nach der Netzwerkverarbeitung erneut. Die Snake-Moduswahl
 verwendet außerdem die Geräte-Akzentfarbe mit passender kontrastreicher Schrift.
 Homeserver 1.4.0-beta.1 bleibt kompatibel; dort ist kein Update erforderlich.
+
+### Spielfeld in 1.4.0
+
+Solo und Multiplayer verwenden jetzt **53 Spalten × 16 Zeilen** (848 Felder).
+Quadratische 6-Pixel-Zellen passen in den vorhandenen Spielbereich; Sidebar,
+Punkte und Zeit bleiben sichtbar. Zum Umstieg zuerst die Firmware, dann den
+Homeserver aktualisieren. Die neue Firmware unterstützt übergangsweise auch
+ältere Homeserver mit 40×13 Feldern.

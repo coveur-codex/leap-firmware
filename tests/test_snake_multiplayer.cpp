@@ -15,7 +15,7 @@ String Transport::encode(const String &s) { return s; }
 static JsonDocument state(unsigned tick=0,unsigned revision=1) {
   JsonDocument f;
   f["type"]="state"; f["schemaVersion"]=1; f["session"]=std::string(32,'a');
-  f["columns"]=40; f["rows"]=13; f["stepMs"]=450;
+  f["columns"]=SnakeGrid::Columns; f["rows"]=SnakeGrid::Rows; f["stepMs"]=450;
   f["tick"]=tick; f["revision"]=revision; f["remainingMs"]=120000;
   f["phase"]="playing"; f["score"]=0; f["target"]=20;
   auto p=f["players"].to<JsonArray>().add<JsonObject>();
@@ -36,13 +36,30 @@ static JsonDocument last(WebSocketsClient &socket) {
 int main() {
   SnakeSnapshot snapshot;
   auto valid=state(); assert(decodeSnake(valid,snapshot));
-  auto invalid=state(); invalid["players"][0]["body"][0][0]=40;
+  auto invalid=state(); invalid["players"][0]["body"][0][0]=SnakeGrid::Columns;
   assert(!decodeSnake(invalid,snapshot));
   invalid=state(); invalid["food"][0][0]=5; invalid["food"][0][1]=5;
   assert(!decodeSnake(invalid,snapshot));
   invalid=state(); invalid["players"].as<JsonArray>().add(valid["players"][0]);
   assert(!decodeSnake(invalid,snapshot));
   invalid=state(); invalid["remainingMs"]=120001; assert(!decodeSnake(invalid,snapshot));
+  assert(snapshot.columns==53 && snapshot.rows==16);
+  auto edge=state(); edge["players"][0]["body"][0][0]=52; edge["players"][0]["body"][0][1]=15;
+  assert(decodeSnake(edge,snapshot));
+  edge["players"][0]["body"][0][1]=16; assert(!decodeSnake(edge,snapshot));
+  auto legacy=state(); legacy["columns"]=40; legacy["rows"]=13;
+  assert(decodeSnake(legacy,snapshot) && snapshot.columns==40 && snapshot.rows==13);
+  legacy["columns"]=54; assert(!decodeSnake(legacy,snapshot));
+  auto full=state(); full["food"].to<JsonArray>().clear();
+  auto body=full["players"][0]["body"].to<JsonArray>();
+  for (unsigned i=0;i<SnakeGrid::Capacity;++i) {
+    auto c=body.add<JsonArray>(); c.add(i%SnakeGrid::Columns); c.add(i/SnakeGrid::Columns);
+  }
+  std::string largest; serializeJson(full,largest);
+  assert(largest.size()<16384 && decodeSnake(full,snapshot));
+  assert(snapshot.players[0].length==SnakeGrid::Capacity);
+  auto extra=body.add<JsonArray>(); extra.add(0); extra.add(0);
+  assert(!decodeSnake(full,snapshot));
   strcpy(deviceSettings.deviceId,"local");
   strcpy(deviceSettings.server,"http://homeserver:8080");
   assert(snakeMultiplayer.begin() && snakeMultiplayer.start());
@@ -52,7 +69,7 @@ int main() {
   for (auto s:WebSocketsClient::instances) if (s->url.find("/snake/ws")!=std::string::npos) socket=s;
   assert(socket && socket->interval==1000);
   socket->events.push_back({WStype_CONNECTED,{}}); step(200);
-  assert(last(*socket)["type"]=="join" && last(*socket)["session"]=="");
+  assert(last(*socket)["type"]=="join" && last(*socket)["session"]=="" && last(*socket)["protocolVersion"]==2);
   // Real network callbacks run later than the timestamp at service entry.
   // Even one millisecond must not wrap the unsigned inactivity subtraction.
   socket->callbackDelay=1;

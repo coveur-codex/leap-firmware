@@ -43,6 +43,7 @@ int main() {
   assert(!petNight(true, 7));
   assert(!petNight(true, 19));
   assert(petNight(true, 20));
+  static_assert(SnakeState::Columns==53 && SnakeState::Rows==16 && SnakeState::Capacity==848);
   SnakeState snake;
   snake.start(0);
   assert(snake.alive && snake.length == 3 && snake.score == 0);

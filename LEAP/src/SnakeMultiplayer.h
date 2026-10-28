@@ -1,5 +1,6 @@
 #pragma once
 #include "Storage.h"
+#include "SnakeGrid.h"
 #include <atomic>
 #include <freertos/queue.h>
 namespace leap {
@@ -18,8 +19,9 @@ struct SnakeSnapshot {
   SnakePhase phase = SnakePhase::Connecting;
   uint16_t score = 0, target = 0;
   uint8_t count = 0, foodCount = 0;
+  uint8_t columns = SnakeGrid::Columns, rows = SnakeGrid::Rows;
   SnakePlayer players[4];
-  SnakeCell cells[520], food[10];
+  SnakeCell cells[SnakeGrid::Capacity], food[10];
 };
 // Pure bounded decoder shared by the socket and native protocol tests.
 bool decodeSnake(JsonVariantConst frame, SnakeSnapshot &out);

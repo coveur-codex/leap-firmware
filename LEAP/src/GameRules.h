@@ -1,4 +1,5 @@
 #pragma once
+#include "SnakeGrid.h"
 #include <algorithm>
 #include <cstdint>
 namespace leap {
@@ -51,7 +52,7 @@ inline bool petNight(bool clockKnown, int hour) {
 }
 class SnakeState {
 public:
-  static constexpr int Columns = 40, Rows = 13, Capacity = Columns * Rows;
+  static constexpr int Columns = SnakeGrid::Columns, Rows = SnakeGrid::Rows, Capacity = SnakeGrid::Capacity;
   struct Cell {
     int x = 0, y = 0;
     bool operator==(Cell b) const {

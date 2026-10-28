@@ -45,20 +45,24 @@ void Games::drawCooperative(Arduino_GFX &gfx,int left,int top) {
   }
   gfx.printf("Team %u/%u  %lus%s",s.score,s.target,(unsigned long)((s.remainingMs+999)/1000),
              snakeMultiplayer.online ? "" : "  Verbinde...");
-  int y=top+17;
-  gfx.fillRect(left-1,y-1,322,106,0x18c3); gfx.drawRect(left-1,y-1,322,106,0x9d35);
+  int cell=SnakeGrid::cellSize(s.columns,s.rows);
+  int width=s.columns*cell, height=s.rows*cell;
+  int x=left+(SnakeGrid::AvailableWidth-width)/2;
+  int y=top+17+(SnakeGrid::AvailableHeight-height)/2;
+  gfx.fillRect(x-1,y-1,width+2,height+2,0x18c3); gfx.drawRect(x-1,y-1,width+2,height+2,0x9d35);
   for (unsigned i=0;i<s.foodCount;++i)
-    gfx.fillCircle(left+s.food[i].x*8+3,y+s.food[i].y*8+3,3,0xf800);
+    gfx.fillCircle(x+s.food[i].x*cell+cell/2,y+s.food[i].y*cell+cell/2,cell/2-1,0xf800);
   for (unsigned i=0;i<s.count;++i) {
     auto &p=s.players[i];
     for (unsigned j=0;j<p.length;++j) {
       auto c=s.cells[p.offset+j];
-      gfx.fillRect(left+c.x*8,y+c.y*8,7,7,accentColor(p.accent));
+      gfx.fillRect(x+c.x*cell,y+c.y*cell,cell-1,cell-1,accentColor(p.accent));
       if (!j) {
-        // One to four dots distinguish even identical accent colours.
+        // One to four dots still fit within the smaller five-pixel head.
+        int dotSize=cell>=8 ? 2 : 1;
         for (unsigned dot=0;dot<=i;++dot)
-          gfx.fillRect(left+c.x*8+1+(dot%2)*3,y+c.y*8+1+(dot/2)*3,2,2,0xffff);
-        if (p.protectedSpawn) gfx.drawRect(left+c.x*8,y+c.y*8,7,7,0xffff);
+          gfx.fillRect(x+c.x*cell+1+(dot%2)*(dotSize+1),y+c.y*cell+1+(dot/2)*(dotSize+1),dotSize,dotSize,0xffff);
+        if (p.protectedSpawn) gfx.drawRect(x+c.x*cell,y+c.y*cell,cell-1,cell-1,0xffff);
       }
     }
   }

@@ -533,7 +533,8 @@ int main() {
   coopFrame.phase=SnakePhase::Playing; coopFrame.target=40;
   for (unsigned i=0;i<4;++i) {
     coopFrame.players[i].offset=i; coopFrame.players[i].length=1;
-    coopFrame.cells[i]={uint8_t(i+1),1};
+    coopFrame.cells[i]={uint8_t(SnakeGrid::Columns-1-i),uint8_t(SnakeGrid::Rows-1)};
+    coopFrame.players[i].protectedSpawn=true;
   }
   coopQueued=true; recovered.tick();
   gfx.rects.clear(); gfx.recordAll=true; recovered.draw(gfx,94,10);
@@ -561,9 +562,9 @@ int main() {
   }
   gfx.recordAll=false;
 
-  // Food index 258 corresponds to the square directly ahead of the initial head.
+  // The square directly ahead, accounting for the three occupied body cells.
   recovered.start("snake");
-  fakeRandom = 258;
+  fakeRandom = SnakeState::Rows / 2 * SnakeState::Columns + SnakeState::Columns / 2 + 1 - 3;
   recovered.input(Key::Center);
   fakeNow += 450;
   recovered.tick();
@@ -602,7 +603,7 @@ int main() {
     auto headX = [&] {
       gfx.rects.clear();
       paced.draw(gfx, 94, 10);
-      for (auto r : gfx.rects) if (r.color == 0x07ff && r.w == 7) return r.x;
+      for (auto r : gfx.rects) if (r.color == 0x07ff && r.w == SnakeGrid::CellSize - 1) return r.x;
       return -1;
     };
     int before = headX();
@@ -612,7 +613,7 @@ int main() {
     assert(headX() == before);
     ++fakeNow;
     paced.tick();
-    assert(headX() == before + 8);
+    assert(headX() == before + SnakeGrid::CellSize);
     paced.close();
     fakeNow += 2000;
     paced.tick();
