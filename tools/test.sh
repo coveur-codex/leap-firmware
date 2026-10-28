@@ -94,3 +94,6 @@ build/tests/network-profiles
 
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/communication_fakes -I tests/storage_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_snake_multiplayer.cpp LEAP/src/SnakeMultiplayer.cpp LEAP/src/SnakeProtocol.cpp -o build/tests/snake-multiplayer
 build/tests/snake-multiplayer
+
+c++ -std=c++17 -Wall -Wextra -Werror -DCONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=1 -I tests/ota_fakes -I tests/communication_fakes -I tests/storage_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_ota.cpp LEAP/src/Ota.cpp -o build/tests/ota
+build/tests/ota

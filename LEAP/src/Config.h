@@ -1,6 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include "JsonLimits.h"
+#include "FirmwareBuild.h"
 #if __has_include("../LocalConfig.h")
 #include "../LocalConfig.h"
 #else
@@ -38,7 +39,6 @@ static_assert(LEAP_PROVISION_DEVICE == 0 || LEAP_PROVISION_DEVICE == 1,
               "Provisioning mode must be 0 or 1");
 #include "DeviceConfig.h"
 namespace leap {
-constexpr char FirmwareVersion[] = "1.4.0";
 constexpr size_t ReserveBytes = 128 * 1024;
 constexpr uint32_t SyncInterval = 15 * 60 * 1000, HttpTimeout = 5000;
 constexpr size_t MaxPackages = 64, MaxFiles = 256;

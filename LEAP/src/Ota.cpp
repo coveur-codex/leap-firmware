@@ -1,7 +1,7 @@
 #include "Ota.h"
 #include "Core.h"
+#include "FirmwareIdentity.h"
 #include <esp_app_format.h>
-#include <esp_task_wdt.h>
 namespace leap {
 Ota ota;
 bool Ota::begin() {
@@ -20,6 +20,11 @@ bool Ota::confirm(bool healthy) {
   const auto *running = esp_ota_get_running_partition();
   if (esp_ota_get_state_partition(running, &state) != ESP_OK || state != ESP_OTA_IMG_PENDING_VERIFY)
     return locallyConfirmed = healthy;
+  String expected = pendingVersion();
+  if (expected.length() && expected != FirmwareVersion) {
+    Serial.printf("[OTA] Refusing confirmation: running=%s expected=%s\n", FirmwareVersion, expected.c_str());
+    healthy = false;
+  }
   if (!healthy) {
     log("OTA", "Self-test failed, reverting image");
     esp_ota_mark_app_invalid_rollback_and_reboot();
@@ -57,6 +62,8 @@ bool Ota::offered(JsonObjectConst release, const String &sync, Transport &net) {
   esp_ota_handle_t handle;
   if (esp_ota_begin(target, size, &handle) != ESP_OK)
     return false;
+  Serial.printf("[OTA] Downloading expected=%s bytes=%u target=%s\n", version.c_str(), unsigned(size), target->label);
+  FirmwareIdentity identity;
   size_t offset = 0;
   bool headerValid = false;
   uint8_t prefix[sizeof(esp_image_header_t)]{};
@@ -76,10 +83,17 @@ bool Ota::offered(JsonObjectConst release, const String &sync, Transport &net) {
                                  return false;
                              }
                            }
+                           identity.append(p, n);
                            offset += n;
                            return esp_ota_write(handle, p, n) == ESP_OK;
                          });
   if (!ok || !headerValid || offset != size) {
+    esp_ota_abort(handle);
+    return false;
+  }
+  if (!identity.matches(version.c_str())) {
+    Serial.printf("[OTA] Image version mismatch: expected=%s embedded=%s; boot selection unchanged\n",
+                  version.c_str(), identity.imageVersion()[0] ? identity.imageVersion() : "missing/ambiguous");
     esp_ota_abort(handle);
     return false;
   }

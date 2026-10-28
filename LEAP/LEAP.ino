@@ -19,6 +19,7 @@ void setup() {
   Serial.begin(115200); // Never wait for a USB host.
   Serial.printf("\n[BOOT] LEAP %s reset=%d flash=%u psram=%u\n", FirmwareVersion,
                 esp_reset_reason(), unsigned(ESP.getFlashChipSize()), unsigned(ESP.getPsramSize()));
+  Serial.printf("[BOOT] image=%s\n", FirmwareImageIdentity);
   if (!beginDeviceConfig()) {
     log("CONFIG", "Missing/invalid NVS configuration; install via USB with LocalConfig.h. "
                   "For corrupt records use deliberate NVS erase and reprovision.");
