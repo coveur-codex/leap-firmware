@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.4.0`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.4.1`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -81,7 +81,7 @@ arduino-cli compile --fqbn 'esp32:esp32:esp32s3:FlashSize=16M,PSRAM=opi,CDCOnBoo
 Die IDE-Option „Kompilierte Binärdatei exportieren“ erzeugt die App-Datei
 `LEAP.ino.bin`. **Nur diese App-Binary** im Homeserver als Firmware hochladen,
 keine `.merged.bin`, `.bootloader.bin` oder `.partitions.bin`. Vor einem Release
-`FirmwareVersion` in `LEAP/src/Config.h` ändern; die hochgeladene Versionsnummer
+`LEAP_FIRMWARE_VERSION` in `LEAP/src/FirmwareBuild.h` ändern; die hochgeladene Versionsnummer
 muss exakt dazu passen.
 
 ## Finale Pinbelegung
@@ -521,7 +521,7 @@ NVS-Schema-1-Layouts im Gerätekonfigurationsdatensatz.
 
 ## Struktur, Diagnose und Tests
 
-- `LEAP/src/Hardware.h`, `Config.h`: Pins, Version, Grenzen.
+- `LEAP/src/Hardware.h`, `Config.h`: Pins und Grenzen; `FirmwareBuild.h`: Version und Image-Identität.
 - `Storage`, `Transport`, `Assets`, `Network`, `Ota`: persistente Daten und Sync.
 - `Input`, `Ui`, `Media`, `Games`, `Audio`, `Communication`, `Motion`: lokale Gerätefunktionen.
 - `Core.h`, `Protocol.h`: plattformunabhängig getestete Regeln.
@@ -812,3 +812,25 @@ Quadratische 6-Pixel-Zellen passen in den vorhandenen Spielbereich; Sidebar,
 Punkte und Zeit bleiben sichtbar. Zum Umstieg zuerst die Firmware, dann den
 Homeserver aktualisieren. Die neue Firmware unterstützt übergangsweise auch
 ältere Homeserver mit 40×13 Feldern.
+
+## OTA-Versionsprüfung (1.4.1)
+
+Neue OTA-Binaries enthalten eine eindeutige LEAP-Dateiversion. Der Homeserver
+prüft sie beim Upload gegen die eingetragene Release-Version und vor jedem
+Angebot/Download. Falsch beschriftete oder ältere Dateien ohne diese Kennzeichnung
+werden nicht mehr automatisch verteilt; die Firmware-Seite zeigt den Grund an.
+Diese Kontrolle ergänzt SHA-256 und ESP-Image-Prüfung, sie ist keine Signaturprüfung.
+
+Das GitHub-Buildpaket `leap-esp32s3-1.4.1` enthält `LEAP.ino.bin`, `firmware.json`
+(mit Dateiversion, Größe und SHA-256) und `LEAP.ino.bin.sha256`. Für OTA nur die
+App-Datei `LEAP.ino.bin` hochladen. Die Release-Version muss zur Datei passen.
+Eine unpassende 1.4.0-Veröffentlichung zurückziehen und die neue, korrekt
+gekennzeichnete 1.4.1 als neues Release anlegen; bestehende Release-Versionen
+werden nicht überschrieben. Gespeicherte Geräte-/WLAN-Konfiguration bleibt erhalten.
+Ein universelles Gerät kann die neue Version weiterhin per OTA installieren.
+
+Die Firmware prüft die Dateiversion während des Downloads, vor Boot-Slot-Wechsel
+und Journalaktivierung. Eine ausstehende Startbestätigung wird bei Abweichung
+zwischen Ziel- und Laufversion verweigert; ein bereits gültiges Fallback bleibt
+weiter nutzbar. Bestätigung erfolgt weiterhin nach lokalen Selbsttests auch ohne
+WLAN. `SSID not found` betrifft die WLAN-Profilsuche und ist kein Versionsnachweis.

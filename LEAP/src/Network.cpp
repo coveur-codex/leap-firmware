@@ -264,7 +264,8 @@ bool Network::sync() {
     report["event"] = "firmware_installed";
     report["firmwareVersion"] = plan["firmware"]["version"];
     net.json(base + "/sync/" + syncId + "/events", reply, &report);
-    log("OTA", "Verified inactive image selected; restarting");
+    Serial.printf("[OTA] Verified inactive image selected: running=%s expected=%s; restarting\n",
+                  FirmwareVersion, ota.pendingVersion().c_str());
     delay(100);
     ESP.restart();
     return true;

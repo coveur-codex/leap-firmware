@@ -35,12 +35,15 @@ jobs:
         # build_opt.h supplies PNGdec's scanline size to every translation unit.
         run: arduino-cli compile --warnings all --fqbn 'esp32:esp32:esp32s3:FlashSize=16M,PSRAM=opi,CDCOnBoot=cdc,PartitionScheme=custom' --output-dir build/export LEAP
       - name: Verify exported app image
-        run: python3 tools/check_image.py build/export/LEAP.ino.bin
+        id: image
+        run: |
+          python3 tools/check_image.py build/export/LEAP.ino.bin --manifest build/export/firmware.json
+          python3 -c 'import json; print("version="+json.load(open("build/export/firmware.json"))["version"])' >> "$GITHUB_OUTPUT"
       - name: ESP32-S3 cable provisioning build
         run: |
           arduino-cli compile --warnings all --fqbn 'esp32:esp32:esp32s3:FlashSize=16M,PSRAM=opi,CDCOnBoot=cdc,PartitionScheme=custom' --build-property 'compiler.cpp.extra_flags=-DLEAP_PROVISION_DEVICE=1' --output-dir build/provision LEAP
           python3 -c 'from pathlib import Path; data=Path("build/provision/LEAP.ino.bin").read_bytes(); assert b"LEAP_DEVICE_PROVISIONING_V1" in data and b"LEAP_UNIVERSAL_NVS_V1" not in data'
       - uses: actions/upload-artifact@v4
         with:
-          name: leap-esp32s3-build
+          name: leap-esp32s3-${{ steps.image.outputs.version }}
           path: build/export/

@@ -1,3 +1,13 @@
+# 1.4.1 – OTA-Dateiversion verbindlich prüfen
+
+- Eindeutige eingebettete LEAP-Dateiversion aus derselben Quelle wie Bootbanner
+  und Sync-Reports. Download-Versionsabgleich vor Wechsel des Boot-Slots.
+- Pending-Image wird bei abweichender Journal-Zielversion nicht bestätigt;
+  bereits gültige Fallback-Firmware bleibt startfähig.
+- Build prüft die eingebettete Version und erzeugt ein versioniertes Paket mit
+  `firmware.json` und SHA-256-Datei; OTA-Logs zeigen laufende und erwartete Version.
+- Native Tests führen den echten OTA-Ablauf mit Partition-/Transport-Fakes aus.
+
 # 1.4.0 – Größeres Snake-Spielfeld und Spielestatus
 
 - Solo- und Multiplayer-Snake auf 53×16 Felder mit quadratischen 6-Pixel-Zellen
