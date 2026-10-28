@@ -58,12 +58,14 @@ bool Network::copyRoom(JsonDocument &value) {
   xSemaphoreGive(aircraftMutex);
   return true;
 }
-bool Network::roomCommand(const char *target, const char *action, const char *color) {
+bool Network::roomCommand(const RoomCommand &cmd) {
   if (!connected || !roomRequests || roomPending.exchange(true)) return false;
   RoomRequest command{};
-  strlcpy(command.target,target,sizeof(command.target));
-  strlcpy(command.action,action,sizeof(command.action));
-  if (color) strlcpy(command.color,color,sizeof(command.color));
+  strlcpy(command.target,cmd.target,sizeof(command.target));
+  strlcpy(command.action,cmd.action,sizeof(command.action));
+  if (cmd.color) strlcpy(command.color,cmd.color,sizeof(command.color));
+  command.temperature=cmd.temperature;
+  command.ticket=cmd.ticket;
   command.created=millis();
   if (xQueueSend(roomRequests,&command,0)==pdTRUE) return true;
   roomPending=false;
@@ -537,6 +539,7 @@ void Network::run() {
           body["target"]=roomRequest.target;
           body["action"]=roomRequest.action;
           if (roomRequest.color[0]) body["color"]=roomRequest.color;
+          if (!strcmp(roomRequest.action,"set_temperature")) body["temperature"]=roomRequest.temperature;
         }
         fresh=net.json(base+"/room",response,roomWrite ? &body : nullptr,20000) &&
               response["schemaVersion"]==1 && response["lights"].is<JsonArray>() && response["lights"].size()<=2;
@@ -546,7 +549,11 @@ void Network::run() {
                            (roomWrite ? "Nicht bestätigt · Zustand wird neu geladen" : "Zimmer nicht erreichbar");
       }
       publishRoom(response,fresh);
-      if (roomWrite) roomPending=false;
+      if (roomWrite) {
+        roomSucceeded=fresh;
+        roomCompleted=roomRequest.ticket;
+        roomPending=false;
+      }
     }
     wasRoomVisible=visible;
     photoInbox.service(net, base, connected);

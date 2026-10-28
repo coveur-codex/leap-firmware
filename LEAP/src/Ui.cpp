@@ -175,6 +175,8 @@ bool Ui::reload(bool initial) {
   page = std::min(page, int(pages.size()) - 1);
   selection = item = scroll = 0;
   if (!same) {
+    roomControls.cancel();
+    roomFrame.clear();
     inputDiagnostics = false;
     calibrationVisible = false;
     motion.calibrationActive = false;
@@ -1498,11 +1500,22 @@ void Ui::tick() {
   if (generation != storage.generation.load())
     reload();
   bool roomVisible = !locked && !menu && !pages.empty() && pages[page].id == "room";
-  if (roomVisible && !network.roomVisible) roomControls.editing=false;
   network.roomVisible=roomVisible;
   uint32_t roomRevision=network.roomRevision.load();
   if (roomRevision!=lastRoomRevision && network.copyRoom(roomFrame)) {
     lastRoomRevision=roomRevision;
+    frameRequested=true;
+  }
+  uint32_t completed=network.roomCompleted.load();
+  if(completed!=lastRoomCompletion && network.copyRoom(roomFrame)) {
+    roomControls.complete(completed,network.roomSucceeded.load(),millis());
+    lastRoomCompletion=completed;
+    frameRequested=true;
+  }
+  roomControls.observe(roomFrame,network.connected,millis());
+  auto roomCommand=roomControls.next(roomFrame,network.connected,millis());
+  if(roomCommand.action && network.roomCommand(roomCommand)) {
+    roomControls.submitted(roomCommand,millis());
     frameRequested=true;
   }
   bool financeVisible = !locked && !menu && !pages.empty() && pages[page].id == "finance";
