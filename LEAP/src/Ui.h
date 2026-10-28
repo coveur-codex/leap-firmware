@@ -74,7 +74,7 @@ class Ui {
   FinanceNavigation financeNavigation;
   bool financeWasVisible = false;
   JsonDocument roomFrame{&jsonRam};
-  uint32_t lastRoomRevision=0;
+  uint32_t lastRoomRevision=0, lastRoomCompletion=0;
   RoomControls roomControls;
   void drawRoom();
   void roomAction(const InputEvent &event);

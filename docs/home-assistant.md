@@ -1,22 +1,36 @@
-# Mein Zimmer (1.5.0-beta.1)
+# Mein Zimmer (1.5.0-beta.2)
 
-Benötigt den LEAP-Homeserver mit Zimmer-API und Migration 0022.
-Einrichtung, Zuordnungen und vollständige Abnahme stehen im Homeserver unter
-`docs/home-assistant.md`. Home Assistant wird ausschließlich vom Homeserver
-angesprochen; auf dem Gerät werden keine HA-Zugangsdaten gespeichert.
+Benötigt LEAP-Homeserver **1.5.0-beta.2** mit Zimmer-API und Migration 0022.
+Zuerst den Homeserver aktualisieren, dann die Firmware. Keine neue Migration.
+Einrichtung und Zuordnungen: Homeserver `docs/home-assistant.md`.
+Home-Assistant-Zugangsdaten bleiben ausschließlich am Homeserver.
 
-Rechter Schalter: hoch/runter wählt Heizung/Lampe, links/rechts ändert den
-Heizungs-Sollwert um 1 °C bzw. schaltet eine Lampe aus/an. Mitte öffnet bei
-RGB-Lampen die Farbauswahl; links/rechts wählt die Farbe, Mitte sendet sie.
-Hoch/runter verlässt die Farbauswahl. Links bleiben Menü und Seitenwechsel.
+## Bedienung
 
-Live-Daten werden nur während geöffneter Zimmerseite alle drei Sekunden im
-Netzwerktask abgefragt und im RAM gehalten. Nach zehn Sekunden ohne frische
-Daten oder ohne WLAN sind Befehle gesperrt. Es gibt genau einen ausstehenden
-Befehl; weitere Schritte nach Abschluss erneut drücken. Keine Offline-Aufträge,
-Flash-Schreibvorgänge oder automatischen Wiederholungen für Zimmerbefehle.
+- Rechter Schalter hoch/runter: Heizung oder Lampe auswählen.
+- Heizung links/rechts: lokale Zieltemperatur −/+1 °C; mehrere Schritte sammeln.
+- Lampe links/rechts: die Farbe der Kachel wechseln. Schwarz bedeutet Aus.
+- Zehn Farben: Weiß, Gelb, Orange, Rot, Rosa, Lila, Blau, Hellblau, Türkis, Grün.
+- Reine Dimmer ohne RGB wechseln nur zwischen Schwarz (Aus) und Weiß (An).
+- Nach **1 s ohne weitere Wertänderung**, auch über mehrere Zeilen hinweg,
+  wird die Auswahl automatisch übertragen. Mitte ist nicht erforderlich.
+- Der linke Schalter navigiert weiterhin zu anderen Seiten und zum Menü.
 
-Vor dem Rollout: ESP32-S3-Arduino-Build, Displaydarstellung auf 428×142,
-rechte Tasten, gemeinsame Erik-/Lars-Heizung, Grenzen, RGB und WLAN-Ausfall
-am echten Gerät prüfen. Native Tests überprüfen Bedienlogik, Offline-Sperre,
-Zeitüberlauf und Geräteauswahl; sie ersetzen keinen Hardwaretest.
+Die Vorschau reagiert sofort. Ein Stern kennzeichnet einen noch nicht bestätigten
+Wert. Statusabfragen überschreiben keine offenen Eingaben. Weitere Änderungen
+während eines Requests werden nach Ablauf der Pause als neuer Endwert gesendet;
+mehrere betroffene Geräte werden nacheinander übertragen. Das Verlassen der
+Seite verhindert die bereits gewählte Übernahme nicht.
+
+Live-Zustände werden bei geöffneter Zimmerseite alle drei Sekunden im RAM
+aktualisiert. Ohne WLAN oder nach zehn Sekunden ohne frische Daten werden
+ungesendete Änderungen verworfen, nicht später beim Wiederverbinden ausgeführt.
+Fehlgeschlagene Befehle werden nicht automatisch wiederholt. Eine unbestätigte
+Vorschau wird nach 15 Sekunden aufgegeben und als Fehler gekennzeichnet.
+Die Farben anderer HA-Bedienungen werden aus RGB-Werten der nächsten Kachelfarbe
+zugeordnet; unbekannte Farben bleiben bis zur eigenen Auswahl als An sichtbar.
+
+Native Tests: einsekündige Pause, Mehrfacheingaben, Grenzen, unabhängige Lampen,
+Statusabfragen, Eingaben während Requests, verzögerte Bestätigung, Rückkehr zum
+alten Sollwert, Fehler, Offline-Verhalten, Zeitüberlauf und zehn Farben.
+Vor dem Rollout beide ESP32-Builds und die Bedienung auf 428×142 prüfen.
