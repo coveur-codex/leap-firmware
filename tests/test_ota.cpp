@@ -23,7 +23,8 @@ static void build(const std::string &identity){
   image.assign(sizeof(esp_image_header_t),0); image[0]=ESP_IMAGE_HEADER_MAGIC; image[12]=9;
   image.insert(image.end(),4096,0x55); image.insert(image.end(),identity.begin(),identity.end());
 }
-static JsonDocument release(){JsonDocument d;d["version"]="1.4.2";d["size"]=image.size();d["url"]="/api/v1/firmware/1/binary";d["sha256"]=std::string(64,'a');return d;}
+static const std::string nextVersion=std::to_string(std::atoi(FirmwareVersion)+1)+".0.0";
+static JsonDocument release(){JsonDocument d;d["version"]=nextVersion;d["size"]=image.size();d["url"]="/api/v1/firmware/1/binary";d["sha256"]=std::string(64,'a');return d;}
 int main(){
   auto identity=tag("1.4.2");
   for(size_t chunk=1;chunk<=128;++chunk){
@@ -38,9 +39,9 @@ int main(){
   assert(!test.offered(d.as<JsonObjectConst>(),"new-sync",net));
   assert(otaSelected==0 && otaEnded==0 && otaAborted==1 && test.pendingVersion().empty());
   build("unmarked");d=release();assert(!test.offered(d.as<JsonObjectConst>(),"new-sync",net));assert(otaSelected==0);
-  build(identity);d=release();chunkSize=7;
+  build(tag(nextVersion.c_str()));d=release();chunkSize=7;
   assert(test.offered(d.as<JsonObjectConst>(),"new-sync",net));
-  assert(otaSelected==1 && otaEnded==1 && otaWritten==image && test.pendingVersion()=="1.4.2");
+  assert(otaSelected==1 && otaEnded==1 && otaWritten==image && test.pendingVersion()==nextVersion.c_str());
   // A wrong-version image pending validation must not be confirmed as healthy.
   otaState=ESP_OTA_IMG_PENDING_VERIFY; Ota wrong;wrong.begin(); assert(wrong.rolledBack);
   assert(!wrong.confirm(true) && otaReverted==1 && otaConfirmed==0);
