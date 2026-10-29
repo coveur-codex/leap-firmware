@@ -6,6 +6,7 @@
 #include "src/NetworkProfiles.h"
 #include "src/Communication.h"
 #include "src/SnakeMultiplayer.h"
+#include "src/FourMultiplayer.h"
 #include "src/Storage.h"
 #include "src/Ui.h"
 #include <esp_psram.h>
@@ -71,6 +72,7 @@ void setup() {
   Serial.printf("[BOOT] UI ready %lu ms\n", millis() - phaseAt);
   bool chatReady = communication.begin();
   snakeMultiplayer.begin();
+  fourMultiplayer.begin();
   bool soundReady = audio.begin();
   motion.begin();
   bool inputReady = input.start();

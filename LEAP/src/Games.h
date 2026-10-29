@@ -4,6 +4,7 @@
 #include "MathLab.h"
 #include "KitchenEditor.h"
 #include "ConnectFour.h"
+#include "FourMultiplayer.h"
 #include "Maze.h"
 #include "CrabJourney.h"
 #include "CrabJourneyProgress.h"
@@ -42,6 +43,10 @@ class Games {
   bool snakeSetup = true;
   inline static constexpr uint32_t snakeIntervals[] = {450, 300, 220};
   ConnectFour four;
+  bool fourOnline = false, fourSearchExpired = false;
+  FourSnapshot versus;
+  int fourPlayer() const;
+  void drawFourOnline(Arduino_GFX &gfx, int left, int top);
   int fourDifficulty = 0, fourColumn = 3;
   bool fourSetup = true, fourThinking = false, fourFull = false;
   void drawFour(Arduino_GFX &gfx, int left, int top);
@@ -63,6 +68,7 @@ class Games {
 
 public:
   void begin();
+  bool takeMultiplayerTimeout() { bool result=fourSearchExpired; fourSearchExpired=false; return result; }
   void multiplayerAssets(JsonVariantConst manifest) { gameAvatars.set(manifest); }
   void avatarPackage(const String &id, int version, JsonVariantConst manifest);
   void start(const String &id);

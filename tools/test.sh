@@ -100,3 +100,6 @@ build/tests/ota
 
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src -I "$ARDUINOJSON_INCLUDE" tests/test_room_controls.cpp -o build/tests/room-controls
 build/tests/room-controls
+
+c++ -std=c++17 -Wall -Wextra -Werror -I tests/communication_fakes -I tests/storage_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_four_multiplayer.cpp LEAP/src/FourMultiplayer.cpp LEAP/src/FourProtocol.cpp -o build/tests/four-multiplayer
+build/tests/four-multiplayer

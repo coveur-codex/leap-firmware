@@ -1,8 +1,8 @@
 # LEAP Firmware
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
-[`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `8175c9f`.
-Version: `1.5.1`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+[`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `f407be4`.
+Version: `1.5.2`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -856,3 +856,10 @@ werden. Die zusätzliche bunte Kachel startet sie nach einer Sekunde Eingabepaus
 Annas Lichterkette erhält `scene.anna_lichterkette_szene` als Startzuordnung.
 Zuerst Homeserver 1.5.1 mit Migration 0023, danach Firmware 1.5.1 installieren.
 [Einrichtung und Bedienung](docs/home-assistant.md).
+
+## Vier Gewinnt im Multiplayer
+
+Automatische Zweiersuche mit mehreren parallelen Partien, Geräteakzentfarben
+und unterscheidbaren Steinsymbolen, 30 Sekunden Such-/Zugzeit, Wiederverbindung
+und gemeinsame Revanche. Einrichtung, Regeln und Protokoll:
+[Vier-Gewinnt-Multiplayer](docs/connect-four-multiplayer.md).

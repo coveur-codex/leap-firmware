@@ -7,6 +7,7 @@
 #include "Motion.h"
 #include "PetAssets.h"
 #include "Protocol.h"
+#include "DeviceConfig.h"
 #include <time.h>
 namespace leap {
 void Games::begin() {
@@ -127,6 +128,8 @@ String Games::petBlob(const String &path) const {
 void Games::close() {
   if (snakeCoop) snakeMultiplayer.close();
   snakeCoop = false;
+  if (fourOnline) fourMultiplayer.close();
+  fourOnline = false;
   if (dragonDirty)
     saveDragon();
   dragonJumpHeld = false;
@@ -174,6 +177,8 @@ void Games::start(const String &id) {
     maze.start(esp_random());
   if (isConnectFour()) {
     four = ConnectFour{};
+    fourOnline = fourSearchExpired = false;
+    versus = FourSnapshot{};
     fourDifficulty = 0;
     fourColumn = 3;
     fourSetup = true;
@@ -199,15 +204,41 @@ void Games::input(Key key) {
   if (isKitchen())
     return;
   if (isConnectFour() && opened) {
+    if (fourOnline) {
+      int me=fourPlayer();
+      if (versus.phase==FourPhase::Error && key==Key::Center) { start("connect_four"); return; }
+      if (versus.phase==FourPhase::Finished) {
+        if (key==Key::Center && me>=0 && versus.count==2 &&
+            versus.players[0].connected && versus.players[1].connected &&
+            !versus.players[0].left && !versus.players[1].left)
+          fourMultiplayer.command(0,versus.round,versus.move,true);
+        return;
+      }
+      if (versus.phase!=FourPhase::Playing || !fourMultiplayer.online || me<0 || versus.turn!=me+1) return;
+      if (key==Key::Left || key==Key::Right)
+        fourColumn=constrain(fourColumn+(key==Key::Right)-(key==Key::Left),0,6);
+      if (key==Key::Center && !versus.board[0][fourColumn])
+        fourMultiplayer.command(fourColumn,versus.round,versus.move);
+      return;
+    }
     if (!running) {
       if (key == Key::Center)
         start("connect_four");
       return;
     }
     if (fourSetup) {
-      fourDifficulty = constrain(fourDifficulty + (key == Key::Down) - (key == Key::Up), 0, 2);
-      if (key == Key::Center)
+      fourDifficulty = constrain(fourDifficulty + (key == Key::Down) - (key == Key::Up), 0, 3);
+      if (key == Key::Center) {
         fourSetup = false;
+        if (fourDifficulty==3) {
+          fourOnline=true;
+          versus=FourSnapshot{};
+          if (!fourMultiplayer.start()) {
+            versus.phase=FourPhase::Error;
+            strlcpy(versus.error,"Multiplayer nicht verfügbar",sizeof(versus.error));
+          }
+        }
+      }
     } else if (!fourThinking) {
       if (key == Key::Left || key == Key::Right) {
         fourColumn = constrain(fourColumn + (key == Key::Right) - (key == Key::Left), 0, 6);
@@ -305,7 +336,22 @@ void Games::input(Key key) {
     }
   }
 }
+int Games::fourPlayer() const {
+  for (unsigned i=0;i<versus.count;++i)
+    if (!strcmp(versus.players[i].id,deviceSettings.deviceId)) return int(i);
+  return -1;
+}
 void Games::tick() {
+  if (isConnectFour() && fourOnline && opened) {
+    fourMultiplayer.poll(versus);
+    if (versus.phase==FourPhase::Finished && !strcmp(versus.reason,"no_opponent")) {
+      fourSearchExpired=true;
+      fourMultiplayer.close();
+      fourOnline=false;
+    }
+    running=versus.phase!=FourPhase::Finished && versus.phase!=FourPhase::Error;
+    return;
+  }
   if (isSnake() && snakeCoop && opened) {
     snakeMultiplayer.poll(cooperative);
     running = cooperative.phase != SnakePhase::Alone && cooperative.phase != SnakePhase::Finished &&
@@ -540,16 +586,17 @@ void Games::draw(Arduino_GFX &gfx, int left, int top, uint16_t accent) {
   }
 }
 void Games::drawFour(Arduino_GFX &gfx, int left, int top) {
-  const char *levels[] = {"Leicht", "Mittel", "Schwer"};
+  if (fourOnline) { drawFourOnline(gfx,left,top); return; }
+  const char *levels[] = {"Leicht", "Mittel", "Schwer", "Multiplayer"};
   gfx.setTextSize(1);
   gfx.setTextColor(0xffff);
   gfx.setCursor(left, top);
   printDisplayText(gfx, "Vier Gewinnt");
   if (fourSetup) {
     gfx.setCursor(left, top + 18);
-    printDisplayText(gfx, "Schwierigkeit wählen:");
-    for (int i = 0; i < 3; ++i) {
-      int y = top + 36 + i * 21;
+    printDisplayText(gfx, "Spielmodus wählen:");
+    for (int i = 0; i < 4; ++i) {
+      int y = top + 34 + i * 18;
       if (i == fourDifficulty)
         gfx.fillRoundRect(left, y - 4, 150, 18, 4, 0x06b8);
       gfx.setTextColor(i == fourDifficulty ? 0x10e5 : 0xffff);
@@ -557,10 +604,10 @@ void Games::drawFour(Arduino_GFX &gfx, int left, int top) {
       printDisplayText(gfx, levels[i]);
     }
     gfx.setTextColor(0xffff);
-    gfx.setCursor(left, top + 113);
+    gfx.setCursor(left, top + 110);
     printDisplayText(gfx, "R Oben/Unten: Wahl  R Mitte: Start");
-    gfx.setCursor(left, top + 119);
-    printDisplayText(gfx, "Du beginnst. L Mitte: Zurück");
+    gfx.setCursor(left, top + 122);
+    printDisplayText(gfx, fourDifficulty == 3 ? "Zufälliger Start. L Mitte: Zurück" : "Du beginnst. L Mitte: Zurück");
     return;
   }
   // 126 x 108 board fits the 142-pixel display below the selection marker.
@@ -728,5 +775,69 @@ void Games::drawPet(Arduino_GFX &gfx) {
   printDisplayText(gfx, "R Mitte: OK");
   gfx.setCursor(348, 133);
   printDisplayText(gfx, "L: Zurück");
+}
+} // namespace leap
+
+namespace leap {
+void Games::drawFourOnline(Arduino_GFX &gfx,int left,int top) {
+  auto &s=versus;
+  gfx.setTextSize(1); gfx.setTextColor(0xffff); gfx.setCursor(left,top);
+  printDisplayText(gfx,"Vier Gewinnt - Multiplayer");
+  gfx.setCursor(left,top+26);
+  if (s.phase==FourPhase::Connecting || s.phase==FourPhase::Error) {
+    printDisplayText(gfx,s.phase==FourPhase::Error ? s.error : "Verbinde mit Homeserver...");
+    gfx.setCursor(left,top+100);
+    printDisplayText(gfx,"L Mitte: Zurück");
+    if (s.phase==FourPhase::Error) { gfx.setCursor(left,top+80); printDisplayText(gfx,"R Mitte: Spielmodus wählen"); }
+    return;
+  }
+  if (s.phase==FourPhase::Lobby) {
+    gfx.printf("Suche Mitspieler: %lus",(unsigned long)((s.remainingMs+999)/1000));
+    gfx.setCursor(left,top+52); printDisplayText(gfx,"Zwei Geräte pro Partie");
+    gfx.setCursor(left,top+78); printDisplayText(gfx,"L Mitte: Suche abbrechen");
+    return;
+  }
+  int me=fourPlayer();
+  int boardY=top+23, info=left+140;
+  auto stone=[&](int x,int y,unsigned player) {
+    uint16_t color=accentColor(s.players[player].accent), ink=contrastInk(color);
+    gfx.fillCircle(x,y,7,color);
+    if (player==0) gfx.fillCircle(x,y,2,ink);
+    else { gfx.drawLine(x-3,y-3,x+3,y+3,ink); gfx.drawLine(x-3,y+3,x+3,y-3,ink); }
+  };
+  gfx.fillRect(left,boardY,126,108,0x19f0);
+  for (int r=0;r<6;++r) for (int c=0;c<7;++c) {
+    int x=left+c*18+9,y=boardY+r*18+9;
+    if (s.board[r][c]) stone(x,y,s.board[r][c]-1);
+    else gfx.fillCircle(x,y,7,0x10e5);
+  }
+  if (s.phase==FourPhase::Playing && me>=0 && s.turn==me+1 && fourMultiplayer.online)
+    gfx.fillRect(left+fourColumn*18+3,top+14,12,5,accentColor(s.players[me].accent));
+  for (unsigned i=0;i<s.count;++i) {
+    int y=top+27+i*20;
+    stone(info+7,y,i);
+    gfx.setTextColor(0xffff); gfx.setCursor(info+20,y-3);
+    if (int(i)==me) printDisplayText(gfx,"Du");
+    else { auto name=displayGlyphs(s.players[i].name).substr(0,23); gfx.print(name.c_str()); }
+  }
+  gfx.setCursor(info,top+65);
+  if (!fourMultiplayer.online) printDisplayText(gfx,"Verbindung wird erneuert");
+  else if (s.phase==FourPhase::Paused) gfx.printf("Pause: %lus",(unsigned long)((s.remainingMs+999)/1000));
+  else if (s.phase==FourPhase::Finished)
+    printDisplayText(gfx,s.winner==0 ? "Unentschieden" : s.winner==me+1 ? "Du gewinnst!" : "Du verlierst");
+  else gfx.printf("%s: %lus",s.turn==me+1 ? "Dein Zug" : "Gegner am Zug",(unsigned long)((s.remainingMs+999)/1000));
+  gfx.setCursor(info,top+84);
+  if (s.phase==FourPhase::Finished) {
+    bool available=s.count==2 && s.players[0].connected && s.players[1].connected && !s.players[0].left && !s.players[1].left;
+    printDisplayText(gfx,!available ? "Mitspieler nicht mehr da" : me>=0 && s.players[me].rematch ? "Warte auf Revanche..." : "R Mitte: Revanche");
+    gfx.setCursor(info,top+98);
+    printDisplayText(gfx,!strcmp(s.reason,"turn_timeout") ? "Zugzeit abgelaufen" :
+        !strcmp(s.reason,"disconnect_timeout") ? "Verbindung abgebrochen" :
+        !strcmp(s.reason,"left") ? "Mitspieler hat verlassen" : !strcmp(s.reason,"draw") ? "Runde beendet" : "Vier gewinnt!");
+  } else {
+    printDisplayText(gfx,"R Links/Rechts: Spalte");
+    gfx.setCursor(info,top+98); printDisplayText(gfx,s.board[0][fourColumn] ? "Spalte voll" : "R Mitte: Einwerfen");
+  }
+  gfx.setTextColor(0xffff); gfx.setCursor(info,top+118); printDisplayText(gfx,"L Mitte: Zurück");
 }
 } // namespace leap
