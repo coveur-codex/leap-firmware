@@ -1,7 +1,7 @@
-# Mein Zimmer (1.5.0-beta.2)
+# Mein Zimmer (1.5.1)
 
-Benötigt LEAP-Homeserver **1.5.0-beta.2** mit Zimmer-API und Migration 0022.
-Zuerst den Homeserver aktualisieren, dann die Firmware. Keine neue Migration.
+Benötigt LEAP-Homeserver **1.5.1** mit Zimmer-API und Migration 0023.
+Zuerst den Homeserver aktualisieren, dann die Firmware. Homeserver-Migration 0023 ergänzt Szenenzuordnungen.
 Einrichtung und Zuordnungen: Homeserver `docs/home-assistant.md`.
 Home-Assistant-Zugangsdaten bleiben ausschließlich am Homeserver.
 
@@ -34,3 +34,22 @@ Native Tests: einsekündige Pause, Mehrfacheingaben, Grenzen, unabhängige Lampe
 Statusabfragen, Eingaben während Requests, verzögerte Bestätigung, Rückkehr zum
 alten Sollwert, Fehler, Offline-Verhalten, Zeitüberlauf und zehn Farben.
 Vor dem Rollout beide ESP32-Builds und die Bedienung auf 428×142 prüfen.
+
+## Bunte Szenenkachel
+
+Bei `sceneSupported: true` erscheint nach Grün eine regenbogenfarbene Kachel
+**Bunt**; auch von Schwarz aus mit links erreichbar. Sie sendet nach 1 s Pause
+`action: scene` für die gewählte Lampe. Die Szene wird im Homeserver pro Lampe
+konfiguriert; für Annas Lichterkette ist `scene.anna_lichterkette_szene` vorbelegt.
+Ohne Zuordnung wird die Kachel übersprungen. Auch Lampen ohne RGB können eine
+Szenenkachel erhalten. Es werden keine freien Szenen-IDs vom Gerät übertragen.
+
+Nach erfolgreichem Aufruf erscheint **Szene gesendet**. Das ist ein lokaler Hinweis
+auf die angenommene Aktion, keine Bestätigung des physischen Tuya-Modus. Ein
+später beobachtetes Aus, eine feste Farbauswahl oder das Zurücksetzen der lokalen
+Verbindung/Vorschau entfernt den Hinweis. Ein Geräte-Neustart erkennt bereits
+laufende externe Szenen nicht automatisch.
+
+Eine neue Farbe oder Schwarz/Aus nach Bunt wird explizit gesendet, auch bei
+verzögertem HA-Zustand. Fehler/Offline-Eingaben werden nicht automatisch wiederholt.
+Die bisherigen zehn Farben, Heizungssteuerung und Eingabepause bleiben erhalten.

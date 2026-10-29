@@ -13,7 +13,8 @@ inline constexpr RoomColor RoomPalette[] = {
   {"rot", "Rot", 0xff0000}, {"rosa", "Rosa", 0xff50a0},
   {"lila", "Lila", 0xb400ff}, {"blau", "Blau", 0x0000ff},
   {"hellblau", "Hellblau", 0x50b4ff}, {"tuerkis", "Türkis", 0x00ffc8},
-  {"gruen", "Grün", 0x00ff00}};
+  {"gruen", "Grün", 0x00ff00}, {"scene", "Bunt", 0x000000}};
+inline constexpr int RoomSceneIndex = 11;
 inline constexpr int RoomColorCount = sizeof(RoomPalette)/sizeof(RoomPalette[0]);
 struct RoomCommand {
   const char *target=nullptr, *action=nullptr, *color=nullptr;
@@ -32,7 +33,8 @@ struct RoomDraft {
   uint32_t revision=0, sentAt=0;
 };
 struct RoomControls {
-  int selection=0, inFlight=-1;
+  int selection=0, inFlight=-1, sentColor=0;
+  bool sceneChosen[3]={false,false,false}, sceneSeenOn[3]={false,false,false};
   RoomDraft drafts[3]; // Stable targets: climate, light0, light1, independent of visible rows.
   uint32_t lastChange=0, ticket=0, sentRevision=0;
   bool failed=false;
@@ -45,12 +47,20 @@ struct RoomControls {
     for (int i=1;i<RoomColorCount;++i) if (!strcmp(id,RoomPalette[i].id)) return i;
     return 1; // An externally chosen color without RGB metadata is shown as "An".
   }
+  int displayColor(JsonVariantConst frame, int slot) const {
+    return drafts[slot].active ? drafts[slot].color :
+      sceneChosen[slot] && row(frame,slot)["sceneSupported"]==true ? RoomSceneIndex : colorOf(row(frame,slot));
+  }
   bool changed() const { for (const auto &d:drafts) if(d.dirty) return true; return false; }
   bool awaiting() const { for (const auto &d:drafts) if(d.active && d.awaiting) return true; return false; }
-  void cancel() { for(auto &d:drafts) d={}; inFlight=-1; }
+  void cancel() {
+    for(int i=0;i<3;++i) { drafts[i]={}; sceneChosen[i]=sceneSeenOn[i]=false; }
+    inFlight=-1;
+  }
   static bool matches(JsonVariantConst actual, const RoomDraft &d, int slot) {
     if (actual["available"]!=true) return false;
     if (!slot) return actual["target"].is<double>() && std::abs(actual["target"].as<double>()-d.temperature)<.01;
+    if (d.color==RoomSceneIndex) return false; // HA cannot confirm a Tuya device mode through the light state.
     if (!d.color) return actual["on"]==false;
     return actual["on"]==true && (actual["colorSupported"]!=true || actual["color"]==RoomPalette[d.color].id);
   }
@@ -58,10 +68,14 @@ struct RoomControls {
     if (!roomFresh(frame,online,now)) { if(changed()) failed=true; cancel(); return; }
     for(int i=0;i<3;++i) {
       auto &d=drafts[i];
-      if(!d.active) continue;
       auto actual=row(frame,i);
+      if(i && sceneChosen[i]) {
+        if(actual["sceneSupported"]!=true || (sceneSeenOn[i] && actual["on"]==false)) sceneChosen[i]=false;
+        else if(actual["on"]==true) sceneSeenOn[i]=true;
+      }
+      if(!d.active) continue;
       bool usable=actual["available"]==true && (i || actual["controllable"]==true);
-      if(!usable || (!i && (d.temperature<(actual["minimum"]|10.0) || d.temperature>(actual["maximum"]|30.0)))) {
+      if(!usable || (i && d.color==RoomSceneIndex && actual["sceneSupported"]!=true) || (!i && (d.temperature<(actual["minimum"]|10.0) || d.temperature>(actual["maximum"]|30.0)))) {
         d={}; failed=true; continue;
       }
       if(inFlight==i) continue;
@@ -91,19 +105,23 @@ struct RoomControls {
       if(target<(actual["minimum"]|10.0) || target>(actual["maximum"]|30.0)) return;
       d.temperature=target;
     } else {
-      int base=d.active?d.color:colorOf(actual);
-      int count=actual["colorSupported"]==true?RoomColorCount:2;
+      int base=displayColor(frame,slot);
+      int count=RoomColorCount;
       int choice=(base+count+delta)%count;
       // Old servers may expose only a subset of the new palette.
       for(int tries=0;tries<count;++tries) {
-        bool supported=choice<2 || frame["colors"].isNull();
-        for(JsonVariantConst id:frame["colors"].as<JsonArrayConst>()) supported|=id==RoomPalette[choice].id;
+        bool supported=choice<2;
+        if(choice==RoomSceneIndex) supported=actual["sceneSupported"]==true;
+        else if(choice>=2 && actual["colorSupported"]==true) {
+          supported=frame["colors"].isNull();
+          for(JsonVariantConst id:frame["colors"].as<JsonArrayConst>()) supported|=id==RoomPalette[choice].id;
+        }
         if(supported) break;
         choice=(choice+count+delta)%count;
       }
       d.color=choice;
     }
-    d.force|=inFlight==slot || d.awaiting;
+    d.force|=inFlight==slot || d.awaiting || (slot>0 && sceneChosen[slot]);
     d.active=d.dirty=true; d.awaiting=false; ++d.revision;
     lastChange=now; failed=false;
     if(!d.force && inFlight!=slot && matches(actual,d,slot)) d={};
@@ -115,6 +133,7 @@ struct RoomControls {
       cmd.slot=i; cmd.ticket=ticket+1; if(!cmd.ticket) ++cmd.ticket;
       cmd.target=i==0?"climate":i==1?"light0":"light1";
       if(!i) { cmd.action="set_temperature"; cmd.temperature=drafts[i].temperature; }
+      else if(drafts[i].color==RoomSceneIndex) cmd.action="scene";
       else { cmd.action=drafts[i].color ? (row(frame,i)["colorSupported"]==true?"color":"on") : "off";
         if(drafts[i].color && row(frame,i)["colorSupported"]==true) cmd.color=RoomPalette[drafts[i].color].id; }
       return cmd;
@@ -123,13 +142,20 @@ struct RoomControls {
   }
   void submitted(const RoomCommand &cmd, uint32_t now) {
     inFlight=cmd.slot; ticket=cmd.ticket; sentRevision=drafts[cmd.slot].revision;
+    sentColor=drafts[cmd.slot].color;
     drafts[cmd.slot].dirty=false; drafts[cmd.slot].sentAt=now;
   }
   void complete(uint32_t completed, bool success, uint32_t now) {
     if(inFlight<0 || completed!=ticket) return;
     auto &d=drafts[inFlight];
     if(!success) { d={}; failed=true; }
-    else if(d.revision==sentRevision) { d.awaiting=true; d.force=false; d.sentAt=now; }
+    else {
+      if(inFlight>0) { sceneChosen[inFlight]=sentColor==RoomSceneIndex; sceneSeenOn[inFlight]=false; }
+      if(d.revision==sentRevision) {
+        if(inFlight>0 && sentColor==RoomSceneIndex) d={}; // Acknowledged action, not a claim about the physical mode.
+        else { d.awaiting=true; d.force=false; d.sentAt=now; }
+      }
+    }
     inFlight=-1;
   }
 };
