@@ -55,7 +55,7 @@ int main() {
   assert(!nav.next(frame,true,4000).action); // Accepted commands are never retried.
   // Direct palette selection, all ten colors, black = off, no Center confirmation.
   frame=room(); nav=RoomControls{}; nav.selection=1;
-  for(int color=1;color<RoomColorCount;++color) {
+  for(int color=1;color<RoomSceneIndex;++color) {
     nav.input(frame,true,100+color*10,RoomKey::Right);
     assert(nav.drafts[1].color==color);
     cmd=nav.next(frame,true,1200+color*10);
@@ -117,4 +117,55 @@ int main() {
   nav=RoomControls{}; nav.selection=1;
   nav.input(frame,true,100,RoomKey::Right); nav.input(frame,true,200,RoomKey::Right);
   assert(is(nav.next(frame,true,1200).color,"rot"));
+  // The rainbow choice is per-lamp, is debounced and sends only an assigned action.
+  frame=room(); nav=RoomControls{}; nav.selection=1;
+  frame["lights"][0]["sceneSupported"]=true;
+  nav.input(frame,true,100,RoomKey::Left);
+  assert(nav.displayColor(frame,1)==RoomSceneIndex && !nav.next(frame,true,1099).action);
+  cmd=nav.next(frame,true,1100);
+  assert(cmd.slot==1 && is(cmd.action,"scene") && !cmd.color);
+  nav.submitted(cmd,1100); nav.complete(cmd.ticket,true,1200);
+  nav.observe(frame,true,1300);
+  assert(!nav.awaiting() && !nav.changed() && nav.displayColor(frame,1)==RoomSceneIndex);
+  assert(!nav.next(frame,true,5000).action); // Never replay a successfully invoked scene.
+  frame["lights"][0]["on"]=true; nav.observe(frame,true,1400);
+  frame["lights"][0]["on"]=false; nav.observe(frame,true,1500);
+  assert(nav.displayColor(frame,1)==0); // A later observed switch-off clears the local scene hint.
+  nav.selection=2; nav.input(frame,true,1600,RoomKey::Left);
+  assert(nav.drafts[2].color==1); // A different lamp has no rainbow choice.
+  // Also available on a light whose integration exposes no RGB control.
+  frame=room(); nav=RoomControls{}; nav.selection=2;
+  frame["lights"][1]["sceneSupported"]=true;
+  nav.input(frame,true,100,RoomKey::Left);
+  assert(is(nav.next(frame,true,1100).action,"scene"));
+  cmd=nav.next(frame,true,1100); nav.submitted(cmd,1100);
+  nav.input(frame,true,1200,RoomKey::Right); // Switch to off during the scene request.
+  nav.complete(cmd.ticket,true,1300);
+  assert(nav.changed() && is(nav.next(frame,true,2200).action,"off"));
+  frame=room(); nav=RoomControls{}; nav.selection=1;
+  frame["lights"][0]["sceneSupported"]=true;
+  nav.input(frame,true,100,RoomKey::Left); cmd=nav.next(frame,true,1100); nav.submitted(cmd,1100);
+  nav.complete(cmd.ticket,false,1200);
+  assert(nav.failed && !nav.changed() && !nav.sceneChosen[1]);
+  nav.input(frame,true,1300,RoomKey::Left); nav.observe(frame,false,1400);
+  assert(!nav.next(frame,true,3000).action); // No offline scene queue.
+  nav.input(frame,true,1500,RoomKey::Left);
+  frame["lights"][0]["sceneSupported"]=false; nav.observe(frame,true,1600);
+  assert(!nav.changed()); // A removed assignment cancels the unsent scene.
+
+  // Leaving scene mode must issue a static color/off even when HA still reports
+  // that exact color or off from before the scene.
+  frame=room(); nav=RoomControls{}; nav.selection=1;
+  frame["lights"][0]["sceneSupported"]=true;
+  nav.input(frame,true,100,RoomKey::Left); cmd=nav.next(frame,true,1100);
+  nav.submitted(cmd,1100); nav.complete(cmd.ticket,true,1200);
+  nav.input(frame,true,1300,RoomKey::Right);
+  assert(is(nav.next(frame,true,2300).action,"off"));
+  nav=RoomControls{}; nav.selection=1;
+  frame["lights"][0]["on"]=true; frame["lights"][0]["color"]="gruen";
+  nav.input(frame,true,100,RoomKey::Right); cmd=nav.next(frame,true,1100);
+  nav.submitted(cmd,1100); nav.complete(cmd.ticket,true,1200);
+  nav.input(frame,true,1300,RoomKey::Left);
+  assert(is(nav.next(frame,true,2300).action,"color") && is(nav.next(frame,true,2300).color,"gruen"));
+
 }

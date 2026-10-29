@@ -30,15 +30,24 @@ void Ui::drawRoom() {
       if(row["controllable"]!=true) status="Heizung nicht steuerbar";
       else if(roomFrame["temperatureSetSupported"]!=true) status="Bitte Homeserver aktualisieren";
     } else {
-      int color=draft.active?draft.color:RoomControls::colorOf(row);
+      int color=roomControls.displayColor(roomFrame,slot);
       uint32_t rgb=RoomPalette[color].rgb;
       uint16_t ink=((rgb>>19)<<11)|(((rgb>>10)&63)<<5)|((rgb>>3)&31);
       if(!fresh || row["available"]!=true) ink=0x4208;
       canvas->fillRoundRect(361,y+4,44,26,4,ink);
+      if(color==RoomSceneIndex && fresh && row["available"]==true) {
+        const int bands[]={4,3,2,10,9,7,6,5};
+        for(int band=0;band<8;++band) {
+          uint32_t stripe=RoomPalette[bands[band]].rgb;
+          uint16_t value=((stripe>>19)<<11)|(((stripe>>10)&63)<<5)|((stripe>>3)&31);
+          canvas->fillRect(363+band*5,y+6,5,22,value);
+        }
+      }
       canvas->drawRoundRect(361,y+4,44,26,4,0xffff);
       text("<",350,y+13,1,accent); text(">",411,y+13,1,accent);
       if(status.length()==0) {
-        status=(!draft.active && row["on"]==true && row["color"].isNull())?"An":RoomPalette[color].label;
+        status=color==RoomSceneIndex ? (draft.active?"Bunt":"Szene gesendet") :
+          (!draft.active && row["on"]==true && row["color"].isNull())?"An":RoomPalette[color].label;
         if(draft.active) status+=" *";
       }
     }
