@@ -1554,6 +1554,12 @@ void Ui::tick() {
   }
   if (!locked && !menu && !pages.empty()) notifications.markRead(pages[page].id.c_str());
   game.tick();
+  if (game.takeMultiplayerTimeout()) {
+    game.close();
+    gameOpen=false;
+    notice="Keine Mitspieler gefunden";
+    frameRequested=true;
+  }
   if (!chillVisible()) chill.close();
   chill.tick(millis());
   bool chillActive = chillVisible();

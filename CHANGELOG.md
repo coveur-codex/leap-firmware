@@ -1,3 +1,13 @@
+# 1.5.2 – Vier Gewinnt im Multiplayer
+
+- Multiplayer zusätzlich zu den bisherigen Solo-Schwierigkeitsstufen.
+- Mehrere gleichzeitige Zweierpartien, automatische Suche für 30 Sekunden und
+  Rückkehr ins Spielemenü ohne Mitspieler. 30 Sekunden pro Zug.
+- Geräteakzentfarben mit Punkt/Kreuz; serverbestätigtes Feld, Verbindungsprüfung,
+  30 Sekunden Pause bei Abbruch und gemeinsame Revanche mit Startspielerwechsel.
+- Benötigt den Vier-Gewinnt-Endpunkt im Homeserver; zuerst Server aktualisieren
+  und danach die Gerätekonfiguration synchronisieren. Keine Datenbankmigration.
+
 # 1.5.1 – Bunte Kachel für Home-Assistant-Szenen
 
 - Optionale Szene pro Lampe im Homeserver pflegen; bei Zuordnung erscheint eine

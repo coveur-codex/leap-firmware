@@ -1,6 +1,7 @@
 #include "DisplayText.h"
 #include "Audio.h"
 #include "Games.h"
+#include "DeviceConfig.h"
 #include "AccentColor.h"
 #include "Motion.h"
 #include "CrabJourneyDraw.h"
@@ -8,6 +9,16 @@
 #include <iostream>
 using namespace leap;
 namespace leap {
+DeviceSettings deviceSettings;
+FourMultiplayer fourMultiplayer;
+static bool fourQueued=false, fourStarted=false;
+static FourSnapshot fourFrame;
+static int fourClosed=0, fourCommands=0;
+static bool fourRematch=false;
+bool FourMultiplayer::start() { fourStarted=true; return true; }
+void FourMultiplayer::close() { ++fourClosed; }
+void FourMultiplayer::command(uint8_t, uint32_t, uint32_t, bool rematch) { ++fourCommands; fourRematch=rematch; }
+bool FourMultiplayer::poll(FourSnapshot &out) { if (!fourQueued) return false; out=fourFrame; fourQueued=false; return true; }
 SnakeMultiplayer snakeMultiplayer;
 static bool coopStarted=false, coopQueued=false;
 static SnakeSnapshot coopFrame;
@@ -728,8 +739,7 @@ int main() {
     return gfx.text;
   };
   assert(four.active() && four.isConnectFour());
-  assert(fourText().find("Schwierigkeit") != std::string::npos);
-  four.input(Key::Down);
+  assert(fourText().find("Spielmodus") != std::string::npos);
   four.input(Key::Down);
   four.input(Key::Down);
   four.input(Key::Center);
@@ -761,7 +771,7 @@ int main() {
   }
   assert(!four.active() && fourText().find("Du gewinnst!") != std::string::npos);
   four.input(Key::Center);
-  assert(four.active() && fourText().find("Schwierigkeit") != std::string::npos);
+  assert(four.active() && fourText().find("Spielmodus") != std::string::npos);
   four.input(Key::Center);
   // Alternate both players in the selected column until it is full.
   for (int turn = 0; turn < 3; ++turn) {
@@ -778,6 +788,46 @@ int main() {
   four.input(Key::Left);
   four.input(Key::Center);
   assert(fourText().find("LEAP denkt") != std::string::npos);
+  four.close();
+  // Multiplayer must never enter the local AI path or predict a drop.
+  strcpy(deviceSettings.deviceId,"local");
+  four.start("connect_four");
+  for (int i=0;i<3;++i) four.input(Key::Down);
+  four.input(Key::Center);
+  assert(fourStarted && fourText().find("Verbinde")!=std::string::npos);
+  fourFrame=FourSnapshot{}; fourFrame.phase=FourPhase::Playing;
+  fourFrame.count=2; fourFrame.turn=1; fourFrame.round=1; fourFrame.remainingMs=30000;
+  strcpy(fourFrame.players[0].id,"local"); strcpy(fourFrame.players[1].id,"remote");
+  strcpy(fourFrame.players[1].name,"Mitspieler");
+  strcpy(fourFrame.players[0].accent,"#ff9933"); strcpy(fourFrame.players[1].accent,"#ff9933");
+  fourFrame.players[0].connected=fourFrame.players[1].connected=true;
+  fourFrame.board[5][0]=1; fourFrame.board[5][1]=2;
+  fourQueued=true; fourMultiplayer.online=true; four.tick();
+  gfx.recordAll=true; gfx.rects.clear(); fourText();
+  int colored=0, darkMarks=0;
+  for (auto r:gfx.rects) {
+    assert(r.x>=94 && r.x+r.w<=414 && r.y>=10 && r.y+r.h<=142);
+    if (r.color==accentColor("#ff9933") && r.w==15) ++colored;
+    if (r.color==contrastInk(accentColor("#ff9933"))) ++darkMarks;
+  }
+  assert(colored==4 && darkMarks>=6); // Both stones plus both legend symbols.
+  gfx.recordAll=false;
+  four.input(Key::Center); assert(fourCommands==1 && !fourRematch);
+  assert(fourText().find("Dein Zug: 30s")!=std::string::npos);
+  fourFrame.turn=2; fourQueued=true; four.tick();
+  four.input(Key::Center); assert(fourCommands==1);
+  fakeNow+=1000; four.tick(); assert(fourCommands==1); // No local AI.
+  fourFrame.phase=FourPhase::Paused; fourQueued=true; four.tick();
+  four.input(Key::Center); assert(fourCommands==1 && fourText().find("Pause")!=std::string::npos);
+  fourFrame.phase=FourPhase::Finished; fourFrame.winner=1;
+  strcpy(fourFrame.reason,"four"); fourQueued=true; four.tick();
+  assert(!four.active() && fourText().find("Du gewinnst")!=std::string::npos);
+  four.input(Key::Center); assert(fourCommands==2 && fourRematch);
+  int closedBefore=fourClosed; four.close(); assert(fourClosed==closedBefore+1);
+  four.start("connect_four"); for (int i=0;i<3;++i) four.input(Key::Down); four.input(Key::Center);
+  fourFrame=FourSnapshot{}; fourFrame.phase=FourPhase::Finished;
+  strcpy(fourFrame.reason,"no_opponent"); fourQueued=true; four.tick();
+  assert(four.takeMultiplayerTimeout() && !four.takeMultiplayerTimeout());
   four.close();
   // Minutes, not hours: hunger becomes visible; exit persists the latest decay.
   fakeNow += 24 * PetState::DecayIntervalMs;
