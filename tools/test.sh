@@ -110,3 +110,5 @@ c++ -std=c++17 -O2 -Wall -Wextra -Werror -I LEAP/src tests/test_radio_mp3.cpp -o
 build/tests/radio-mp3
 c++ -std=c++17 -Wall -Wextra -Werror -DARDUINO_ARCH_ESP32 -I tests/audio_fakes -I tests/game_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_audio_radio.cpp LEAP/src/Audio.cpp -o build/tests/audio-radio
 build/tests/audio-radio
+c++ -std=c++17 -O2 -Wall -Wextra -Werror -I tests/radio_fakes -I tests/game_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_radio_connection.cpp LEAP/src/Radio.cpp -o build/tests/radio-connection
+build/tests/radio-connection

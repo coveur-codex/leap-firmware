@@ -1,3 +1,16 @@
+# 1.6.1 – Radio-Verbindungsdiagnose
+
+- Serielle `[RADIO]`-Diagnosen bei normalem Core-Debug-Level: DNS, HTTP-Status,
+  TLS-Fehler, Gerätezeit, Speicher, Redirects, Daten-/Frame-Zähler und Abbruchgrund.
+  URL-Pfade und Query-Parameter werden nicht ausgegeben.
+- Radio meldet DNS-, TLS- und HTTP-Fehler getrennt; HTTP-Statuscode am Display.
+- Verbindungs-/HTTP-Antwortbudget 8 Sekunden und TLS-Handshake 10 Sekunden statt
+  1,5/0,5/2 Sekunden. Verarbeitung bleibt im separaten Radio-Task.
+- Tests des tatsächlichen Streaming-Workers mit deterministischen HTTP-/TLS-/DNS-
+  Fakes prüfen Fehler, verzögerte Antworten, Sitzungswechsel und Freigabe aller Puffer.
+- Eine konkrete Ursache des gemeldeten Ausfalls ist ohne Geräte-Log noch nicht
+  bestätigt; die neue Version macht sie nachvollziehbar. Zertifikatsprüfung bleibt aktiv.
+
 # 1.6.0 – Internetradio
 
 - Radio-Seite mit unverändertem Avatar-/Statusbereich, Senderwahl und Lautstärke.

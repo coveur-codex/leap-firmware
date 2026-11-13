@@ -14,6 +14,21 @@ inline bool radioUrl(const std::string &url) {
   for (unsigned char c : url) if (c <= 32 || c == 127 || c == '\\') return false;
   return true;
 }
+// Log only the scheme/authority: paths and query strings can contain stream tokens.
+inline std::string radioEndpoint(const std::string &url) {
+  auto start = url.find("://");
+  if (start == std::string::npos) return "invalid-url";
+  return url.substr(0, url.find_first_of("/?#", start + 3));
+}
+inline std::string radioHost(const std::string &url) {
+  auto endpoint = radioEndpoint(url);
+  auto start = endpoint.find("://");
+  if (start == std::string::npos) return {};
+  auto host = endpoint.substr(start + 3);
+  if (host.empty()) return {};
+  if (host[0] == '[') return host.substr(1, host.find(']') - 1);
+  return host.substr(0, host.find(':'));
+}
 inline std::string radioRedirect(const std::string &base, const std::string &target) {
   if (target.empty()) return {};
   if (target.find("://") != std::string::npos) return radioUrl(target) ? target : "";

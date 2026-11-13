@@ -1703,7 +1703,9 @@ void Ui::drawRadio() {
     String name;
     for (JsonObjectConst station : stations) if (station["id"] == radioStation) name = station["name"].as<String>();
     body("", 163, 22, 255, 55, name, 0xffff, true);
-    text(Radio::label(radio.status()), 163, 78, 1, Muted);
+    String status = Radio::label(radio.status());
+    if (radio.status() == RadioStatus::HttpError) status += " " + String(radio.httpCode());
+    text(status, 163, 78, 1, Muted);
   }
   canvas->drawRoundRect(106, 105, 203, 10, 3, Muted);
   canvas->fillRoundRect(108, 107, int(audio.volume.load()) * 199 / 100, 6, 2, Accent);
