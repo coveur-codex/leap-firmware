@@ -299,3 +299,13 @@ Unveränderte Quelldateien werden nicht erneut konvertiert oder versioniert.
 Eigene Chill-Alben verwenden unverändert die Asset-Manifeste und den Sync-Ablauf.
 Die Firmware akzeptiert `scene: album` erst ab 1.1.2; ältere Geräte erhalten den
 bestehenden Hinweis auf die Firmware-Mindestversion statt inkompatibler Inhalte.
+
+### Radio (1.6.0)
+
+Optional `config.radioStations`: maximal 32 sortierte `{id, name, url}`-Objekte.
+IDs sind positive eindeutige Integer, Namen maximal 120 UTF-8-Bytes, direkte
+HTTP(S)-URLs maximal 1000 Bytes. Nur pro Gerät freigegebene und zentral aktive
+Sender; bei deaktivierter `radio`-Seite liefert der Server `[]`. Senderänderungen
+und Freigaben erhöhen die bestehende `configVersion`. Die Konfiguration bleibt
+Teil des atomaren Snapshots; es gibt keinen separaten Radio-Endpunkt auf dem
+Gerät. Siehe [Radio](radio.md).

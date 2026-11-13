@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `f407be4`.
-Version: `1.5.2`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.6.0`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -863,3 +863,8 @@ Automatische Zweiersuche mit mehreren parallelen Partien, Geräteakzentfarben
 und unterscheidbaren Steinsymbolen, 30 Sekunden Such-/Zugzeit, Wiederverbindung
 und gemeinsame Revanche. Einrichtung, Regeln und Protokoll:
 [Vier-Gewinnt-Multiplayer](docs/connect-four-multiplayer.md).
+
+## Internetradio
+
+Die neue Radio-Seite spielt ausschließlich die pro Gerät freigegebenen MP3-Streams.
+Einrichtung, Steuerung und technische Grenzen: [Radio](docs/radio.md).

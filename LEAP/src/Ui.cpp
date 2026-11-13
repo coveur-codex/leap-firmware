@@ -8,6 +8,7 @@
 #include "AircraftMap.h"
 #include "WeatherIcon.h"
 #include "Audio.h"
+#include "Radio.h"
 #include "Hardware.h"
 #include "Motion.h"
 #include "MemoryUsage.h"
@@ -89,7 +90,8 @@ bool Ui::begin(JsonDocument *bootState) {
   game.begin();
   chill.begin();
   brightness = constrain(prefs.getInt("brightness", 170), 20, 255);
-  audio.volume = prefs.getUChar("volume", 35);
+  audio.volume = std::min(uint8_t(100), prefs.getUChar("volume", 35));
+  radioStation = prefs.getInt("radio-station", 0);
   if (bootState) state = std::move(*bootState);
   else storage.load(state);
   lastInput = millis();
@@ -132,6 +134,7 @@ bool Ui::reload(bool initial) {
     return false; // Keep current UI and retry next loop instead of waiting on flash writes.
   int oldPage = page, oldSelection = selection, oldItem = item, oldScroll = scroll,
       oldKnowledge = knowledgeMode;
+  String oldPageId = pages.empty() ? "" : pages[page].id;
   bool oldAnswered = answered, oldGame = gameOpen;
   int oldOrder[4];
   for (int i = 0; i < 4; i++)
@@ -161,7 +164,7 @@ bool Ui::reload(bool initial) {
     if (id == "communication" && state["config"]["communicationEnabled"] != true)
       continue;
     if (id == "home" || id == "news" || id == "weather" || id == "aircraft" || id == "quiz" ||
-        id == "room" || id == "finance" || id == "time" || id == "games" || id == "communication" || id == "knowledge" || id == "settings")
+        id == "radio" || id == "room" || id == "finance" || id == "time" || id == "games" || id == "communication" || id == "knowledge" || id == "settings")
       pages.push_back({id, p["title"] | id, p["order"] | 0});
   }
   std::stable_sort(pages.begin(), pages.end(),
@@ -222,6 +225,10 @@ bool Ui::reload(bool initial) {
       answerOrder[i] = oldOrder[i];
     gameOpen = oldGame;
   }
+  // Keep the actual page identity when a configuration removes/reorders pages.
+  for (size_t i = 0; i < pages.size(); ++i)
+    if (pages[i].id == oldPageId) { page = int(i); break; }
+  syncRadio();
   frameRequested = true;
   if (!gameOpen)
     game.close();
@@ -324,9 +331,10 @@ static const uint8_t pageIcons[][7] = {
     {2, 6, 14, 30, 62, 60, 24},
     {28, 34, 73, 77, 65, 34, 28},
     {65, 67, 69, 73, 81, 97, 127},
-    {8, 28, 62, 127, 65, 93, 127}};     // chill
+    {8, 28, 62, 127, 65, 93, 127},
+    {2, 12, 62, 65, 93, 85, 62}};     // radio
 static const char *pageIds[] = {"home", "news", "weather", "aircraft", "quiz", "games",
-                                "communication", "knowledge", "settings", "chill", "time", "finance", "room"};
+                                "communication", "knowledge", "settings", "chill", "time", "finance", "room", "radio"};
 void Ui::observeNews(bool initial) {
   auto news = state["content"]["news"];
   int64_t bootEpoch = news["notificationBootEpoch"] | int64_t(0);
@@ -688,6 +696,7 @@ void Ui::timeAction(const InputEvent &e) {
   }
 }
 void Ui::drawPage(const String &id) {
+  if (id == "radio") { drawRadio(); return; }
   if (id == "time") { drawTime(); return; }
   auto content = state["content"].as<JsonObject>();
   if (id == "home") {
@@ -1153,6 +1162,10 @@ void Ui::render() {
     quizTimer.shown(millis());
 }
 void Ui::input(const InputEvent &e) {
+  handleInput(e);
+  syncRadio();
+}
+void Ui::handleInput(const InputEvent &e) {
   if (bootLogoVisible)
     return; // A boot-time key press must not shorten the logo or unlock the UI.
   lastInput = millis();
@@ -1290,6 +1303,7 @@ void Ui::input(const InputEvent &e) {
 void Ui::action(const InputEvent &e) {
   String id = pages[page].id;
   int direction = (e.key == Key::Down) - (e.key == Key::Up);
+  if (id == "radio") { radioAction(e); return; }
   if (id == "room") { roomAction(e); return; }
   if (id == "time") { timeAction(e); return; }
   if (id == "quiz") {
@@ -1576,9 +1590,11 @@ void Ui::tick() {
   if (dirtySettings && elapsed(millis(), lastSave, 5000)) {
     prefs.putInt("brightness", brightness);
     prefs.putUChar("volume", audio.volume);
+    prefs.putInt("radio-station", radioStation);
     dirtySettings = false;
     lastSave = millis();
   }
+  syncRadio();
   uint32_t frameInterval = gameOpen && game.isDragonRun()   ? DragonRun::FrameMs
                            : gameOpen && game.isCrabJourney() ? CrabJourney::FrameMs
                                                               : 100;
@@ -1636,5 +1652,62 @@ void Ui::wifiAction(const InputEvent &e) {
     network.removeWifi(wifiEditor.removeIndex);
     wifiEditor.row=0;
   }
+}
+} // namespace leap
+
+namespace leap {
+void Ui::syncRadio() {
+  auto stations = state["config"]["radioStations"].as<JsonArrayConst>();
+  bool visible = !bootLogoVisible && !locked && !menu && !pages.empty() && pages[page].id == "radio";
+  JsonObjectConst chosen;
+  for (JsonObjectConst station : stations)
+    if (station["id"] == radioStation) { chosen = station; break; }
+  if (chosen.isNull() && stations.size()) chosen = stations[0];
+  if (!chosen.isNull() && radioStation != chosen["id"].as<int>()) {
+    radioStation = chosen["id"].as<int>(); dirtySettings = true;
+  }
+  String url = visible && !radio.isSuspended() && !chosen.isNull() ? chosen["url"].as<String>() : "";
+  if (url != radioRequestedUrl) {
+    radioRequestedUrl = url;
+    if (url.length()) { audio.music(MusicProfile::Off); audio.stop(); radio.play(url); }
+    else radio.stop();
+    frameRequested = true;
+  }
+}
+void Ui::radioAction(const InputEvent &event) {
+  auto stations = state["config"]["radioStations"].as<JsonArrayConst>();
+  if (event.key == Key::Up || event.key == Key::Down) {
+    audio.volume = constrain(int(audio.volume.load()) + (event.key == Key::Up ? 5 : -5), 0, 100);
+    dirtySettings = true;
+  } else if ((event.key == Key::Left || event.key == Key::Right) && stations.size()) {
+    int index = 0;
+    for (size_t i = 0; i < stations.size(); ++i) if (stations[i]["id"] == radioStation) index = int(i);
+    index = (index + int(stations.size()) + (event.key == Key::Right ? 1 : -1)) % int(stations.size());
+    radioStation = stations[index]["id"].as<int>();
+    dirtySettings = true;
+    // Identical URLs and a one-station list can be selected again to retry an error.
+    radioRequestedUrl = "";
+  } else if (event.key == Key::Center && stations.size()) radioRequestedUrl = "";
+}
+void Ui::drawRadio() {
+  auto stations = state["config"]["radioStations"].as<JsonArrayConst>();
+  // Right content area only; sidebar/avatar retains the existing render path.
+  canvas->drawRoundRect(105, 34, 43, 35, 5, Accent);
+  canvas->drawLine(108, 33, 138, 19, Accent);
+  canvas->drawCircle(119, 52, 8, Accent);
+  canvas->drawLine(134, 47, 141, 47, Muted);
+  canvas->drawLine(134, 55, 141, 55, Muted);
+  if (!stations.size()) {
+    body("Bitte Sender freigeben", 163, 38, 255, 64, "Noch keine Sender", Muted);
+  } else {
+    String name;
+    for (JsonObjectConst station : stations) if (station["id"] == radioStation) name = station["name"].as<String>();
+    body("", 163, 22, 255, 55, name, 0xffff, true);
+    text(Radio::label(radio.status()), 163, 78, 1, Muted);
+  }
+  canvas->drawRoundRect(106, 105, 203, 10, 3, Muted);
+  canvas->fillRoundRect(108, 107, int(audio.volume.load()) * 199 / 100, 6, 2, Accent);
+  text(String(audio.volume.load()) + "%", 321, 106, 1, Muted);
+  notice = "R: Sender < >   Lautstärke hoch/runter";
 }
 } // namespace leap

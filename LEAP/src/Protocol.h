@@ -1,4 +1,5 @@
 #pragma once
+#include "RadioStream.h"
 #include "Core.h"
 #include "PetAssets.h"
 #include <ArduinoJson.h>
@@ -133,6 +134,15 @@ inline bool deviceConfig(JsonVariantConst c, const char *device, int version) {
       c["age"].as<int>() < 0 || c["age"].as<int>() > 120 || !c["pages"].is<JsonArrayConst>() ||
       c["pages"].size() > 32 || !c["communicationEnabled"].is<bool>())
     return false;
+  if (!c["radioStations"].isNull()) {
+    if (!c["radioStations"].is<JsonArrayConst>() || c["radioStations"].size() > 32) return false;
+    std::set<int> stations;
+    for (JsonObjectConst s : c["radioStations"].as<JsonArrayConst>()) {
+      if (!s["id"].is<int>() || s["id"].as<int>() < 1 || !stations.insert(s["id"].as<int>()).second ||
+          !s["name"].is<const char *>() || !strlen(s["name"]) || strlen(s["name"]) > 120 ||
+          !s["url"].is<const char *>() || !radioUrl(s["url"].as<std::string>())) return false;
+    }
+  }
   std::set<std::string> ids;
   for (JsonObjectConst p : c["pages"].as<JsonArrayConst>())
     if (!identifier(p["id"] | "") || !p["enabled"].is<bool>() || !p["order"].is<int>() ||

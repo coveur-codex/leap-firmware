@@ -10,6 +10,9 @@ int main() {
   store.load(initial);
   state["schema"] = 1;
   state["config"]["deviceId"] = "leap-test";
+  state["config"]["radioStations"][0]["id"] = 42;
+  state["config"]["radioStations"][0]["name"] = "Offline Radio";
+  state["config"]["radioStations"][0]["url"] = "https://radio.example/live.mp3";
   state["assets"].to<JsonObject>();
   std::string hash(64, 'a');
   fakeFiles["/blobs/" + hash] = std::make_shared<std::string>();
@@ -60,6 +63,7 @@ int main() {
   assert(fakeUsedCalls == scans); // No filesystem scan in the health/UI loop.
   Storage reboot;
   assert(reboot.begin() && reboot.load(visible));
+  assert(visible["config"]["radioStations"][0]["id"] == 42);
   assert(visible.as<JsonVariantConst>() == state.as<JsonVariantConst>());
   uint32_t generation = store.generation;
   JsonDocument oversized(&jsonRam);
