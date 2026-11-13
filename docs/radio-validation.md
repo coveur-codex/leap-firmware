@@ -74,8 +74,9 @@ und Speicherhöchstwerte keine gemessenen Ergebnisse. Abnahmefolge:
 7. Nach Radio Spiele, WAV, Benachrichtigungen und Ruhezeit prüfen. OTA während
    Radio anfordern: sofort stumm, keine Hintergrundwiedergabe beim Flashen.
 8. Wiederholt wechseln und öffnen/schließen; freien internen Heap/PSRAM und
-   Stack-High-Water-Mark protokollieren. Normaler Leerlauf sperrt nach den
-   bestehenden drei Minuten auch die Radio-Seite und beendet die Wiedergabe.
+   Stack-High-Water-Mark protokollieren. Ab 1.6.4 nach 30 Minuten ohne Bedienung
+   Home-Wechsel und Radio-Stop prüfen; bis 1.6.3 galt auch für Radio die normale
+   Drei-Minuten-Sperre.
 
 ## 1.6.1 – Verbindungsdiagnose
 
@@ -161,3 +162,21 @@ Prüfungen:
 Die Änderungen adressieren den im Gerätelog belegten kritischen Heap-Engpass.
 Eine erfolgreiche Verbindung zum echten Sender oder Homeserver ist ohne das
 Zielgerät weiterhin kein gemessenes Ergebnis.
+
+## 1.6.4 – Radio-Idle nach 30 Minuten
+
+Universeller N16R8-Build und Imageprüfung bestanden: 1.782.864 B (+592 B
+gegenüber 1.6.3), statische Variablen 96.028 B (+8 B). SHA-256:
+
+```text
+fe78191c245f64db2c1bab9c00ff2b6be6060b0f4df5ef0991a0ef04f2d1cdd3
+```
+
+Native Timer-Tests prüfen 29:59,999 / 30:00,000 Minuten, echte Bedienung,
+Wiedereintritt, ausbleibenden Reset durch fortlaufende Frames/Meldungen,
+`millis()`-Überlauf, unterdrückten automatischen Benachrichtigungs-Seitenwechsel
+und unveränderte Normal-/Ruhezeit-/Diagnose-Regeln. Die vorhandenen Ruhezeit-
+Musik- und Benachrichtigungstests bestehen ebenfalls. Nach dem Home-Wechsel
+ruft die UI den bestehenden Radio-Seitenlebenszyklus zum Stoppen auf. Wenn
+Home deaktiviert ist, endet Radio im Menü. Der echte Seitenwechsel mit Audio
+nach 30 Minuten ist am Zielgerät abzunehmen.

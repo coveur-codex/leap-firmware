@@ -1169,6 +1169,7 @@ void Ui::handleInput(const InputEvent &e) {
   if (bootLogoVisible)
     return; // A boot-time key press must not shorten the logo or unlock the UI.
   lastInput = millis();
+  radioIdle.input(lastInput);
   frameRequested = true;
   notice = "";
   if (wifiVisible && !locked && !menu && !pages.empty() && pages[page].id == "settings" && !e.longPress) {
@@ -1556,7 +1557,8 @@ void Ui::tick() {
   if (notifications.tick(millis())) {
     const auto &message = *notifications.visible();
     bool chillActive = chillVisible();
-    bool standby = !chillActive && !diagnosticsVisible() && !calibrationVisible && !wifiActive() && elapsed(millis(), lastInput, 60000);
+    bool standby = IdlePolicy::evaluate(millis(), lastInput, chillActive,
+        diagnosticsVisible() || calibrationVisible || wifiActive(), radioVisible()).openNotification;
     if (standby) openNotification(message);
     auto quiet = state["config"]["notificationQuietHours"];
     tm local{};
@@ -1578,8 +1580,20 @@ void Ui::tick() {
   chill.tick(millis());
   bool chillActive = chillVisible();
   bool diagnosticVisible = diagnosticsVisible() || calibrationVisible || wifiActive();
-  auto idle = IdlePolicy::evaluate(millis(), lastInput, chillActive, diagnosticVisible);
+  auto idle = IdlePolicy::evaluate(millis(), lastInput, chillActive, diagnosticVisible, radioVisible());
   bool dim = idle.dim;
+  if (radioVisible() && radioIdle.expired(millis())) {
+    auto home = std::find_if(pages.begin(), pages.end(), [](const Page &p) { return p.id == "home"; });
+    if (home != pages.end()) { page = int(home - pages.begin()); menu = false; }
+    else { menu = true; selection = page; } // Respect a disabled Home page; still stop radio.
+    item = scroll = 0;
+    game.close(); gameOpen = false;
+    notice = "";
+    lastInput = millis();
+    dim = false;
+    frameRequested = true;
+    // syncRadio below applies the page exit and invalidates buffered audio.
+  }
   ledcWrite(hw::Backlight, dim ? 20 : brightness);
   if (idle.lock) {
     locked = true;
@@ -1658,7 +1672,8 @@ void Ui::wifiAction(const InputEvent &e) {
 namespace leap {
 void Ui::syncRadio() {
   auto stations = state["config"]["radioStations"].as<JsonArrayConst>();
-  bool visible = !bootLogoVisible && !locked && !menu && !pages.empty() && pages[page].id == "radio";
+  bool visible = radioVisible();
+  radioIdle.show(visible, millis());
   JsonObjectConst chosen;
   for (JsonObjectConst station : stations)
     if (station["id"] == radioStation) { chosen = station; break; }

@@ -1,3 +1,15 @@
+# 1.6.4 – Radio nach 30 Minuten Inaktivität beenden
+
+- Radio bleibt bis zu 30 Minuten ohne Bedienung geöffnet. Danach Wechsel zur
+  Home-Seite und Stop über den bestehenden Radio-Seitenlebenszyklus.
+- Eigene Frist ab Öffnen der Radio-Seite; Tastenbedienung startet sie neu.
+  Benachrichtigungen verlängern die Radio-Frist nicht und wechseln die Seite
+  während Radio nicht automatisch. Die normale Display-Abdunklung bleibt aktiv.
+- Die automatische Drei-Minuten-Sperre gilt für andere Seiten weiter. Ist Home
+  für das Gerät deaktiviert, endet Radio im Menü statt eine gesperrte Seite zu öffnen.
+- Native Grenz-/Überlauf-/Wiedereintrittstests und Regressionen der bisherigen
+  Ruhezeit-/Benachrichtigungspolitik.
+
 # 1.6.3 – Internen RAM für Netzwerk freihalten
 
 - PNG-/JPEG-Arbeitsbereiche nach PSRAM verschieben und erst nach PSRAM-Start
