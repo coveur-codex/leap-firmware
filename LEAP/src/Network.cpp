@@ -151,7 +151,9 @@ void Network::checkin(JsonDocument &state) {
   request["freeFlash"] = storage.freeBytes();
   writeMemoryUsage(request, memorySnapshot());
   // No fabricated battery percentage: absent ADC wiring means omitted field.
-  if (net.json(base + "/checkin", response, &request)) {
+  bool reported = net.json(base + "/checkin", response, &request);
+  Serial.printf("[CHECKIN] running=%s reported=%d HTTP=%d\n", FirmwareVersion, reported, net.status);
+  if (reported) {
     String stamp = response["serverTime"] | "";
     tm utc{};
     if (strptime(stamp.c_str(), "%Y-%m-%dT%H:%M:%S", &utc)) {
@@ -236,6 +238,9 @@ void Network::content(JsonDocument &state) {
 bool Network::sync() {
   JsonDocument state(&jsonRam), plan(&jsonRam), body(&jsonRam), reply(&jsonRam);
   storage.load(state);
+  // Report the actual image even if an older sync/OTA acknowledgement fails.
+  // This is telemetry, not permission to clean assets or confirm an OTA image.
+  checkin(state);
   if (ota.pendingSync().length()) {
     bool reported =
         event(ota.pendingSync(), ota.rolledBack ? "rollback" : "firmware_confirmed", state, reply);
@@ -245,8 +250,10 @@ bool Network::sync() {
   }
   // Resume an interrupted asset activation/report before superseding its sync.
   JsonDocument previous(&jsonRam);
-  if (storage.readJson("/sync-plan.json", previous) && previous["firmware"].isNull() &&
-      previous["desiredAssets"].as<JsonVariantConst>() == state["assets"].as<JsonVariantConst>()) {
+  bool hasPrevious = storage.readJson("/sync-plan.json", previous);
+  if (hasPrevious && previous["firmware"].isNull() && previous["initialFirmware"] != FirmwareVersion)
+    log("SYNC", "Stored asset plan belongs to another firmware; requesting fresh plan");
+  if (hasPrevious && resumableAssetSync(previous.as<JsonVariantConst>(), state["assets"].as<JsonVariantConst>(), FirmwareVersion)) {
     String previousId = previous["syncId"] | "";
     if (previousId.length() && event(previousId, "boot_success", state, reply)) {
       if (reply["cleanupAllowed"] == true) {
@@ -279,7 +286,6 @@ bool Network::sync() {
     event(syncId, "update_failed", state, reply, "", 0, "Cannot save config/content snapshot; check serial STORE diagnostics");
     return false;
   }
-  checkin(state);
   content(state);
   if (!storage.commit(state)) {
     log("SYNC", "Cannot save config/content snapshot; see STORE size or validation error");
@@ -472,8 +478,9 @@ void Network::run() {
       lastSync = millis();
       interval = ok ? SyncInterval : std::min(interval * 2, SyncInterval);
       if (!ok && (net.status <= 0 || net.status == 404 || net.status >= 500)) {
+        String before = networkProfiles.endpoint();
         networkProfiles.nextEndpoint();
-        interval = 10000;
+        Serial.printf("[SYNC] server candidate changed=%d retry_ms=%lu\n", before != networkProfiles.endpoint(), (unsigned long)interval);
       }
       if (ok) {
         // Read credentials separately; never persist them in content snapshots.

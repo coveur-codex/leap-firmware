@@ -16,6 +16,8 @@ public:
   static String encode(const String &value);
 
 private:
+  void report(const char *method, const String &path, int size, bool ok,
+              uint32_t started, int socketError, WiFiClientSecure &tls);
   bool open(HTTPClient &http, WiFiClient &plain, WiFiClientSecure &tls, const String &path);
   bool read(HTTPClient &http, size_t size,
             const std::function<bool(const uint8_t *, size_t)> &sink);

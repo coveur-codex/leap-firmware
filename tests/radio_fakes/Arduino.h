@@ -13,6 +13,13 @@ class String : public std::string {
 public:
   using std::string::string;
   String(const std::string &s) : std::string(s) {}
+  template<class Number, typename std::enable_if<std::is_integral<Number>::value, int>::type = 0>
+  String(Number n) : std::string(std::to_string(n)) {}
+  bool endsWith(const char *s) const { auto n = strlen(s); return size() >= n && compare(size()-n,n,s) == 0; }
+  int indexOf(const char *value) const { auto pos = find(value); return pos == npos ? -1 : int(pos); }
+  void remove(size_t pos) { erase(pos); }
+  size_t write(uint8_t value) { push_back(char(value)); return 1; }
+  size_t write(const uint8_t *data, size_t length) { append(reinterpret_cast<const char *>(data), length); return length; }
   bool startsWith(const char *s) const { return rfind(s, 0) == 0; }
   int indexOf(char value) const { auto pos = find(value); return pos == npos ? -1 : int(pos); }
   String substring(size_t start, size_t end) const { return substr(start, end - start); }

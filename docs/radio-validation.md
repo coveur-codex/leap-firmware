@@ -96,3 +96,28 @@ Die Prüfung ersetzt keinen erfolgreichen Verbindungsversuch auf dem ESP32.
 Der vom Nutzer gemeldete WDR-Endpunkt konnte aus der Cloud-Netzwerkpolicy
 heraus nicht kontaktiert werden; Ursache und Erfolg auf dem Zielgerät müssen
 mit den neuen `[RADIO]`-Logs geprüft werden.
+
+## 1.6.2 – Sync-Wiederaufnahme und HTTP-Diagnose
+
+Universeller N16R8-Build: 1.781.520 B (+2.768 B gegenüber 1.6.1), statische
+Variablen unverändert 165.708 B. ESP32-S3-, Versions-, NVS-Marker- und
+4-MiB-Slotprüfung bestanden. SHA-256:
+
+```text
+fa12d9b6bc7bfa950f2e73568f3006cbb8c34c29692f977919340c98562149a9
+```
+
+Native Tests des tatsächlichen `Transport.cpp` prüfen erfolgreichen JSON-POST,
+HTTP-/TLS-/Socket-/Größen-/Parsefehler, Zielhost/Port, Query-Redaktion, echte
+Zeilenumbrüche und Diagnose vor Schließen des Clients. Die Wiederaufnahme-
+Entscheidung wird für gleiche Firmware, USB-Versionswechsel, OTA-Plan und
+abweichendes Inventar geprüft. Der Test `tests/server_contract.py` verwendet die
+echten Homeserver-Routen und bestätigt: Ein Check-in aktualisiert die laufende
+Version bei noch offenem altem Sync, bestätigt keine OTA-Firmware und gibt keine
+Dateilöschung frei. Ein falsches boot_success zum alten Plan wird abgewiesen,
+ohne die gemeldete aktuelle Firmware zurückzusetzen.
+
+Eine Ursache der beobachteten TCP-/TLS-Verbindungsfehler am Zielgerät ist damit
+noch nicht bestätigt. Bei in 1.6.0 blockiertem OTA ist die erste Installation
+von 1.6.2 per USB erforderlich; erst danach können die neuen HTTP-/Check-in-Logs
+zur Prüfung der Verbindung verwendet werden.

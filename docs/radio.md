@@ -100,3 +100,26 @@ Zertifikats- und Hostnamenprüfung bleiben aktiv. Einen Radio-Stream aus einer
 Cloud-Umgebung zu erreichen, beweist zudem keine Erreichbarkeit aus dem WLAN
 des Geräts; der gemeldete WDR-Endpunkt war hier durch die Cloud-Netzwerkpolicy
 nicht prüfbar.
+
+## Wenn auch Homeserver-Sync oder OTA scheitert (1.6.2)
+
+`[HTTP] status=-1 bytes=-1` ist ein negativer HTTPClient-Verbindungsfehler, keine
+HTTP-Antwort und kein Beleg für eine zu große JSON-Datei. Arduino bezeichnet ihn
+allgemein als „connection refused“; bei HTTPS kann auch ein TLS-Aufbaufehler
+zugrunde liegen. Ein erfolgreicher GET dazwischen zeigt nur, dass mindestens
+eine Anfrage funktioniert hat. Bis 1.6.1 waren Zielhost und Erfolgs-Pfad im Log
+nicht erkennbar, obwohl der Server-Kandidat nach Fehlern wechseln konnte.
+
+Ab 1.6.2 zeigen HTTP-Logs Host, Port, TLS, API-Pfad ohne Query, Laufzeit und bei
+Fehlern Socket-/TLS-Diagnose sowie internen Heap. `[CHECKIN] running=1.6.2
+reported=1 HTTP=200` bestätigt die Übertragung der Versionsmeldung. Der Check-in
+läuft vor dem Wiederaufnehmen alter Pläne; ein falscher alter Plan darf nicht
+den Versionsbericht blockieren. Ein Schema- oder Datenbankwechsel ist dafür
+nicht nötig. Eine fehlgeschlagene Verbindung selbst kann damit noch nicht als
+behoben gelten.
+
+Ist ein Gerät noch auf 1.6.0 und erreicht wegen dieses Fehlers den OTA-Download
+nicht mehr, muss 1.6.2 einmal per USB installiert werden. Die vorhandene NVS-
+Gerätekonfiguration wird weiterverwendet. Anschließend Monitor mit 115200 Baud
+öffnen, einmal synchronisieren und die `[CHECKIN]`-/`[HTTP]`-/`[SYNC]`-Zeilen
+prüfen; für den Stream zusätzlich `[RADIO]`.
