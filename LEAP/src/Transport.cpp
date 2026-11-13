@@ -5,6 +5,7 @@
 #include <esp_heap_caps.h>
 #include <errno.h>
 #include <time.h>
+#include <new>
 namespace leap {
 String Transport::encode(const String &s) {
   String out;
@@ -19,7 +20,7 @@ String Transport::encode(const String &s) {
     }
   return out;
 }
-bool Transport::open(HTTPClient &http, WiFiClient &plain, WiFiClientSecure &tls,
+bool Transport::open(HTTPClient &http, WiFiClient &plain, std::unique_ptr<WiFiClientSecure> &tls,
                      const String &path) {
   status = 0;
   if (!path.startsWith("/api/") || path.indexOf("..") >= 0 || path.indexOf('\r') >= 0 ||
@@ -35,8 +36,10 @@ bool Transport::open(HTTPClient &http, WiFiClient &plain, WiFiClientSecure &tls,
   if (base.startsWith("https://")) {
     if (!strlen(deviceSettings.tlsCa))
       return false;
-    tls.setCACert(deviceSettings.tlsCa);
-    return http.begin(tls, base + path);
+    tls.reset(new (std::nothrow) WiFiClientSecure);
+    if (!tls) { error = "Cannot allocate TLS client"; return false; }
+    tls->setCACert(deviceSettings.tlsCa);
+    return http.begin(*tls, base + path);
   }
   return base.startsWith("http://") && http.begin(plain, base + path);
 }
@@ -74,7 +77,7 @@ bool Transport::read(HTTPClient &http, size_t size,
   return true;
 }
 void Transport::report(const char *method, const String &path, int size, bool ok,
-                       uint32_t started, int socketError, WiFiClientSecure &tls) {
+                       uint32_t started, int socketError, WiFiClientSecure *tls) {
   WebSocketEndpoint endpoint;
   webSocketEndpoint(networkProfiles.endpoint().c_str(), endpoint);
   String route = path;
@@ -89,7 +92,7 @@ void Transport::report(const char *method, const String &path, int size, bool ok
                   unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)), (long long)time(nullptr));
     if (status < 0) {
       char detail[160]{};
-      int tlsCode = endpoint.tls ? tls.lastError(detail, sizeof(detail)) : 0;
+      int tlsCode = endpoint.tls && tls ? tls->lastError(detail, sizeof(detail)) : 0;
       Serial.printf("[HTTP] transport=%s errno=%d socket=%s TLS=%d detail=%s\n",
                     HTTPClient::errorToString(status).c_str(), socketError,
                     socketError ? strerror(socketError) : "none", tlsCode, tlsCode ? detail : "none");
@@ -100,11 +103,11 @@ bool Transport::json(const String &path, JsonDocument &response, JsonDocument *b
   error = "";
   uint32_t started = millis();
   WiFiClient plain;
-  WiFiClientSecure tls;
+  std::unique_ptr<WiFiClientSecure> tls;
   HTTPClient http;
   if (!open(http, plain, tls, path)) {
-    error = "HTTP setup failed (path, server URL or TLS CA)";
-    report(body ? "POST" : "GET", path, -1, false, started, 0, tls);
+    if (!error.length()) error = "HTTP setup failed (path, server URL or TLS CA)";
+    report(body ? "POST" : "GET", path, -1, false, started, 0, tls.get());
     return false;
   }
   http.setTimeout(timeout);
@@ -148,7 +151,7 @@ bool Transport::json(const String &path, JsonDocument &response, JsonDocument *b
   if (data)
     jsonRam.deallocate(data);
   // NetworkClientSecure::stop() can clear the TLS error; log before http.end().
-  report(body ? "POST" : "GET", path, size, ok, started, socketError, tls);
+  report(body ? "POST" : "GET", path, size, ok, started, socketError, tls.get());
   http.end();
   return ok;
 }
@@ -160,10 +163,10 @@ bool Transport::download(const String &path, size_t size, const String &hash,
     return false;
   }
   WiFiClient plain;
-  WiFiClientSecure tls;
+  std::unique_ptr<WiFiClientSecure> tls;
   HTTPClient http;
   if (!open(http, plain, tls, path)) {
-    error = "HTTP setup failed (path, server URL or TLS CA)";
+    if (!error.length()) error = "HTTP setup failed (path, server URL or TLS CA)";
     return false;
   }
   status = http.GET();
@@ -196,7 +199,7 @@ bool Transport::download(const String &path, size_t size, const String &hash,
 }
 String Transport::cacheImage(const String &path, bool radar) {
   WiFiClient plain;
-  WiFiClientSecure tls;
+  std::unique_ptr<WiFiClientSecure> tls;
   HTTPClient http;
   if (!open(http, plain, tls, path))
     return "";

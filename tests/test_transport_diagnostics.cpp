@@ -31,12 +31,14 @@ int main() {
   assert(radioSerial.find("errno=") != std::string::npos && radioSerial.find("largest=32000") != std::string::npos);
   assert(radioSerial.find("secret") == std::string::npos && radioSerial.find("token") == std::string::npos);
   assert(radioSerial.find("\\n") == std::string::npos && radioSerial.back() == '\n');
+  assert(fakeTlsClientsCreated == 1 && fakeTlsClientsAlive == 0);
   assert(radioTlsError == 0); // end() cleared it, but the diagnostic captured it first.
   radioSerial.clear();
   strcpy(deviceSettings.server, "http://192.0.2.10:8080");
   transportReplies.push_back({200, "{\"ok\":true}"});
   assert(transport.json("/api/v1/devices/leap-papa/checkin", response, &body));
   assert(response["ok"] == true);
+  assert(fakeTlsClientsCreated == 1 && fakeTlsClientsAlive == 0); // HTTP never constructs TLS.
   assert(radioSerial.find("host=192.0.2.10 port=8080 tls=0") != std::string::npos);
   assert(radioSerial.find("ok=1") != std::string::npos);
   transportReplies.push_back({403, "", 0});

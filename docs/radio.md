@@ -123,3 +123,38 @@ nicht mehr, muss 1.6.2 einmal per USB installiert werden. Die vorhandene NVS-
 Gerätekonfiguration wird weiterverwendet. Anschließend Monitor mit 115200 Baud
 öffnen, einmal synchronisieren und die `[CHECKIN]`-/`[HTTP]`-/`[SYNC]`-Zeilen
 prüfen; für den Stream zusätzlich `[RADIO]`.
+
+## Interner Heap und PSRAM ab 1.6.3
+
+Das Fehlerlog von 1.6.2 zeigte `heap=4596` bis `5448` und `largest=3060`, während
+Radio und Homeserver-Verbindungen scheiterten. Das ist ein kritischer Engpass
+für WLAN/TCP und besonders mbedTLS. Die gepinnte ESP32-Toolchain verwendet
+`CONFIG_MBEDTLS_INTERNAL_MEM_ALLOC`: freier PSRAM allein stellt TLS daher noch
+keinen ausreichenden internen Heap zur Verfügung. `errno=119` bedeutet
+„Connection already in progress“, keine bestätigte Ablehnung durch den Server.
+
+1.6.3 verschiebt die bislang globalen PNG-/JPEG-Decoderobjekte in explizite
+PSRAM-Allokationen. Die Objekte werden nach der PSRAM-Initialisierung unter dem
+bestehenden Codec-Mutex einmal erzeugt und für spätere Bilder wiederverwendet.
+Bei Allokationsfehlern werden Teilobjekte freigegeben; es gibt keinen heimlichen
+Rückfall auf den knappen internen Heap. Die Chat-Empfangsqueue bleibt bei 16
+Einträgen, verwendet auf ESP32 aber FreeRTOS `xQueueCreateWithCaps` für PSRAM.
+Task-Stacks, Netzwerk und TLS stehen weiterhin im internen RAM. HTTP-Anfragen
+konstruieren einen TLS-Client ausschließlich bei einem HTTPS-Endpunkt.
+
+Der Build spart 69.688 B statischen internen RAM. Hinzu kommen 16.640 B Chat-
+Queue-Nutzdaten (und die Queue-Verwaltung), die nun PSRAM verwenden. Das sind
+mindestens rund 84,3 KiB Entlastung, keine Messung des tatsächlichen freien
+Heaps auf dem Gerät. MP3-Sitzungspuffer und Radio-Bedienung sind davon getrennt.
+
+Zum Prüfen 1.6.3 installieren und beobachten:
+
+- `[MEDIA] decoder workspace PSRAM=…` und `[CHAT] receive queue bytes=…` beim Start.
+- `[RADIO] … start … heap=… largest=…` vor einem Stream-Verbindungsversuch.
+- `[CHECKIN] … reported=1 HTTP=200`, Wiedergabe und danach `[HEALTH] … largest=…`.
+
+Die native Bildprüfung verwendet echte PNGdec 1.1.6 und JPEGDEC 1.8.2 und prüft
+auch transparente Avatare, RGB565-JPEG und fehlgeschlagene PSRAM-Allokationen.
+Ein Lauf am Zielgerät muss zeigen, wie viel Heap nach erfolgreichem TLS-Aufbau
+verbleibt und ob noch ein unabhängiges Verbindungsproblem besteht. Ein bereits
+wegen Speichermangels blockiertes OTA kann eine USB-Installation erfordern.

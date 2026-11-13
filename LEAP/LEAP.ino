@@ -11,6 +11,7 @@
 #include "src/Storage.h"
 #include "src/Ui.h"
 #include <esp_psram.h>
+#include <esp_heap_caps.h>
 #include <esp_task_wdt.h>
 #include <sys/time.h>
 using namespace leap;
@@ -108,8 +109,9 @@ void loop() {
   }
   if (elapsed(millis(), lastDiag, 60000)) {
     lastDiag = millis();
-    Serial.printf("[HEALTH] heap=%u min=%u psram=%u fsFree=%u wifiConnected=%d fsReady=%d bootConfirmed=%d\n",
+    Serial.printf("[HEALTH] heap=%u min=%u largest=%u psram=%u fsFree=%u wifiConnected=%d fsReady=%d bootConfirmed=%d\n",
                   unsigned(ESP.getFreeHeap()), unsigned(ESP.getMinFreeHeap()),
+                  unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
                   unsigned(ESP.getFreePsram()), unsigned(storage.freeBytes()),
                   network.connected.load(), storage.ready, ota.locallyConfirmed.load());
   }
