@@ -1,4 +1,5 @@
 #include "src/Audio.h"
+#include "src/Radio.h"
 #include "src/Config.h"
 #include "src/Input.h"
 #include "src/Motion.h"
@@ -74,6 +75,7 @@ void setup() {
   snakeMultiplayer.begin();
   fourMultiplayer.begin();
   bool soundReady = audio.begin();
+  if (!radio.begin()) log("RADIO", "Streaming worker unavailable");
   motion.begin();
   bool inputReady = input.start();
   if (!inputReady)

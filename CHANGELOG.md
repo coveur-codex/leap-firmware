@@ -1,3 +1,14 @@
+# 1.6.0 – Internetradio
+
+- Radio-Seite mit unverändertem Avatar-/Statusbereich, Senderwahl und Lautstärke.
+- MP3-only minimp3, HTTP/HTTPS, Redirects, ICY und PSRAM-Audiopuffer.
+- Wiedergabe nur auf der sichtbaren Radio-Seite; sofortige Sitzungsinvalidierung
+  bei Seitenwechsel, Sperre, Freigabeänderung und OTA.
+- Zentrale Sender und gerätespezifische Freigaben über die bestehende Konfiguration
+  des Homeservers 1.6.0 (Migration 0024). Zuerst Server aktualisieren.
+- Native MP3-/Transport-/Snapshot-Regressionen; Speicher- und Buildvergleich in
+  `docs/radio-validation.md`.
+
 # 1.5.2 – Vier Gewinnt im Multiplayer
 
 - Multiplayer zusätzlich zu den bisherigen Solo-Schwierigkeitsstufen.

@@ -103,3 +103,10 @@ build/tests/room-controls
 
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/communication_fakes -I tests/storage_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_four_multiplayer.cpp LEAP/src/FourMultiplayer.cpp LEAP/src/FourProtocol.cpp -o build/tests/four-multiplayer
 build/tests/four-multiplayer
+
+c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src -I "$ARDUINOJSON_INCLUDE" tests/test_radio_stream.cpp -o build/tests/radio-stream
+build/tests/radio-stream
+c++ -std=c++17 -O2 -Wall -Wextra -Werror -I LEAP/src tests/test_radio_mp3.cpp -o build/tests/radio-mp3
+build/tests/radio-mp3
+c++ -std=c++17 -Wall -Wextra -Werror -DARDUINO_ARCH_ESP32 -I tests/audio_fakes -I tests/game_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_audio_radio.cpp LEAP/src/Audio.cpp -o build/tests/audio-radio
+build/tests/audio-radio

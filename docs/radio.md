@@ -1,0 +1,69 @@
+# Radio ab 1.6.0
+
+Die Seite `radio` wird über `config.pages` aktiviert. Rechts bleibt die bisherige
+Hauptfläche, links bleiben Avatar und Statusleiste erhalten. Rechts links/rechts
+wechselt den Sender und startet ihn direkt, hoch/runter ändert die gemeinsame
+Lautstärke um 5 Prozentpunkte. Mitte startet den gewählten Sender erneut, z. B.
+nach einem WLAN- oder Streamfehler. Auswahl und Lautstärke verwenden die bestehende
+UI-NVS-Persistenz (gebündeltes Speichern nach fünf Sekunden).
+
+## Konfiguration und Lebenszyklus
+
+Der Homeserver liefert `radioStations` als Teil von `/devices/{id}/config`:
+
+```json
+{"radioStations":[{"id":42,"name":"Mein Radio","url":"https://example.org/live.mp3"}]}
+```
+
+Maximal 32 Einträge, positive eindeutige IDs, bis zu 120 UTF-8-Bytes je Name und
+1000 Bytes je URL. Keine eingebauten Sender. Alte Konfigurationen ohne das Feld
+bleiben gültig. Der bestehende atomare LittleFS-Snapshot speichert auch die
+Sender, ohne einen separaten Abruf oder Cache. Beim Anwenden einer Konfiguration
+bleiben Seitenidentität und Sender-ID erhalten; ein entfernter Sender wird durch
+den ersten verfügbaren ersetzt. Bei deaktivierter Seite oder leerer Auswahl
+endet die Wiedergabe.
+
+`Ui::syncRadio` wird nach Eingaben, Snapshot-Wechseln und der automatischen Sperre
+aufgerufen. Nur eine tatsächlich sichtbare Radio-Seite darf einen Stream
+anfordern. Menü, Sperre, andere Seiten und OTA invalidieren die Sitzung sofort.
+Ein Generationszähler verhindert Audio aus alten Verbindungen und gepufferten
+Sendern, auch beim schnellen Wiederöffnen. Netzwerkaufrufe werden ausschließlich
+im Radio-Task ausgeführt; ihr Abbruch und die Ressourcenfreigabe folgen nach dem
+laufenden, zeitlich begrenzten Aufruf. Die UI wartet nicht auf DNS/TCP/TLS.
+
+## Audio und Transport
+
+- Vendored **minimp3**, Commit `ea99364f61c14656440e8d77e9c233ccf3124633`,
+  CC0; `MINIMP3_ONLY_MP3`, `MINIMP3_NO_SIMD`. Nur MPEG Layer III.
+- HTTP/HTTPS mit verifizierten Zertifikaten aus dem vorhandenen ESP-IDF-Mozilla-
+  Bundle und Hostnamenprüfung; kein `setInsecure`. Ungültige Gerätezeit kann
+  HTTPS verhindern. Keine Anmeldung oder individuellen Stream-Zertifikate.
+- Bis zu fünf Weiterleitungen, einschließlich HTTP/HTTPS-Wechsel, relative
+  Ziele und protokollrelative Ziele. HTTP/1.0 wird bevorzugt; Chunked-Bodies
+  werden inkrementell entpackt. ICY-Metadaten werden übersprungen, nicht angezeigt.
+- MIME-Prüfung plus tatsächliche MP3-Frame-Erkennung. Playlists, HLS, AAC, Ogg,
+  FLAC und WAV sind nicht Teil dieser Erweiterung. Abweichende Samplerate im
+  laufenden Sender wird mit Formatfehler beendet; mono/stereo bis 48 kHz.
+- Verbindungs-Timeout 1,5 s, TLS-Handshake 2 s, Header-Lese-Timeout 0,5 s,
+  Daten-/Decoder-Fortschrittslimit 8 s. DNS und langsam eintreffende Header können
+  die Freigabe verzögern, bleiben aber vom UI-Task getrennt.
+- Separater Netzwerk-/Decoder-Task und 128 KiB Stereo-PCM-Ring in PSRAM;
+  halber Ring vor Erststart/Wiederanlauf (ca. 372 ms bei 44,1 kHz).
+- Ausschließlich der vorhandene Audio-Task besitzt den I²S-Kanal und die
+  unveränderten MAX98357A-Pins. Er liest höchstens 128 Stereo-Frames je Aufruf,
+  skaliert die Lautstärke und mischt Benachrichtigungstöne hinzu. Die bestehende
+  WAV-/Spiel-/Ruhezeit-Ausgabe bleibt nach Verlassen der Radio-Seite verfügbar.
+
+## Speicher und Prüfung
+
+Feste Task-Stack-Reservierung 24 KiB plus Queue/Mutex (ca. 1 KiB Nutzdaten).
+Pro aktiver Sitzung: 128 KiB PCM + 16 KiB Eingang + 4,5 KiB Decode-Ausgabe +
+6668 Bytes Decoderzustand = **155,0 KiB PSRAM**, zusätzlich dynamische HTTP-/TLS-
+Puffer und Konfigurations-JSON. minimp3 benötigt ca. 16 KiB temporären Stack,
+der in der 24-KiB-Taskreservierung enthalten ist. Alle Sitzungspuffer werden beim
+Beenden freigegeben. Das ist ein Quellcode-Budget, keine gemessene Heap-Spitze.
+
+Native Tests prüfen Chunk-/ICY-Framing, Weiterleitungen, Konfigurationsgrenzen,
+Snapshot-Persistenz und echte Mono-/Stereo-MP3-Dekodierung. Die bestehenden
+WAV-/Synth-/Benachrichtigungs-, Spiele- und OTA-Tests bleiben Teil von
+`tools/test.sh`. Build-Vergleich und Hardware-Abnahme siehe `radio-validation.md`.

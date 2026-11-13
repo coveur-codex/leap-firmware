@@ -1,4 +1,5 @@
 #include "Network.h"
+#include "Radio.h"
 #include "NetworkProfiles.h"
 #include "ChillPhotos.h"
 #include "Core.h"
@@ -287,7 +288,9 @@ bool Network::sync() {
   }
   if (!plan["firmware"].isNull()) {
     event(syncId, "download_started", state, reply);
+    radio.suspend();
     if (!ota.offered(plan["firmware"], syncId, net)) {
+      radio.resume();
       event(syncId, "update_failed", state, reply, "", 0,
             "OTA deferred or verification failed; see serial log / rollback prerequisites");
       return false;
@@ -300,6 +303,7 @@ bool Network::sync() {
     Serial.printf("[OTA] Verified inactive image selected: running=%s expected=%s; restarting\n",
                   FirmwareVersion, ota.pendingVersion().c_str());
     delay(100);
+    radio.suspend();
     ESP.restart();
     return true;
   }

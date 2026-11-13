@@ -101,6 +101,12 @@ class Ui {
   void startQuiz();
   void drawPage(const String &id);
   void action(const InputEvent &event);
+  void handleInput(const InputEvent &event);
+  int radioStation = 0;
+  String radioRequestedUrl;
+  void syncRadio();
+  void drawRadio();
+  void radioAction(const InputEvent &event);
   String assetOfType(const char *type);
   bool chillVisible() const { return !locked && !menu && !pages.empty() && pages[page].id == "chill"; }
   bool drawSidebarAvatar(const String &id, const String &pageId);

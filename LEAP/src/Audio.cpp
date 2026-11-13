@@ -1,6 +1,9 @@
 #include "Audio.h"
 #include "Hardware.h"
 #include "NotificationTone.h"
+#ifdef ARDUINO_ARCH_ESP32
+#include "Radio.h"
+#endif
 #include <driver/i2s_std.h>
 namespace leap {
 Audio audio;
@@ -115,6 +118,38 @@ void Audio::run() {
       remaining = 0;
       file.close();
     }
+#ifdef ARDUINO_ARCH_ESP32
+    if (radio.active()) {
+      remaining = 0;
+      file.close();
+      xQueueReset(jobs);
+      int16_t buffer[256]{};
+      uint32_t nextRate = rate;
+      auto epoch = radio.epoch();
+      size_t frames = radio.read(buffer, 128, nextRate);
+      auto sound = notificationRequested.exchange(NotificationSound::Silent);
+      if (sound != NotificationSound::Silent) notification.start(sound);
+      if (!enabled || nextRate != rate) {
+        if (enabled) i2s_channel_disable(tx);
+        rate = nextRate;
+        i2s_std_clk_config_t clock = I2S_STD_CLK_DEFAULT_CONFIG(rate);
+        i2s_channel_reconfig_std_clock(tx, &clock);
+        i2s_channel_enable(tx); enabled = true;
+      }
+      for (size_t i = 0; i < 128; ++i) {
+        int16_t chime = notification.next(rate);
+        buffer[2 * i] = int32_t(NotificationTone::mix(buffer[2 * i], chime)) * volume.load() / 100;
+        buffer[2 * i + 1] = int32_t(NotificationTone::mix(buffer[2 * i + 1], chime)) * volume.load() / 100;
+      }
+      // A page exit/switch invalidates even PCM copied immediately before it.
+      if (!radio.active() || epoch != radio.epoch()) memset(buffer, 0, sizeof(buffer));
+      size_t written = 0;
+      if (i2s_channel_write(tx, buffer, sizeof(buffer), &written, 50) != ESP_OK || written != sizeof(buffer))
+        radio.stop();
+      if (!frames) vTaskDelay(pdMS_TO_TICKS(2));
+      continue;
+    }
+#endif
     uint32_t nextRate = rate;
     if (!remaining) {
       file.close();
