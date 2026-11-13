@@ -1,3 +1,18 @@
+# 1.6.3 – Internen RAM für Netzwerk freihalten
+
+- PNG-/JPEG-Arbeitsbereiche nach PSRAM verschieben und erst nach PSRAM-Start
+  initialisieren. Mutex und permanente Wiederverwendung bleiben erhalten;
+  unvollständige Allokation wird freigegeben und als Speicherfehler gemeldet.
+- Chat-Empfangsqueue mit 16 Einträgen in PSRAM; passende FreeRTOS-Caps-Freigabe
+  bei fehlgeschlagenem Start. Queue-Kapazität und Backpressure bleiben erhalten.
+- TLS-Client nur für HTTPS erzeugen, damit reine HTTP-Aufrufe weniger internen
+  Heap benötigen. HEALTH zeigt zusätzlich den größten freien internen Block.
+- Build: statische RAM-Belegung 165.708 → 96.020 B (−69.688 B); zusätzlich
+  16.640 B Queue-Nutzdaten aus dem internen Heap verlagert. Firmware-Binary
+  1.782.272 B (+752 B gegenüber 1.6.2).
+- Native Regressionen einschließlich echter PNGdec-/JPEGDEC-Dekodierung,
+  transparenter Avatare, Speicherfehler, Chat-Backpressure und TLS-Lebensdauer.
+
 # 1.6.2 – Firmwaremeldung vor Sync-Wiederaufnahme
 
 - Check-in mit der tatsächlich laufenden Firmware vor ausstehenden OTA-/Sync-

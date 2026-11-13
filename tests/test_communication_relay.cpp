@@ -6,6 +6,10 @@
 #include <cstdio>
 #include <map>
 #include <vector>
+#ifdef ARDUINO_ARCH_ESP32
+#include <esp_heap_caps.h>
+#include <freertos/idf_additions.h>
+#endif
 using namespace leap;
 namespace leap {
 RamAllocator jsonRam;
@@ -68,6 +72,10 @@ int main() {
   strcpy(deviceSettings.server,"http://homeserver:8080");
   auto state=config();
   Communication c; c.configure(state); assert(c.begin());
+#ifdef ARDUINO_ARCH_ESP32
+  assert(fakePsramQueueBytes == 16 * sizeof(RelayDelivery));
+  assert(fakePsramQueueCaps == (MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+#endif
   auto &s=*WebSocketsClient::instances.back();
   step(c,1000);
   assert(s.host=="homeserver" && s.port==8080 && s.url=="/api/v1/devices/local/communication/ws");
@@ -133,5 +141,14 @@ int main() {
   step(secure,301000);
   assert(tls.started && tls.ca=="test-ca" && tls.port==443 &&
          tls.url=="/prefix/api/v1/devices/local/communication/ws");
+#ifdef ARDUINO_ARCH_ESP32
+  unsigned deletedBefore = fakePsramQueueDeleted;
+  fakeTaskFailure = true;
+  Communication failedStartup;
+  auto failedState = config(); failedStartup.configure(failedState);
+  assert(!failedStartup.begin());
+  assert(fakePsramQueueDeleted == deletedBefore + 1);
+  fakeTaskFailure = false;
+#endif
   puts("PASS: WebSocket push, no idle polls, keepalive, cursor resume, idempotent sends, rejection, backpressure and restore");
 }

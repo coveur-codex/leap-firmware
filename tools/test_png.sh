@@ -17,12 +17,18 @@ c++ -std=c++17 -D__LINUX__ -Wall -Wextra -Werror -I LEAP/src -I "$PNGDEC_SRC" te
 build/tests/png/mask
 
 : "${ARDUINOJSON_INCLUDE:?Set this to ArduinoJson/src for the Media integration test}"
-c++ -std=c++17 -D__LINUX__ @LEAP/build_opt.h -O1 -I tests/media_fakes -I tests/game_fakes -I "$ARDUINOJSON_INCLUDE" -I "$PNGDEC_SRC" -I LEAP/src tests/test_media_render.cpp LEAP/src/Media.cpp "$PNGDEC_SRC/PNGdec.cpp" build/tests/png/objects/*.o -o build/tests/png/render
+jpeg_flags=()
+jpeg_sources=()
+if [[ -n "${JPEGDEC_SRC:-}" ]]; then
+  jpeg_flags=(-DLEAP_REAL_JPEG_TEST -I "$JPEGDEC_SRC")
+  jpeg_sources=("$JPEGDEC_SRC/JPEGDEC.cpp")
+fi
+c++ -std=c++17 -D__LINUX__ @LEAP/build_opt.h -O1 "${jpeg_flags[@]}" -I tests/media_fakes -I tests/game_fakes -I "$ARDUINOJSON_INCLUDE" -I "$PNGDEC_SRC" -I LEAP/src tests/test_media_render.cpp LEAP/src/Media.cpp "${jpeg_sources[@]}" "$PNGDEC_SRC/PNGdec.cpp" build/tests/png/objects/*.o -o build/tests/png/render
 build/tests/png/render build/tests/png
 
 # Optional integration with actual files exported from homeserver manifests.
 if [[ -n "${CHILL_SPRITES_DIR:-}" ]]; then
-  c++ -std=c++17 -D__LINUX__ @LEAP/build_opt.h -O1 -I tests/media_fakes -I tests/game_fakes -I "$ARDUINOJSON_INCLUDE" -I "$PNGDEC_SRC" -I LEAP/src tests/test_chill_png.cpp LEAP/src/Media.cpp "$PNGDEC_SRC/PNGdec.cpp" build/tests/png/objects/*.o -o build/tests/png/chill-assets
+  c++ -std=c++17 -D__LINUX__ @LEAP/build_opt.h -O1 "${jpeg_flags[@]}" -I tests/media_fakes -I tests/game_fakes -I "$ARDUINOJSON_INCLUDE" -I "$PNGDEC_SRC" -I LEAP/src tests/test_chill_png.cpp LEAP/src/Media.cpp "${jpeg_sources[@]}" "$PNGDEC_SRC/PNGdec.cpp" build/tests/png/objects/*.o -o build/tests/png/chill-assets
   mapfile -t chill_pngs < <(rg --files "$CHILL_SPRITES_DIR" -g '*.png')
   build/tests/png/chill-assets "${chill_pngs[@]}"
 fi

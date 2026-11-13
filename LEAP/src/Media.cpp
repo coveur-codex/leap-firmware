@@ -7,6 +7,7 @@
 #include <freertos/queue.h>
 #include <freertos/task.h>
 #include <new>
+#include <memory>
 // PNGdec keeps two scanlines, alignment padding and an optional fast palette.
 // build_opt.h applies this size to both the sketch and the library implementation.
 static_assert(PNG_MAX_BUFFERED_PIXELS >= 2 * (1024 * 4 + 32) + 512,
@@ -14,8 +15,31 @@ static_assert(PNG_MAX_BUFFERED_PIXELS >= 2 * (1024 * 4 + 32) + 512,
 namespace leap {
 // Only one decode at a time; callback context never escapes this mutex.
 static SemaphoreHandle_t codecMutex = xSemaphoreCreateMutex();
-static PNG png;
-static JPEGDEC jpeg;
+// These decoder objects contain ~68 KiB of work buffers. Keep the task stacks,
+// WiFi/TCP and mbedTLS allocations out of competition with image workspaces.
+struct CodecFree {
+  template<class T> void operator()(T *value) const {
+    if (value) { value->~T(); heap_caps_free(value); }
+  }
+};
+static std::unique_ptr<PNG, CodecFree> png;
+static std::unique_ptr<JPEGDEC, CodecFree> jpeg;
+// Only called while codecMutex is held; allocate after PSRAM initialization.
+static bool prepareCodecs() {
+  if (png && jpeg) return true;
+  void *p = heap_caps_calloc(1, sizeof(PNG), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  if (p) png.reset(new (p) PNG);
+  void *j = heap_caps_calloc(1, sizeof(JPEGDEC), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  if (j) jpeg.reset(new (j) JPEGDEC);
+  if (!png || !jpeg) {
+    png.reset(); jpeg.reset();
+    log("MEDIA", "PSRAM decoder allocation failed; no internal-RAM fallback");
+    return false;
+  }
+  Serial.printf("[MEDIA] decoder workspace PSRAM=%u (PNG=%u JPEG=%u)\n",
+                unsigned(sizeof(PNG) + sizeof(JPEGDEC)), unsigned(sizeof(PNG)), unsigned(sizeof(JPEGDEC)));
+  return true;
+}
 static File input;
 static uint16_t *output;
 static uint8_t *opacity;
@@ -60,6 +84,11 @@ static void decodeWorker(void *) {
 bool Media::beginWorker() {
   if (decodeRequests)
     return true;
+  if (!codecMutex) return false;
+  xSemaphoreTake(codecMutex, portMAX_DELAY);
+  bool codecsReady = prepareCodecs();
+  xSemaphoreGive(codecMutex);
+  if (!codecsReady) return false;
   decodeRequests = xQueueCreate(4, sizeof(MediaJob *));
   if (!decodeRequests)
     return false;
@@ -110,13 +139,13 @@ static int drawPng(PNGDRAW *row) {
     return 1;
   }
   uint16_t line[1024];
-  png.getLineAsRGB565(row, line, PNG_RGB565_LITTLE_ENDIAN, backgroundColor);
+  png->getLineAsRGB565(row, line, PNG_RGB565_LITTLE_ENDIAN, backgroundColor);
   for (int y = from; y < to && y < oh; y++)
     for (int x = 0; x < ow; x++) {
       int source = x * iw / ow;
       output[y * ow + x] = line[source];
       if (opacity)
-        opacity[y * ow + x] = pngOpaque(*row, source, png.getTransparentColor()) ? 1 : 0;
+        opacity[y * ow + x] = pngOpaque(*row, source, png->getTransparentColor()) ? 1 : 0;
     }
   codecYield();
   return 1;
@@ -145,6 +174,10 @@ uint16_t *Media::decode(const String &path, const String &name, int width, int h
   if (width < 1 || height < 1 || width > 428 || height > 142 || !codecMutex)
     return nullptr;
   xSemaphoreTake(codecMutex, portMAX_DELAY);
+  if (!prepareCodecs()) {
+    xSemaphoreGive(codecMutex);
+    return nullptr;
+  }
   backgroundColor = pngBackground(background);
   lastYield = millis();
   ow = width;
@@ -176,27 +209,27 @@ uint16_t *Media::decode(const String &path, const String &name, int width, int h
   String ext = name;
   ext.toLowerCase();
   if (ext.endsWith(".png")) {
-    int code = png.open(path.c_str(), openFile, closeFile, pngRead, pngSeek, drawPng);
+    int code = png->open(path.c_str(), openFile, closeFile, pngRead, pngSeek, drawPng);
     if (code == PNG_SUCCESS) {
-      iw = png.getWidth();
-      ih = png.getHeight();
+      iw = png->getWidth();
+      ih = png->getHeight();
       fit();
-      code = iw > 0 && ih > 0 && iw <= 1024 && ih <= 1024 ? png.decode(nullptr, 0) : PNG_TOO_BIG;
+      code = iw > 0 && ih > 0 && iw <= 1024 && ih <= 1024 ? png->decode(nullptr, 0) : PNG_TOO_BIG;
       ok = code == PNG_SUCCESS;
       if (!ok)
         Serial.printf("[%10lu] [MEDIA   ] PNG decode failed: %s code=%d size=%dx%d\n",
                       millis(), name.c_str(), code, iw, ih);
     } else
       Serial.printf("[%10lu] [MEDIA   ] PNG open failed: %s code=%d\n", millis(), name.c_str(), code);
-    png.close();
+    png->close();
   } else if (ext.endsWith(".jpg") || ext.endsWith(".jpeg")) {
-    if (jpeg.open(path.c_str(), openFile, closeFile, jpgRead, jpgSeek, drawJpg)) {
-      iw = jpeg.getWidth();
-      ih = jpeg.getHeight();
+    if (jpeg->open(path.c_str(), openFile, closeFile, jpgRead, jpgSeek, drawJpg)) {
+      iw = jpeg->getWidth();
+      ih = jpeg->getHeight();
       fit();
-      jpeg.setPixelType(RGB565_LITTLE_ENDIAN);
-      ok = iw > 0 && ih > 0 && iw <= 1024 && ih <= 1024 && jpeg.decode(0, 0, 0);
-      jpeg.close();
+      jpeg->setPixelType(RGB565_LITTLE_ENDIAN);
+      ok = iw > 0 && ih > 0 && iw <= 1024 && ih <= 1024 && jpeg->decode(0, 0, 0);
+      jpeg->close();
     }
   }
   auto *result = output;

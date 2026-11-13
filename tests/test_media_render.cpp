@@ -2,12 +2,37 @@
 #include <cassert>
 #include <fstream>
 #include <iostream>
+#include <PNGdec.h>
+#include <JPEGDEC.h>
+#include <esp_heap_caps.h>
 using namespace leap;
 int main(int argc, char **argv) {
   assert(argc == 2);
   String root = argv[1];
   Arduino_GFX gfx;
+  // PSRAM exhaustion must fail cleanly without falling back into WiFi's heap.
+  fakeMediaFailAt = 0; // PNG workspace fails; release the JPEG workspace again.
+  assert(!Media::beginWorker());
+  assert(fakeMediaCapsFrees == 1);
+  fakeMediaFailAt = int(fakeMediaAllocations.size()) + 1; // JPEG fails after PNG succeeds.
+  assert(!Media::beginWorker());
+  assert(fakeMediaCapsFrees == 2);
+  fakeMediaFailAt = -1;
   assert(Media::beginWorker());
+  assert(fakeMediaAllocations.size() == 6);
+  assert(fakeMediaAllocations[4].bytes == sizeof(PNG));
+  assert(fakeMediaAllocations[5].bytes == sizeof(JPEGDEC));
+  for (const auto &allocation : fakeMediaAllocations)
+    assert(allocation.caps == (MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+  assert(Media::beginWorker() && fakeMediaAllocations.size() == 6); // allocate once
+#ifdef LEAP_REAL_JPEG_TEST
+  auto *red = Media::decode("tests/fixtures/media/red.jpg", "red.jpg", 32, 16);
+  assert(red);
+  for (int i = 0; i < 32 * 16; ++i)
+    assert((red[i] >> 11) >= 28 && ((red[i] >> 5) & 63) <= 3 && (red[i] & 31) <= 3);
+  free(red);
+  std::cout << "PASS: actual JPEGDEC RGB565 decoding from PSRAM workspace\n";
+#endif
   Media background, animal;
   auto runWorker = [] {
     try {

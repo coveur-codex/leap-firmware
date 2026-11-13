@@ -7,18 +7,41 @@
 #include "Transport.h"
 #include "WebSocketEndpoint.h"
 #include <WiFi.h>
+#ifdef ARDUINO_ARCH_ESP32
+#include <esp_heap_caps.h>
+#include <freertos/idf_additions.h>
+#endif
 namespace leap {
 Communication communication;
 bool Communication::begin() {
+#ifdef ARDUINO_ARCH_ESP32
+  // This queue is used only by tasks, never by an ISR. Keep its ~16 KiB of
+  // payloads in PSRAM; use the matching WithCaps deleter on startup failure.
+  incoming = xQueueCreateWithCaps(16, sizeof(RelayDelivery), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+#else
   incoming = xQueueCreate(16, sizeof(RelayDelivery));
+#endif
   outgoing = xQueueCreate(8, sizeof(RelayRequest));
   socket.onEvent([this](WStype_t type, uint8_t *payload, size_t length) {
     socketEvent(type, payload, length);
   });
   ready = incoming && outgoing;
-  if (!ready) return false;
+  auto releaseQueues = [&] {
+    if (incoming) {
+#ifdef ARDUINO_ARCH_ESP32
+      vQueueDeleteWithCaps(incoming);
+#else
+      vQueueDelete(incoming);
+#endif
+      incoming = nullptr;
+    }
+    if (outgoing) { vQueueDelete(outgoing); outgoing = nullptr; }
+  };
+  if (!ready) { releaseQueues(); return false; }
   ready = xTaskCreatePinnedToCore([](void *p) { static_cast<Communication *>(p)->run(); },
       "leap-chat", 8192, this, 1, nullptr, 0) == pdPASS;
+  if (!ready) releaseQueues();
+  else Serial.printf("[CHAT] receive queue bytes=%u (PSRAM on ESP32)\n", unsigned(16 * sizeof(RelayDelivery)));
   return ready;
 }
 void Communication::configure(JsonDocument &state) {

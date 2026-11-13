@@ -121,3 +121,43 @@ Eine Ursache der beobachteten TCP-/TLS-Verbindungsfehler am Zielgerät ist damit
 noch nicht bestätigt. Bei in 1.6.0 blockiertem OTA ist die erste Installation
 von 1.6.2 per USB erforderlich; erst danach können die neuen HTTP-/Check-in-Logs
 zur Prüfung der Verbindung verwendet werden.
+
+## 1.6.3 – Interner Heap statt Decoder-BSS
+
+Identische gepinnte N16R8-Toolchain, Vergleich zu 1.6.2:
+
+| Größe | 1.6.2 | 1.6.3 | Differenz |
+|---|---:|---:|---:|
+| Universelle App-Binary | 1.781.520 B | 1.782.272 B | +752 B |
+| Statische globale Variablen | 165.708 B | 96.020 B | **−69.688 B** |
+
+Im ELF sind `leap::png` und `leap::jpeg` nur noch je 4-Byte-Besitzerzeiger;
+vorher enthielten sie 51.808 B bzw. 17.884 B Decoderzustand im internen BSS.
+Die Zustände werden jetzt in PSRAM initialisiert. Zusätzlich liegen 16.640 B
+Chat-Empfangsqueue-Nutzdaten samt Queue-Verwaltung in PSRAM. Dies verschiebt
+mindestens **86.328 B (84,3 KiB)** aus dem internen RAM. Ein HTTP-Request erzeugt
+keinen TLS-Client mehr. Die konkrete Heap-Spitze und der größte freie Block
+nach einem erfolgreichen TLS-Aufbau müssen auf dem Gerät gemessen werden.
+
+Imageprüfung (ESP32-S3, 1.6.3, universelle NVS-Konfiguration, 4-MiB-Slot) besteht.
+SHA-256:
+
+```text
+12925d4c2ce1346649885b7395475464dd5a3e3b92d791f566838bfa5c436435
+```
+
+Prüfungen:
+
+- Vollständige native Suite, insbesondere Chat-Zustellung/Backpressure sowie
+  Transport- und Radio-Pfade. Der Chat-Test kompiliert den ESP32-Caps-Zweig,
+  prüft Queue-Kapazität/-Speicherflags und die passende Freigabe bei Taskfehler.
+- Tatsächlicher Transport: TLS-Client wird für HTTPS erzeugt/freigegeben und bei
+  nachfolgendem HTTP-Request nicht neu angelegt.
+- `tools/test_png.sh` mit echten PNGdec- und JPEGDEC-Quellen: Decoder-Arbeits-
+  bereiche explizit in PSRAM, Fehler der ersten/zweiten Allokation, Aufräumen,
+  einmalige Initialisierung, transparente PNG-Szenen, RGB565-JPEG und Bildwechsel.
+- CI führt dieselbe Bildprüfung mit beiden bereits gepinnten Bibliotheken aus.
+
+Die Änderungen adressieren den im Gerätelog belegten kritischen Heap-Engpass.
+Eine erfolgreiche Verbindung zum echten Sender oder Homeserver ist ohne das
+Zielgerät weiterhin kein gemessenes Ergebnis.

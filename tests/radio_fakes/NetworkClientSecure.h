@@ -3,6 +3,7 @@
 inline int radioTlsError = 0;
 inline unsigned radioHandshakeTimeout = 0;
 inline bool radioBundleUsed = false;
+inline unsigned fakeTlsClientsCreated = 0, fakeTlsClientsAlive = 0;
 class NetworkClient {
 public:
   virtual ~NetworkClient() = default;
@@ -12,6 +13,8 @@ public:
 };
 class NetworkClientSecure : public NetworkClient {
 public:
+  NetworkClientSecure() { ++fakeTlsClientsCreated; ++fakeTlsClientsAlive; }
+  ~NetworkClientSecure() override { --fakeTlsClientsAlive; }
   void setCACert(const char *) {}
   void setCACertBundle(const uint8_t *, size_t) { radioBundleUsed = true; }
   void setHandshakeTimeout(unsigned seconds) { radioHandshakeTimeout = seconds; }
