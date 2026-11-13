@@ -129,6 +129,14 @@ inline bool manifestMetadata(JsonVariantConst m, size_t maxBytes, size_t maxFile
   }
   return paths.count("definition.json");
 }
+// A USB update changes the running firmware without completing an old asset-only
+// plan. Never report the new version against that plan's old initialFirmware.
+inline bool resumableAssetSync(JsonVariantConst plan, JsonVariantConst inventory,
+                                const char *runningFirmware) {
+  return plan["syncId"].is<const char *>() && strlen(plan["syncId"]) &&
+         plan["firmware"].isNull() && plan["initialFirmware"] == runningFirmware &&
+         plan["desiredAssets"].is<JsonObjectConst>() && plan["desiredAssets"] == inventory;
+}
 inline bool deviceConfig(JsonVariantConst c, const char *device, int version) {
   if (c["deviceId"] != device || c["configVersion"] != version || !c["age"].is<int>() ||
       c["age"].as<int>() < 0 || c["age"].as<int>() > 120 || !c["pages"].is<JsonArrayConst>() ||

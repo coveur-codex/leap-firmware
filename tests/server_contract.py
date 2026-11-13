@@ -112,6 +112,18 @@ with tempfile.TemporaryDirectory() as temp:
     game_plan = client.post(base + "/sync", json=report).json()
     game_config = client.get(game_plan["configUrl"]).json()
     assert {g["id"] for g in game_config["games"] if g["enabled"]} == {"snake"}
+    # Check-in is telemetry and must work without acknowledging the old sync.
+    current = "1.6.2"
+    old = client.post(base + "/sync", json={**report, "firmwareVersion": "1.6.0"}).json()
+    confirmed = device.confirmed_firmware
+    checkin = client.post(base + "/checkin", json={"firmwareVersion": current, "wifiRssi": -55})
+    assert checkin.status_code == 200
+    session.refresh(device)
+    assert device.firmware_version == current and device.confirmed_firmware == confirmed
+    stale_event = {"event": "boot_success", "firmwareVersion": current, "installedAssets": old["desiredAssets"]}
+    assert client.post(base + "/sync/" + old["syncId"] + "/events", json=stale_event).status_code == 409
+    session.refresh(device)
+    assert device.firmware_version == current  # no rollback to the old plan's version
     Path(sys.argv[1]).write_text(json.dumps({"config": config, "gameConfig": game_config, "manifests": manifests}), encoding="utf-8")
     session.close()
-print("PASS: real Homeserver sync, hashes, complete-inventory gate, closed plans, communication disable")
+print("PASS: real Homeserver sync, hashes, complete-inventory gate, closed plans, communication disable, independent firmware check-in")

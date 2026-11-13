@@ -1,3 +1,18 @@
+# 1.6.2 – Firmwaremeldung vor Sync-Wiederaufnahme
+
+- Check-in mit der tatsächlich laufenden Firmware vor ausstehenden OTA-/Sync-
+  Meldungen; ein alter Lauf blockiert die Versionsanzeige nicht mehr zusätzlich.
+- Asset-Sync nach einem USB-Versionswechsel durch einen frischen Plan ersetzen.
+  Gleiche Firmware und passendes Inventar dürfen weiterhin wiederaufnehmen;
+  Aufräumen und OTA-Bestätigung benötigen unverändert Serverfreigaben.
+- HTTP-Logs zeigen Zielhost/Port/TLS, API-Pfad, Laufzeit und bei Fehlern
+  HTTPClient-Text, Socket-errno, TLS-Code, Gerätezeit und Heap. Query-Parameter
+  werden ausgelassen. Negative Verbindungsfehler werden nicht mehr als
+  vermeintliches JSON-Größenproblem beschrieben.
+- Exponentiellen Sync-Backoff auch beim Wechsel des Server-Kandidaten erhalten.
+- Bei bereits in 1.6.0 blockiertem OTA ist einmaliges Flashen per USB nötig,
+  damit das Gerät den korrigierten Ablauf verwenden kann.
+
 # 1.6.1 – Radio-Verbindungsdiagnose
 
 - Serielle `[RADIO]`-Diagnosen bei normalem Core-Debug-Level: DNS, HTTP-Status,

@@ -12,6 +12,7 @@ public:
 };
 class NetworkClientSecure : public NetworkClient {
 public:
+  void setCACert(const char *) {}
   void setCACertBundle(const uint8_t *, size_t) { radioBundleUsed = true; }
   void setHandshakeTimeout(unsigned seconds) { radioHandshakeTimeout = seconds; }
   int lastError(char *out, size_t size) { strlcpy(out, "certificate verify failed", size); return radioTlsError; }

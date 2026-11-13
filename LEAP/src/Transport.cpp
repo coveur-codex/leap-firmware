@@ -2,6 +2,9 @@
 #include "NetworkProfiles.h"
 #include "Core.h"
 #include <mbedtls/sha256.h>
+#include <esp_heap_caps.h>
+#include <errno.h>
+#include <time.h>
 namespace leap {
 String Transport::encode(const String &s) {
   String out;
@@ -70,17 +73,42 @@ bool Transport::read(HTTPClient &http, size_t size,
   }
   return true;
 }
+void Transport::report(const char *method, const String &path, int size, bool ok,
+                       uint32_t started, int socketError, WiFiClientSecure &tls) {
+  WebSocketEndpoint endpoint;
+  webSocketEndpoint(networkProfiles.endpoint().c_str(), endpoint);
+  String route = path;
+  int query = route.indexOf('?');
+  if (query >= 0) route = route.substring(0, query);
+  Serial.printf("[%10lu] [HTTP    ] %s host=%s port=%u tls=%u path=%s status=%d bytes=%d ok=%d ms=%lu\n",
+                millis(), method, endpoint.host.c_str(), unsigned(endpoint.port), unsigned(endpoint.tls),
+                route.c_str(), status, size, ok, (unsigned long)(millis() - started));
+  if (!ok) {
+    Serial.printf("[HTTP] reason=%s wifi=%d heap=%u largest=%u unix=%lld\n", error.c_str(),
+                  int(WiFi.status()), unsigned(ESP.getFreeHeap()),
+                  unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)), (long long)time(nullptr));
+    if (status < 0) {
+      char detail[160]{};
+      int tlsCode = endpoint.tls ? tls.lastError(detail, sizeof(detail)) : 0;
+      Serial.printf("[HTTP] transport=%s errno=%d socket=%s TLS=%d detail=%s\n",
+                    HTTPClient::errorToString(status).c_str(), socketError,
+                    socketError ? strerror(socketError) : "none", tlsCode, tlsCode ? detail : "none");
+    }
+  }
+}
 bool Transport::json(const String &path, JsonDocument &response, JsonDocument *body, uint32_t timeout) {
   error = "";
+  uint32_t started = millis();
   WiFiClient plain;
   WiFiClientSecure tls;
   HTTPClient http;
   if (!open(http, plain, tls, path)) {
-    error = "HTTP setup failed";
-    log("HTTP", error.c_str());
+    error = "HTTP setup failed (path, server URL or TLS CA)";
+    report(body ? "POST" : "GET", path, -1, false, started, 0, tls);
     return false;
   }
   http.setTimeout(timeout);
+  errno = 0;
   if (body) {
     String raw;
     serializeJson(*body, raw);
@@ -88,10 +116,17 @@ bool Transport::json(const String &path, JsonDocument &response, JsonDocument *b
     status = http.POST(raw);
   } else
     status = http.GET();
+  int socketError = errno; // Capture before allocations, JSON parsing or closing TLS.
   int size = http.getSize();
   bool ok = status == 200 && size > 0 && size <= int(JsonLimit);
-  if (!ok)
-    error = "HTTP=" + String(status) + " bytes=" + String(size) + " JSON limit=" + String(JsonLimit);
+  if (status < 0)
+    error = "Connection failed: " + HTTPClient::errorToString(status);
+  else if (status != 200)
+    error = "HTTP=" + String(status) + "; expected 200";
+  else if (size <= 0)
+    error = "Missing/invalid JSON Content-Length=" + String(size);
+  else if (size > int(JsonLimit))
+    error = "JSON response too large: " + String(size) + " limit=" + String(JsonLimit);
   char *data = ok ? static_cast<char *>(jsonRam.allocate(size + 1)) : nullptr;
   if (!data) {
     if (ok) error = "Cannot allocate HTTP JSON buffer";
@@ -112,11 +147,9 @@ bool Transport::json(const String &path, JsonDocument &response, JsonDocument *b
   }
   if (data)
     jsonRam.deallocate(data);
+  // NetworkClientSecure::stop() can clear the TLS error; log before http.end().
+  report(body ? "POST" : "GET", path, size, ok, started, socketError, tls);
   http.end();
-  Serial.printf("[%10lu] [HTTP    ] %s status=%d bytes=%d ok=%d\n", millis(), body ? "POST" : "GET",
-                status, size, ok);
-  if (!ok)
-    Serial.printf("[HTTP] path=%s reason=%s\n", path.c_str(), error.c_str());
   return ok;
 }
 bool Transport::download(const String &path, size_t size, const String &hash,

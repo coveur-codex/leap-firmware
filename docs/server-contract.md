@@ -309,3 +309,12 @@ Sender; bei deaktivierter `radio`-Seite liefert der Server `[]`. Senderänderung
 und Freigaben erhöhen die bestehende `configVersion`. Die Konfiguration bleibt
 Teil des atomaren Snapshots; es gibt keinen separaten Radio-Endpunkt auf dem
 Gerät. Siehe [Radio](radio.md).
+
+### Firmwaremeldung und Wiederaufnahme ab 1.6.2
+
+Der Check-in meldet die tatsächlich laufende Firmware vor alten Sync-/OTA-
+Acknowledgements. Der Server darf damit `firmware_version` aktualisieren;
+`confirmed_firmware` und Löschfreigaben werden dadurch nicht bestätigt. Ein
+Asset-Plan wird nur bei gleicher `initialFirmware` und gleichem Inventar
+wiederaufgenommen. Nach USB-Versionswechsel wird stattdessen ein neuer Plan
+angefordert. Alte Inventare/Dateien werden vor Serverbestätigung nicht gelöscht.
