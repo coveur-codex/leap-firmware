@@ -44,7 +44,7 @@ laufenden, zeitlich begrenzten Aufruf. Die UI wartet nicht auf DNS/TCP/TLS.
 - MIME-Prüfung plus tatsächliche MP3-Frame-Erkennung. Playlists, HLS, AAC, Ogg,
   FLAC und WAV sind nicht Teil dieser Erweiterung. Abweichende Samplerate im
   laufenden Sender wird mit Formatfehler beendet; mono/stereo bis 48 kHz.
-- Verbindungs-Timeout 1,5 s, TLS-Handshake 2 s, Header-Lese-Timeout 0,5 s,
+- Ab 1.6.1: Verbindungs-Timeout 8 s, TLS-Handshake 10 s, Header-Lese-Timeout 8 s,
   Daten-/Decoder-Fortschrittslimit 8 s. DNS und langsam eintreffende Header können
   die Freigabe verzögern, bleiben aber vom UI-Task getrennt.
 - Separater Netzwerk-/Decoder-Task und 128 KiB Stereo-PCM-Ring in PSRAM;
@@ -67,3 +67,36 @@ Native Tests prüfen Chunk-/ICY-Framing, Weiterleitungen, Konfigurationsgrenzen,
 Snapshot-Persistenz und echte Mono-/Stereo-MP3-Dekodierung. Die bestehenden
 WAV-/Synth-/Benachrichtigungs-, Spiele- und OTA-Tests bleiben Teil von
 `tools/test.sh`. Build-Vergleich und Hardware-Abnahme siehe `radio-validation.md`.
+
+## Verbindungsdiagnose ab 1.6.1
+
+Bei Problemen Firmware 1.6.1 installieren, seriellen Monitor mit 115200 Baud
+öffnen und auf der Radio-Seite mit der rechten Mitte einmal neu verbinden.
+Die eigenen `[RADIO]`-Logs erscheinen auch bei Arduino **Core Debug Level: None**.
+
+Die Ausgabe enthält DNS-Adresse und Dauer, HTTP-Status bzw. negativen
+HTTPClient-Code, ggf. den ursprünglichen mbedTLS-Fehlertext, Unix-Zeit, freien
+Heap samt größtem internen Block, PSRAM und einen Sitzungszähler. Erfolgreiche
+Wiedergabe ergänzt Samplerate, Kanäle, Bitrate und den freien Task-Stack;
+Abbrüche ergänzen Ursache, Byte- und Frame-Zähler. Pro Verbindung werden nur
+wenige Zeilen ausgegeben, nicht jedes Audiopaket. Pfade und URL-Parameter
+werden ausgelassen, damit signierte Stream-URLs keine Token in Logs hinterlassen.
+
+| Anzeige / Log | Bedeutung / nächster Schritt |
+|---|---|
+| `DNS fehlgeschlagen` / `DNS failed` | Hostname konnte am Gerät nicht aufgelöst werden; WLAN/DNS prüfen. |
+| `HTTP-Fehler 403`, `404`, `503` … | Server hat geantwortet; Zugriff, direkten Stream-Endpunkt oder Senderausfall prüfen. |
+| `TLS-Verbindung fehlgeschlagen` / `TLS=… detail=…` | Fehlercode/Text unterscheidet z. B. Zertifikat, Handshake oder Speicher. Unix-Zeit mitprüfen. |
+| `HTTP=-11` | Zeitlimit beim Warten auf die HTTP-Antwort überschritten. |
+| `HTTP=-1`, kein TLS-Fehler | HTTPClient konnte keine Verbindung aufbauen; das SDK fasst mehrere TCP-Ursachen so zusammen. |
+| `peer-closed`, `body-timeout` | Verbindung nach der Antwort geschlossen bzw. keine weiteren Stream-Daten. |
+| `no-mp3-frames`, `unsupported MIME` | Keine unterstützten MP3-Daten empfangen. |
+
+Die zusätzlichen Zeitbudgets verhindern vorschnelle Abbrüche auf langsameren
+Endpunkten. Sie sind kein Nachweis für die Ursache eines konkreten Gerätefehlers.
+Ein laufender DNS-/TCP-/TLS-Aufruf kann das endgültige Schließen einer Verbindung
+verzögern; Audio wird beim Verlassen der Seite weiterhin sofort invalidiert.
+Zertifikats- und Hostnamenprüfung bleiben aktiv. Einen Radio-Stream aus einer
+Cloud-Umgebung zu erreichen, beweist zudem keine Erreichbarkeit aus dem WLAN
+des Geräts; der gemeldete WDR-Endpunkt war hier durch die Cloud-Netzwerkpolicy
+nicht prüfbar.

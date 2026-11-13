@@ -76,3 +76,23 @@ und Speicherhöchstwerte keine gemessenen Ergebnisse. Abnahmefolge:
 8. Wiederholt wechseln und öffnen/schließen; freien internen Heap/PSRAM und
    Stack-High-Water-Mark protokollieren. Normaler Leerlauf sperrt nach den
    bestehenden drei Minuten auch die Radio-Seite und beendet die Wiedergabe.
+
+## 1.6.1 – Verbindungsdiagnose
+
+Gleiche Toolchain/FQBN wie oben. Universeller ESP32-S3-Build und Imageprüfung:
+1.778.752 Bytes (gegenüber 1.6.0 zusätzlich 3.776 B); statische Variablen
+165.708 Bytes (zusätzlich 8 B). Image-SHA-256:
+
+```text
+f7394b016c1a724cbc4771d65e84d9bd00a723d6baeedab41e612d01c77077e1
+```
+
+Neue native Tests führen den echten `Radio.cpp`-Worker mit deterministischen
+DNS-/HTTP-/TLS-Fakes aus: HTTP 403/404/503, TLS-Fehlercode, DNS-Ausfall,
+HTTP-Antwort nach 2,5 Sekunden, Timeout/Speichermangel, Redirects, Abbruch und
+Ersetzen laufender Anfragen, URL-Token-Redaktion sowie Freigabe aller
+Sitzungspuffer. Die bestehende native Suite bleibt unverändert Teil der Prüfung.
+Die Prüfung ersetzt keinen erfolgreichen Verbindungsversuch auf dem ESP32.
+Der vom Nutzer gemeldete WDR-Endpunkt konnte aus der Cloud-Netzwerkpolicy
+heraus nicht kontaktiert werden; Ursache und Erfolg auf dem Zielgerät müssen
+mit den neuen `[RADIO]`-Logs geprüft werden.
