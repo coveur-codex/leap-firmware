@@ -158,3 +158,19 @@ auch transparente Avatare, RGB565-JPEG und fehlgeschlagene PSRAM-Allokationen.
 Ein Lauf am Zielgerät muss zeigen, wie viel Heap nach erfolgreichem TLS-Aufbau
 verbleibt und ob noch ein unabhängiges Verbindungsproblem besteht. Ein bereits
 wegen Speichermangels blockiertes OTA kann eine USB-Installation erfordern.
+
+## Automatisches Beenden ab 1.6.4
+
+Während die Radio-Seite sichtbar ist, gilt eine eigene Frist von **30 Minuten
+ohne Tastenbedienung**. Sie beginnt beim Öffnen; jede Bedienung startet die
+vollen 30 Minuten neu. Anschließend wird die Home-Seite geöffnet und der Stream
+über `syncRadio()` sofort für Audio ungültig. Ist Home in der Gerätekonfiguration
+deaktiviert, öffnet das Gerät das Menü und stoppt Radio ebenfalls.
+
+Die normale Abdunklung nach einer Minute bleibt erhalten, die automatische
+Sperre nach drei Minuten greift auf der Radio-Seite nicht. Eingehende Hinweise
+und Netzwerk-/Konfigurationsupdates setzen die Radio-Frist nicht zurück.
+Benachrichtigungen dürfen während Radio keine andere Seite automatisch öffnen.
+Beim erneuten Öffnen der Seite beginnt eine neue Frist. Manuelle Navigation,
+Sperren, Seiten-Deaktivierung und OTA können Radio weiterhin sofort beenden.
+Nach dem automatischen Wechsel beginnt auf Home wieder die normale Idle-Frist.

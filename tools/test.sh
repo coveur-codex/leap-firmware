@@ -114,3 +114,5 @@ c++ -std=c++17 -O2 -Wall -Wextra -Werror -I tests/radio_fakes -I tests/game_fake
 build/tests/radio-connection
 c++ -std=c++17 -O2 -Wall -Wextra -Werror -I tests/transport_fakes -I tests/radio_fakes -I tests/game_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_transport_diagnostics.cpp LEAP/src/Transport.cpp -o build/tests/transport-diagnostics
 build/tests/transport-diagnostics
+c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_radio_idle.cpp -o build/tests/radio-idle
+build/tests/radio-idle

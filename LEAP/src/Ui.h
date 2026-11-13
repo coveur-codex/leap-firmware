@@ -1,5 +1,6 @@
 #pragma once
 #include "Games.h"
+#include "IdlePolicy.h"
 #include "Chill.h"
 #include "Input.h"
 #include "Media.h"
@@ -102,12 +103,14 @@ class Ui {
   void drawPage(const String &id);
   void action(const InputEvent &event);
   void handleInput(const InputEvent &event);
+  RadioIdle radioIdle;
   int radioStation = 0;
   String radioRequestedUrl;
   void syncRadio();
   void drawRadio();
   void radioAction(const InputEvent &event);
   String assetOfType(const char *type);
+  bool radioVisible() const { return !bootLogoVisible && !locked && !menu && !pages.empty() && pages[page].id == "radio"; }
   bool chillVisible() const { return !locked && !menu && !pages.empty() && pages[page].id == "chill"; }
   bool drawSidebarAvatar(const String &id, const String &pageId);
 
