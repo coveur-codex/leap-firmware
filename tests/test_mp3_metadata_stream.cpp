@@ -35,7 +35,9 @@ int main(int argc,char **argv) {
     else if (stage==9) body.assign(150000,0);
     else body=tagged(audio,tagSizes[0]);
     if (stage==1) radioResponses.push_back({301,{{"Location","https://cdn.example/episode.mp3"}},{}});
-    radioResponses.push_back({200,{{"Content-Type","audio/mpeg"},{"Content-Length",stage==8 ? String("") : String(body.size())},{"ETag","v1"}},{},body,stage!=6});
+    std::map<std::string,String> headers={{"Content-Type","audio/mpeg"},{"ETag","v1"}};
+    if (stage==8) headers["Content-Length"]="";
+    radioResponses.push_back({200,headers,{},body,stage!=6});
     uint32_t position=stage==4 ? 30 : stage==5 || stage==6 ? 1 : 0;
     String url=stage>=3 && stage<=6 ? "https://media.example/last.mp3" : String("https://media.example/")+String(stage)+".mp3";
     radio.playEpisode(url,position,75,position!=0);
