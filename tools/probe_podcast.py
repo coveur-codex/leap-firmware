@@ -2,6 +2,8 @@
 """Inspect public RSS enclosures and bounded MP3 prefixes; never download full episodes."""
 import argparse
 import json
+import hashlib
+from pathlib import Path
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -25,7 +27,7 @@ def prefix(url, start=0, length=16384):
     return info, data
 
 
-def inspect(feed_url, count=3):
+def inspect(feed_url, count=3, prefix_dir=None):
     request = urllib.request.Request(feed_url, headers={'User-Agent': 'LEAP-podcast-diagnostic/1.7.1'})
     with urllib.request.urlopen(request, timeout=20) as response:
         xml = response.read(8 * 1024 * 1024 + 1)
@@ -54,6 +56,12 @@ def inspect(feed_url, count=3):
                 info['afterTagHttp'] = after_info['http']
                 info['afterTagRange'] = after_info['contentRange']
                 info['afterTagHex'] = after[:16].hex()
+        if prefix_dir:
+            prefix_dir.mkdir(parents=True, exist_ok=True)
+            _, sample = prefix(url, length=512 * 1024)
+            name = hashlib.sha256(feed_url.encode()).hexdigest()[:8] + f'-{len(results)}.bin'
+            (prefix_dir / name).write_bytes(sample)
+            info['savedPrefix'] = name
         results.append(info)
     return {'feed': feed_url, 'episodesInFeed': len(episodes), 'samples': results}
 
@@ -62,10 +70,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('feeds', nargs='+')
     parser.add_argument('--count', type=int, default=3)
+    parser.add_argument('--prefix-dir', type=Path, help='Optional temporary directory for bounded decoder checks; never a full episode')
     args = parser.parse_args()
     for feed in args.feeds:
         try:
-            result = inspect(feed, max(1, min(args.count, 10)))
+            result = inspect(feed, max(1, min(args.count, 10)), args.prefix_dir)
         except urllib.error.HTTPError as exc:
             result = {'feed': feed, 'error': f'HTTP {exc.code}'}
         except Exception as exc:

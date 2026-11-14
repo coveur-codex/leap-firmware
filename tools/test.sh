@@ -132,3 +132,7 @@ c++ -std=c++17 -Wall -Wextra -Werror -I tests/communication_fakes -I tests/stora
 build/tests/podcasts
 c++ -std=c++17 -Wall -Wextra -Werror -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_podcast_protocol.cpp -o build/tests/podcast-protocol
 build/tests/podcast-protocol "${@}"
+c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_mp3_metadata.cpp -o build/tests/mp3-metadata
+build/tests/mp3-metadata
+c++ -std=c++17 -O2 -Wall -Wextra -Werror -I tests/radio_fakes -I tests/game_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_mp3_metadata_stream.cpp LEAP/src/Radio.cpp -o build/tests/mp3-metadata-stream
+build/tests/mp3-metadata-stream

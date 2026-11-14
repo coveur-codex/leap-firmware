@@ -9,6 +9,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Inspect public BR and ZDF MP3 metadata
         run: >-
-          python3 tools/probe_podcast.py
+          python3 tools/probe_podcast.py --count 2 --prefix-dir /tmp/leap-provider-prefixes
           https://feeds.br.de/checkpod-der-podcast-mit-checker-tobi/feed.xml
           https://www.zdf.de/rss/podcast/audio/zdf/kinder/logo
+      - name: Verify live prefixes with the actual MP3 worker
+        run: |
+          git clone --quiet --depth 1 --branch v7.4.2 https://github.com/bblanchon/ArduinoJson.git /tmp/leap-probe-ArduinoJson
+          mkdir -p build/tests
+          c++ -std=c++17 -O2 -Wall -Wextra -Werror -I tests/radio_fakes -I tests/game_fakes -I /tmp/leap-probe-ArduinoJson/src -I LEAP/src tests/test_mp3_metadata_stream.cpp LEAP/src/Radio.cpp -o build/tests/mp3-metadata-stream
+          build/tests/mp3-metadata-stream /tmp/leap-provider-prefixes/*.bin

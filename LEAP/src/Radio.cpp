@@ -2,6 +2,7 @@
 #include "Config.h"
 #include "RadioStream.h"
 #include "PodcastPlayback.h"
+#include "Mp3Metadata.h"
 #include <HTTPClient.h>
 #include <NetworkClientSecure.h>
 #include <WiFi.h>
@@ -229,6 +230,7 @@ void Radio::stream(const Command &command, Mp3SeekIndex &index, String &indexUrl
     if (!validMeta) { log("RADIO", "Invalid icy-metaint header"); result = RadioStatus::Unsupported; http.end(); break; }
     if (command.finite && icy) { result=RadioStatus::Unsupported; http.end(); break; }
     RadioBody body(transfer == "chunked", icy);
+    Mp3Metadata metadata(checkpoint.offset==0);
     uint64_t decodedSamples = checkpoint.samples, inputOffset = checkpoint.offset;
     uint64_t targetSamples = 0;
     uint32_t sampleRate = index.rate;
@@ -272,6 +274,29 @@ void Radio::stream(const Command &command, Mp3SeekIndex &index, String &indexUrl
         if (!command.finite) break;
       }
       if (!transportEnded && uint32_t(millis() - lastByte) > 8000) { reason = "body-timeout"; result = RadioStatus::Timeout; break; }
+      auto prefix=metadata.consume(input.get(),used);
+      if (prefix.state==Mp3Metadata::State::Invalid ||
+          (contentLength>=0 && metadata.declaredBytes()>uint64_t(contentLength))) {
+        reason="invalid-id3-header"; result=RadioStatus::InvalidMetadata; break;
+      }
+      if (prefix.state==Mp3Metadata::State::Skipped) {
+        if (prefix.tagBytes) Serial.printf("[RADIO] session=%lu ID3v%u skip=%lu bytes\n",
+            (unsigned long)epoch,unsigned(prefix.version),(unsigned long)prefix.tagBytes);
+        used-=prefix.consumed;
+        inputOffset+=prefix.consumed;
+        memmove(input.get(),input.get()+prefix.consumed,used);
+        // Recognized metadata bytes are progress, separate from the bounded scan
+        // for an actual MP3 frame. The network idle timeout remains in effect.
+        lastFrame=millis();
+        if (transportEnded && !used && metadata.pending()) {
+          reason="truncated-id3-tag"; result=RadioStatus::InvalidMetadata; break;
+        }
+        vTaskDelay(pdMS_TO_TICKS(1)); continue;
+      }
+      if (prefix.state==Mp3Metadata::State::NeedMore && used) {
+        if (transportEnded) { reason="truncated-id3-header"; result=RadioStatus::InvalidMetadata; break; }
+        vTaskDelay(pdMS_TO_TICKS(2)); continue;
+      }
       if (uint32_t(millis() - lastFrame) > 8000 || skipped > 128 * 1024) { reason = "no-mp3-frames"; result = RadioStatus::Unsupported; break; }
       // A few KB allow minimp3 to distinguish consecutive frames from false sync words.
       if (command.finite && transportEnded && !used) { decodedEnd=true; break; }
@@ -361,6 +386,7 @@ const char *Radio::label(RadioStatus value) {
   case RadioStatus::NoWifi: return "Kein WLAN";
   case RadioStatus::InvalidUrl: return "Stream-URL ungültig";
   case RadioStatus::Unsupported: return "Kein MP3-Stream";
+  case RadioStatus::InvalidMetadata: return "MP3-Metadaten ungültig";
   case RadioStatus::DnsError: return "DNS fehlgeschlagen";
   case RadioStatus::TlsError: return "TLS-Verbindung fehlgeschlagen";
   case RadioStatus::HttpError: return "HTTP-Fehler";
