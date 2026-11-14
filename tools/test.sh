@@ -3,6 +3,13 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 : "${ARDUINOJSON_INCLUDE:?Set this to the ArduinoJson/src directory}"
 mkdir -p build/tests
+# Exercise both Arduino stand-ins with the fortification used by Ubuntu runners.
+for harness in radio communication; do
+  c++ -std=c++17 -O2 -D_FORTIFY_SOURCE=2 -Wall -Wextra -Werror \
+    -I "tests/${harness}_fakes" -I "$ARDUINOJSON_INCLUDE" -I LEAP/src \
+    tests/test_strlcpy.cpp -o "build/tests/strlcpy-${harness}"
+  "build/tests/strlcpy-${harness}"
+done
 c++ -std=c++17 -Wall -Wextra -Werror -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_notifications.cpp -o build/tests/notifications
 build/tests/notifications
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_display_text.cpp -o build/tests/display-text

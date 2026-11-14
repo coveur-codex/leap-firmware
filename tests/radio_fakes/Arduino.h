@@ -26,9 +26,7 @@ public:
   void toLowerCase() { for (char &c : *this) if (c >= 'A' && c <= 'Z') c += 32; }
   void trim() { auto first = find_first_not_of(" \r\n\t"), last = find_last_not_of(" \r\n\t"); *this = first == npos ? "" : substr(first, last - first + 1); }
 };
-inline size_t strlcpy(char *out, const char *in, size_t cap) {
-  auto n = strlen(in); if (cap) { auto count = std::min(n, cap - 1); memcpy(out, in, count); out[count] = 0; } return n;
-}
+#include "../compat/Strlcpy.h"
 inline std::string radioSerial;
 struct FakeSerial {
   template<class... Args> void printf(const char *format, Args... args) {

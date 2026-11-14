@@ -40,6 +40,10 @@ Journal höchstens 128 Episodenstände. Kein weiterer Task oder Decoder.
 
 - Vollständige native Suite `tools/test.sh`, inklusive bestehender Spiele,
   News-/Konfigurationsverträge, NVS, OTA, Benachrichtigungen, WAV und Synthese.
+- Beide Arduino-Test-Dummys werden zusätzlich mit `-O2 -D_FORTIFY_SOURCE=2`
+  gebaut und auf Stringkopie, Kürzung und Nullterminierung geprüft. Vorhandenes
+  libc-`strlcpy` (glibc ab 2.38) wird wiederverwendet; nur ältere Hosts erhalten
+  einen Ersatz. So kollidiert der Testcode nicht mit Ubuntu-Fortify-Inlines.
 - Echte Mono-/Stereo-Frames und synthetisches 75-Sekunden-VBR-MP3:
   absolute Samples, Byte-Range/If-Range, ignoriertes Range, vollständiger EOF mit
   Puffer-Ausgabe, Seek ans Ende ohne Abschluss, abgeschnittene Antwort und Pause.
