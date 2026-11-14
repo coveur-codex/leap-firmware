@@ -1,0 +1,14 @@
+name: Podcast provider probe
+on: [pull_request]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect public BR and ZDF MP3 metadata
+        run: >-
+          python3 tools/probe_podcast.py
+          https://feeds.br.de/checkpod-der-podcast-mit-checker-tobi/feed.xml
+          https://www.zdf.de/rss/podcast/audio/zdf/kinder/logo
