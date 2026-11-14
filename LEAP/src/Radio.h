@@ -5,7 +5,7 @@
 #include <freertos/queue.h>
 #include <freertos/semphr.h>
 namespace leap {
-enum class RadioStatus : uint8_t { Stopped, Paused, Ended, Connecting, Buffering, Playing, NoWifi, InvalidUrl, Unsupported, ConnectionError, Timeout, MemoryError, DnsError, TlsError, HttpError };
+enum class RadioStatus : uint8_t { Stopped, Paused, Ended, Connecting, Buffering, Playing, NoWifi, InvalidUrl, Unsupported, InvalidMetadata, ConnectionError, Timeout, MemoryError, DnsError, TlsError, HttpError };
 class Radio {
   struct Command { uint32_t generation; char url[1001]; uint32_t position, duration; bool finite, seeked; };
   struct Pcm;

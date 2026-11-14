@@ -86,3 +86,28 @@ ARDUINOJSON_INCLUDE=/path/to/ArduinoJson/src PNGDEC_SRC=/path/to/PNGdec/src JPEG
 
 Klang, reale Displaypixel und physischer Stromverlust können in dieser Umgebung
 nicht abgenommen werden. Für Seek-/Feed-/Offline-Grenzen siehe `podcasts.md`.
+
+
+## 1.7.1 · BR-ID3 und feine Lautstärke
+
+Der tatsächliche Decoder-Worker wurde zusätzlich mit begrenzten Dateianfängen
+der ersten beiden BR-CheckPod- und logo!-Folgen geprüft: alle vier erzeugen PCM.
+Die Diagnose bestätigt den Größenunterschied der führenden ID3-Tags und die
+HTTP-Weiterleitung von media.neuland.br.de auf cdn-storage.br.de.
+[Live-Prüfung vom 14.11.2026](https://github.com/coveur-codex/leap-firmware/actions/runs/43597243065).
+Die Dateianfänge wurden nur temporär auf dem Runner verarbeitet und weder als
+Fixture committed noch als Artefakt veröffentlicht. Der temporäre Online-Workflow
+wurde anschließend entfernt, damit reguläre CI-Builds nicht von Feed-Servern abhängen.
+
+Dauerhafte Regressionen verwenden nur synthetisches Audio mit den beobachteten
+ID3-Headergrößen. Sie prüfen identische PCM-Samplezahlen trotz großer Coverblöcke
+und darin eingebetteter MP3-Muster, mehrere führende Tags, Range-Sprünge und
+ignoriertes Range, langsame Tag-Übertragung über acht Sekunden, abgeschnittene
+und ungültige Tags, unveränderte Grenzen für unbekannte Daten und Seitenabbruch.
+ID3v2.2, v2.3 und v2.4 einschließlich Footer werden separat geprüft. Es wird kein
+zusätzlicher Metadatenpuffer angelegt; der vorhandene MP3-Eingangspuffer genügt.
+
+Lautstärketests durchlaufen alle Stufen zwischen 0 und 10 aufwärts/abwärts und
+prüfen 10↔15, die Obergrenze 60, alte Zwischenwerte und 0 als stummen Endpunkt.
+Firmware 1.7.1 benötigt keine neue Homeserver-Migration. Der reale Hörtest für die
+neuen leisen Stufen und die CheckPod-Wiedergabe am MAX98357A bleibt erforderlich.

@@ -11,6 +11,11 @@ int main() {
   assert(AudioControls::stationDelta(true,0)==1 && AudioControls::stationDelta(true,1)==-1);
   for (int key=2;key<5;++key) assert(!AudioControls::stationDelta(true,key));
   assert(AudioControls::adjustVolume(59,5)==60 && AudioControls::adjustVolume(1,-5)==0);
+  for (int volume=0;volume<10;++volume) assert(AudioControls::adjustVolume(volume,5)==volume+1);
+  for (int volume=1;volume<=10;++volume) assert(AudioControls::adjustVolume(volume,-5)==volume-1);
+  assert(AudioControls::adjustVolume(0,-5)==0 && AudioControls::adjustVolume(10,5)==15);
+  assert(AudioControls::adjustVolume(15,-5)==10 && AudioControls::adjustVolume(12,-5)==10);
+  assert(AudioControls::adjustVolume(60,5)==60 && AudioControls::adjustVolume(8,0)==8);
   assert(podcastSeek(10,-15,100)==0 && podcastSeek(90,30,100)==100);
   assert(podcastSeek(90,30,0)==120 && podcastSeek(UINT32_MAX,30,0)==7*86400);
   assert(!podcastNaturalEnd(true,4) && podcastNaturalEnd(true,5) && podcastNaturalEnd(false,0));

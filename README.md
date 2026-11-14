@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `f407be4`.
-Version: `1.7.0`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.7.1`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -879,3 +879,12 @@ Episoden und Wiedergabe innerhalb einer Seite, Resume, Spulen und Hörfortschrit
 Zuerst Homeserver 1.7.0 mit Migration 0025 installieren.
 [Bedienung, Offline-Cache und Grenzen](docs/podcasts.md),
 [Tests und Speichervergleich](docs/podcasts-validation.md).
+
+
+## BR-Podcasts und leise Lautstärke (1.7.1)
+
+Große ID3-Metadatenblöcke vor MP3-Audio werden schrittweise übersprungen. Damit
+werden unter anderem CheckPod-Dateien des BR nicht mehr an der 128-KiB-Suchgrenze
+abgewiesen. Die Lautstärke ist zwischen 0 und 10 in Einerschritten wählbar, darüber
+weiter in Fünferschritten. 0 bleibt stumm; gespeicherte Werte werden übernommen.
+[Details und Diagnose](docs/podcasts.md).
