@@ -1,3 +1,15 @@
+# 1.7.1 – Große Podcast-Metadaten und leise Lautstärke
+
+- Deklariertes ID3v2.2/v2.3/v2.4 vor Audio schrittweise überspringen, inklusive
+  großer Coverbilder, weiterer führender Tags und optionalem v2.4-Footer.
+  Die 128-KiB-Grenze für unerkannte Daten bleibt; ungültige/trunkierte Metadaten
+  erhalten einen eigenen Status. Byte-Offsets für Seek bleiben korrekt.
+- Reale CheckPod-Dateien besitzen etwa 164–249 kB ID3-Metadaten; logo! etwa 45 B.
+  Regressionen prüfen große Tags, eingebettete MP3-Muster, langsame Übertragung,
+  Seek, Abbruch und unvollständige Daten.
+- Lautstärke 0–10 in Einerschritten, darüber fünf; beide Audioseiten und
+  Einstellungen teilen sich die Regelung. 0 bleibt aus, NVS-Werte bleiben erhalten.
+
 # 1.7.0 – Podcasts Stufe 1 und gemeinsame Audiosteuerung
 
 - Podcast-Kanäle, seitenweise Episodenlisten und Wiedergabe auf einer LEAP-Seite;

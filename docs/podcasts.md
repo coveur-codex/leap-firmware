@@ -1,6 +1,6 @@
-# Podcasts und gemeinsame Audiosteuerung · 1.7.0
+# Podcasts und gemeinsame Audiosteuerung · 1.7.1
 
-Zuerst Homeserver 1.7.0 mit Migration 0025, danach Firmware 1.7.0 installieren.
+Zuerst Homeserver 1.7.0 mit Migration 0025, danach Firmware 1.7.1 installieren.
 Unter **Podcasts** RSS-Feeds anlegen und unter **Geräte → Podcasts** Kanäle
 freigeben sowie die Seite aktivieren. Die Konfiguration läuft über den vorhandenen
 Snapshot-/Asset-/OTA-Sync. Ohne Freigabe erscheint kein Kanal.
@@ -9,7 +9,7 @@ Snapshot-/Asset-/OTA-Sync. Ohne Freigabe erscheint kein Kanal.
 
 | Taste | Radio | Podcast-Kanäle | Episodenliste | Podcast-Wiedergabe |
 |---|---|---|---|---|
-| Links Hoch/Runter | Lautstärke ±5 | Lautstärke ±5 | Lautstärke ±5 | Lautstärke ±5 |
+| Links Hoch/Runter | Lautstärke | Lautstärke | Lautstärke | Lautstärke |
 | Links Links/Rechts | Vorige/nächste LEAP-Seite | gleich | gleich | gleich |
 | Links Mitte | Menü, halten: sperren | gleich | gleich | gleich |
 | Rechts Hoch/Runter | Nächster/voriger Sender | Voriger/nächster Kanal | Vorige/nächste Folge | Vorige/nächste Folge starten |
@@ -31,7 +31,11 @@ gewählt werden und beginnen dann bei null; teilweise gehörte Folgen werden for
 
 Beide Seiten nutzen denselben vertikalen Balken bei x=91, y=25, 10×94 Pixeln.
 Die Sidebar x=0…85 inklusive Avatar, Uhr und Status bleibt unverändert.
-Es gibt einen Lautstärkewert im vorhandenen NVS, in 5er-Schritten von 0 bis 60 %.
+Es gibt einen Lautstärkewert im vorhandenen NVS von 0 bis 60 %. Von 0 bis 10
+stehen alle Einzelschritte zur Verfügung (0, 1, 2, …, 10); darüber folgen 15, 20,
+…, 60. Beim Leiserstellen geht es von 15 über 10 und 9 weiter bis 0. Die
+Einstellungen verwenden dieselbe Regelung. Audioverstärkung und gespeicherte
+Werte werden beim Update nicht umgerechnet; 0 bleibt stumm.
 Alte höhere Werte werden begrenzt. Gebündelte Speicherung nach fünf Sekunden;
 wie bei den bisherigen Einstellungen kann ein sofortiger Stromausfall davor den
 letzten Tastenschritt verlieren. Die tatsächliche Lautstärke ist am Lautsprecher
@@ -103,3 +107,33 @@ oder Konvertierung. Defekte Frames, Timeouts und unerreichbare/abgelaufene URLs
 zeigen einen Status; Rechts Mitte lädt die URL erneut. HTTPS-Prüfung bleibt aktiv.
 
 Tests und Speichervergleich: [podcasts-validation.md](podcasts-validation.md).
+
+
+## Große ID3-Tags und Diagnose ab 1.7.1
+
+CheckPod-MP3s vom BR beginnen mit ID3v2.3-Tags einschließlich Coverbild. Die am
+14.11.2026 geprüften ersten drei Folgen haben 207.533, 248.904 und 163.691 Byte
+Metadaten vor dem ersten MP3-Frame; die verglichenen logo!-Folgen je 45 Byte.
+Früher wurden nach 128 KiB ohne MP3-Frame auch gültige Dateien verworfen.
+
+Der Worker prüft jetzt ID3-Version, Flags und synchsafe Größenangabe und
+überspringt gültige Tags blockweise. Es wird kein Coverbild allokiert oder als
+Audio dekodiert. Führende Tags dürfen zusammen maximal 16 MiB belegen; bei
+fehlerhaften Größen oder abgebrochenen Tags erscheint „MP3-Metadaten ungültig“.
+Die Netzwerkinaktivitätsfrist bleibt aktiv; empfangene gültige Metadaten zählen
+als Fortschritt. Zufällige unbekannte Daten bleiben auf 128 KiB Suche begrenzt.
+Der bestehende Decoder und seine Puffer bleiben unverändert; Seek-Bytepositionen
+enthalten weiterhin die übersprungenen Metadaten.
+
+Seriell erscheinen z. B. `[RADIO] … ID3v3 skip=207533 bytes` und danach
+`playing rate=…`. Für andere Provider kann im Heimnetz eine begrenzte Diagnose
+ausgeführt werden (Python-Standardbibliothek, keine vollständigen Downloads):
+
+```sh
+python3 tools/probe_podcast.py https://feeds.br.de/checkpod-der-podcast-mit-checker-tobi/feed.xml
+```
+
+Der Bericht enthält HTTP-/Content-Type-/ID3-Daten. Optional speichert
+`--prefix-dir /tmp/leap-probe` höchstens 512 KiB je Folge für einen lokalen
+Decoder-Test; diese temporären Audioausschnitte nicht als Repository-Fixtures
+oder öffentliche CI-Artefakte hochladen.
