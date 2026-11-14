@@ -27,6 +27,8 @@ public:
   String substring(size_t begin, size_t end) const {
     return substr(begin, end - begin);
   }
+  String substring(size_t begin) const { return substr(begin); }
+  int indexOf(const char *text) const { auto pos=find(text); return pos==npos ? -1 : int(pos); }
   void toLowerCase() {
     for (char &c : *this)
       if (c >= 'A' && c <= 'Z')

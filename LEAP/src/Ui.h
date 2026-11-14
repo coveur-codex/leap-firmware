@@ -15,6 +15,7 @@
 #include "Finance.h"
 #include "RoomControls.h"
 #include "WifiEditor.h"
+#include "Podcasts.h"
 namespace leap {
 struct Page {
   String id, title;
@@ -106,10 +107,16 @@ class Ui {
   RadioIdle radioIdle;
   int radioStation = 0;
   String radioRequestedUrl;
+  bool radioPaused = false;
+  Podcasts podcasts;
+  void syncAudio();
+  void drawVolume();
+  void drawPodcasts();
   void syncRadio();
   void drawRadio();
   void radioAction(const InputEvent &event);
   String assetOfType(const char *type);
+  bool podcastVisible() const { return !bootLogoVisible && !locked && !menu && !pages.empty() && pages[page].id == "podcasts"; }
   bool radioVisible() const { return !bootLogoVisible && !locked && !menu && !pages.empty() && pages[page].id == "radio"; }
   bool chillVisible() const { return !locked && !menu && !pages.empty() && pages[page].id == "chill"; }
   bool drawSidebarAvatar(const String &id, const String &pageId);
@@ -125,6 +132,7 @@ public:
     heldButtons = mask;
     game.heldDirections(uint8_t((mask >> 5) & 0x0f));
   }
+  bool podcastBackDeferred() const { return podcastVisible() && podcasts.playbackVisible(); }
   bool healthy = false;
 };
 extern Ui ui;

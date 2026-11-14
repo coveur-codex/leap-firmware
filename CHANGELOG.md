@@ -1,3 +1,15 @@
+# 1.7.0 – Podcasts Stufe 1 und gemeinsame Audiosteuerung
+
+- Podcast-Kanäle, seitenweise Episodenlisten und Wiedergabe auf einer LEAP-Seite;
+  Gerätefreigaben, Resume, Pause, ±15/30 Sekunden, Folgenwechsel und Auto-Weiter.
+- Gemeinsamer MP3-/I²S-Pfad, persistente Lautstärke links Hoch/Runter und identischer
+  vertikaler Balken; Radio-Sender rechts Hoch/Runter, Mitte Pause/Weiter.
+- Lokales Fortschrittsjournal, wiederholbare Uploads und begrenzter Metadaten-Cache.
+- Samplebasierte VBR-Sprünge mit geprüftem HTTP Range und Decode-Fallback,
+  reguläres EOF mit Puffer-Ausgabe und Schutz vor Abschluss durch Sprung ans Ende.
+- Host-/Serververtragstests, echte MP3-Fixtures und ESP32-S3-Builds;
+  Details und Hardware-Abnahme in docs/podcasts-validation.md.
+
 # 1.6.4 – Radio nach 30 Minuten Inaktivität beenden
 
 - Radio bleibt bis zu 30 Minuten ohne Bedienung geöffnet. Danach Wechsel zur

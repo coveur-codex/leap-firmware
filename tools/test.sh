@@ -3,6 +3,13 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 : "${ARDUINOJSON_INCLUDE:?Set this to the ArduinoJson/src directory}"
 mkdir -p build/tests
+# Exercise both Arduino stand-ins with the fortification used by Ubuntu runners.
+for harness in radio communication; do
+  c++ -std=c++17 -O2 -D_FORTIFY_SOURCE=2 -Wall -Wextra -Werror \
+    -I "tests/${harness}_fakes" -I "$ARDUINOJSON_INCLUDE" -I LEAP/src \
+    tests/test_strlcpy.cpp -o "build/tests/strlcpy-${harness}"
+  "build/tests/strlcpy-${harness}"
+done
 c++ -std=c++17 -Wall -Wextra -Werror -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_notifications.cpp -o build/tests/notifications
 build/tests/notifications
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_display_text.cpp -o build/tests/display-text
@@ -116,3 +123,12 @@ c++ -std=c++17 -O2 -Wall -Wextra -Werror -I tests/transport_fakes -I tests/radio
 build/tests/transport-diagnostics
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_radio_idle.cpp -o build/tests/radio-idle
 build/tests/radio-idle
+
+c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_audio_controls.cpp -o build/tests/audio-controls
+build/tests/audio-controls
+c++ -std=c++17 -O2 -Wall -Wextra -Werror -I tests/radio_fakes -I tests/game_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_podcast_stream.cpp LEAP/src/Radio.cpp -o build/tests/podcast-stream
+build/tests/podcast-stream
+c++ -std=c++17 -Wall -Wextra -Werror -I tests/communication_fakes -I tests/storage_fakes -I tests/input_fakes -I tests/radio_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_podcasts.cpp LEAP/src/Podcasts.cpp LEAP/src/PodcastInbox.cpp -o build/tests/podcasts
+build/tests/podcasts
+c++ -std=c++17 -Wall -Wextra -Werror -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_podcast_protocol.cpp -o build/tests/podcast-protocol
+build/tests/podcast-protocol "${@}"

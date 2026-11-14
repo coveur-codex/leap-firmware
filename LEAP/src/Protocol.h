@@ -151,6 +151,14 @@ inline bool deviceConfig(JsonVariantConst c, const char *device, int version) {
           !s["url"].is<const char *>() || !radioUrl(s["url"].as<std::string>())) return false;
     }
   }
+  if (!c["podcasts"].isNull()) {
+    if (!c["podcasts"].is<JsonArrayConst>() || c["podcasts"].size()>32) return false;
+    std::set<int> channels;
+    for (JsonObjectConst p:c["podcasts"].as<JsonArrayConst>())
+      if (!p["id"].is<int>() || p["id"].as<int>()<1 || !channels.insert(p["id"].as<int>()).second ||
+          !p["name"].is<const char *>() || !strlen(p["name"]) || strlen(p["name"])>120 ||
+          !p["episodeCount"].is<unsigned>()) return false;
+  }
   std::set<std::string> ids;
   for (JsonObjectConst p : c["pages"].as<JsonArrayConst>())
     if (!identifier(p["id"] | "") || !p["enabled"].is<bool>() || !p["order"].is<int>() ||
