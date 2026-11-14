@@ -1,0 +1,3 @@
+Synthetic fixture, generated for the podcast worker regression test:
+ffmpeg -f lavfi -i 'sine=frequency=440:sample_rate=44100:duration=75' -codec:a libmp3lame -q:a 5 -write_xing 0 podcast-vbr.mp3
+75 seconds, mono 44.1 kHz, VBR, no external recording or publisher audio.

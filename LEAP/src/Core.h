@@ -106,7 +106,7 @@ struct Debouncer {
   static constexpr uint32_t LongPressMs = 900;
   bool longSent = false, extendedSent = false;
   // 1 press, 2 repeat, 3 long press, 4 optional extended hold; millis wrap safe.
-  int poll(bool down, uint32_t now, bool repeat, uint32_t extendedHoldMs = 0) {
+  int poll(bool down, uint32_t now, bool repeat, uint32_t extendedHoldMs = 0, bool releaseShort = false) {
     if (raw != down) {
       raw = down;
       changed = now;
@@ -116,8 +116,8 @@ struct Debouncer {
       if (stable) {
         pressed = repeated = now;
         longSent = extendedSent = false;
-        return 1;
-      }
+        return releaseShort ? 0 : 1;
+      } else if (releaseShort && !longSent) return 1;
     }
     if (stable && raw && !longSent && elapsed(now, pressed, LongPressMs)) {
       longSent = true;
@@ -127,7 +127,7 @@ struct Debouncer {
       extendedSent = true;
       return 4;
     }
-    if (stable && repeat && elapsed(now, pressed, 400) && elapsed(now, repeated, 150)) {
+    if (stable && !releaseShort && repeat && elapsed(now, pressed, 400) && elapsed(now, repeated, 150)) {
       repeated = now;
       return 2;
     }

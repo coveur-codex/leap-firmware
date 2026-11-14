@@ -1,11 +1,13 @@
 # Radio ab 1.6.0
 
 Die Seite `radio` wird über `config.pages` aktiviert. Rechts bleibt die bisherige
-Hauptfläche, links bleiben Avatar und Statusleiste erhalten. Rechts links/rechts
-wechselt den Sender und startet ihn direkt, hoch/runter ändert die gemeinsame
-Lautstärke um 5 Prozentpunkte. Mitte startet den gewählten Sender erneut, z. B.
-nach einem WLAN- oder Streamfehler. Auswahl und Lautstärke verwenden die bestehende
-UI-NVS-Persistenz (gebündeltes Speichern nach fünf Sekunden).
+Hauptfläche, links bleiben Avatar und Statusleiste erhalten. Ab 1.7.0 regelt
+links hoch/runter die gemeinsame Lautstärke (0–60 %), rechts hoch/runter wechselt
+den Sender und startet ihn direkt. Rechts Mitte pausiert/setzt fort; bei Fehlern
+wird erneut verbunden. Rechts links/rechts haben keine Senderfunktion mehr.
+Auswahl und Lautstärke verwenden die bestehende UI-NVS-Persistenz
+(gebündeltes Speichern nach fünf Sekunden). Der gemeinsame vertikale Balken und
+die Podcast-Steuerung sind in [podcasts.md](podcasts.md) beschrieben.
 
 ## Konfiguration und Lebenszyklus
 

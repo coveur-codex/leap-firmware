@@ -9,6 +9,7 @@
 #include "WeatherIcon.h"
 #include "Audio.h"
 #include "Radio.h"
+#include "AudioControls.h"
 #include "Hardware.h"
 #include "Motion.h"
 #include "MemoryUsage.h"
@@ -90,7 +91,7 @@ bool Ui::begin(JsonDocument *bootState) {
   game.begin();
   chill.begin();
   brightness = constrain(prefs.getInt("brightness", 170), 20, 255);
-  audio.volume = std::min(uint8_t(100), prefs.getUChar("volume", 35));
+  audio.volume = std::min(uint8_t(AudioControls::MaxVolume), prefs.getUChar("volume", 35));
   radioStation = prefs.getInt("radio-station", 0);
   if (bootState) state = std::move(*bootState);
   else storage.load(state);
@@ -164,7 +165,7 @@ bool Ui::reload(bool initial) {
     if (id == "communication" && state["config"]["communicationEnabled"] != true)
       continue;
     if (id == "home" || id == "news" || id == "weather" || id == "aircraft" || id == "quiz" ||
-        id == "radio" || id == "room" || id == "finance" || id == "time" || id == "games" || id == "communication" || id == "knowledge" || id == "settings")
+        id == "podcasts" || id == "radio" || id == "room" || id == "finance" || id == "time" || id == "games" || id == "communication" || id == "knowledge" || id == "settings")
       pages.push_back({id, p["title"] | id, p["order"] | 0});
   }
   std::stable_sort(pages.begin(), pages.end(),
@@ -228,7 +229,7 @@ bool Ui::reload(bool initial) {
   // Keep the actual page identity when a configuration removes/reorders pages.
   for (size_t i = 0; i < pages.size(); ++i)
     if (pages[i].id == oldPageId) { page = int(i); break; }
-  syncRadio();
+  syncAudio();
   frameRequested = true;
   if (!gameOpen)
     game.close();
@@ -697,6 +698,7 @@ void Ui::timeAction(const InputEvent &e) {
 }
 void Ui::drawPage(const String &id) {
   if (id == "radio") { drawRadio(); return; }
+  if (id == "podcasts") { drawPodcasts(); return; }
   if (id == "time") { drawTime(); return; }
   auto content = state["content"].as<JsonObject>();
   if (id == "home") {
@@ -1163,7 +1165,7 @@ void Ui::render() {
 }
 void Ui::input(const InputEvent &e) {
   handleInput(e);
-  syncRadio();
+  syncAudio();
 }
 void Ui::handleInput(const InputEvent &e) {
   if (bootLogoVisible)
@@ -1226,6 +1228,9 @@ void Ui::handleInput(const InputEvent &e) {
   // Only the kitchen uses the additional hold; other pages keep one long action.
   if (e.longPress && e.heldMs >= Input::ExtendedCenterHoldMs)
     return;
+  if (e.longPress && e.right && podcastVisible()) {
+    podcasts.action(e); return;
+  }
   if (e.longPress) {
     if (!e.right && e.key == Key::Center) {
       locked = true;
@@ -1272,6 +1277,13 @@ void Ui::handleInput(const InputEvent &e) {
     }
     return;
   }
+  if (!e.right && (radioVisible() || podcastVisible())) {
+    int delta=AudioControls::volumeDelta(e.right,int(e.key));
+    if (delta) {
+      audio.volume=AudioControls::adjustVolume(audio.volume.load(),delta);
+      dirtySettings=true; return;
+    }
+  }
   if (!e.right) {
     if (e.key == Key::Center) {
       if (gameOpen) {
@@ -1305,6 +1317,7 @@ void Ui::action(const InputEvent &e) {
   String id = pages[page].id;
   int direction = (e.key == Key::Down) - (e.key == Key::Up);
   if (id == "radio") { radioAction(e); return; }
+  if (id == "podcasts") { podcasts.action(e); return; }
   if (id == "room") { roomAction(e); return; }
   if (id == "time") { timeAction(e); return; }
   if (id == "quiz") {
@@ -1474,7 +1487,7 @@ void Ui::action(const InputEvent &e) {
       dirtySettings = true;
     }
     if (selection == 1 && delta) {
-      audio.volume = constrain(int(audio.volume.load()) + delta * 5, 0, 100);
+      audio.volume = AudioControls::adjustVolume(audio.volume.load(),delta*5);
       dirtySettings = true;
       audio.tone(660);
     }
@@ -1558,7 +1571,7 @@ void Ui::tick() {
     const auto &message = *notifications.visible();
     bool chillActive = chillVisible();
     bool standby = IdlePolicy::evaluate(millis(), lastInput, chillActive,
-        diagnosticsVisible() || calibrationVisible || wifiActive(), radioVisible()).openNotification;
+        diagnosticsVisible() || calibrationVisible || wifiActive(), radioVisible() || podcastVisible()).openNotification;
     if (standby) openNotification(message);
     auto quiet = state["config"]["notificationQuietHours"];
     tm local{};
@@ -1580,7 +1593,7 @@ void Ui::tick() {
   chill.tick(millis());
   bool chillActive = chillVisible();
   bool diagnosticVisible = diagnosticsVisible() || calibrationVisible || wifiActive();
-  auto idle = IdlePolicy::evaluate(millis(), lastInput, chillActive, diagnosticVisible, radioVisible());
+  auto idle = IdlePolicy::evaluate(millis(), lastInput, chillActive, diagnosticVisible, radioVisible() || podcastVisible());
   bool dim = idle.dim;
   if (radioVisible() && radioIdle.expired(millis())) {
     auto home = std::find_if(pages.begin(), pages.end(), [](const Page &p) { return p.id == "home"; });
@@ -1608,7 +1621,7 @@ void Ui::tick() {
     dirtySettings = false;
     lastSave = millis();
   }
-  syncRadio();
+  syncAudio();
   uint32_t frameInterval = gameOpen && game.isDragonRun()   ? DragonRun::FrameMs
                            : gameOpen && game.isCrabJourney() ? CrabJourney::FrameMs
                                                               : 100;
@@ -1683,7 +1696,7 @@ void Ui::syncRadio() {
   }
   String url = visible && !radio.isSuspended() && !chosen.isNull() ? chosen["url"].as<String>() : "";
   if (url != radioRequestedUrl) {
-    radioRequestedUrl = url;
+    radioRequestedUrl = url; radioPaused=false;
     if (url.length()) { audio.music(MusicProfile::Off); audio.stop(); radio.play(url); }
     else radio.stop();
     frameRequested = true;
@@ -1691,40 +1704,94 @@ void Ui::syncRadio() {
 }
 void Ui::radioAction(const InputEvent &event) {
   auto stations = state["config"]["radioStations"].as<JsonArrayConst>();
-  if (event.key == Key::Up || event.key == Key::Down) {
-    audio.volume = constrain(int(audio.volume.load()) + (event.key == Key::Up ? 5 : -5), 0, 100);
-    dirtySettings = true;
-  } else if ((event.key == Key::Left || event.key == Key::Right) && stations.size()) {
-    int index = 0;
-    for (size_t i = 0; i < stations.size(); ++i) if (stations[i]["id"] == radioStation) index = int(i);
-    index = (index + int(stations.size()) + (event.key == Key::Right ? 1 : -1)) % int(stations.size());
-    radioStation = stations[index]["id"].as<int>();
-    dirtySettings = true;
-    // Identical URLs and a one-station list can be selected again to retry an error.
-    radioRequestedUrl = "";
-  } else if (event.key == Key::Center && stations.size()) radioRequestedUrl = "";
+  int delta=AudioControls::stationDelta(event.right,int(event.key));
+  if (delta && stations.size()) {
+    int index=0;
+    for (size_t i=0;i<stations.size();++i) if (stations[i]["id"]==radioStation) index=int(i);
+    index=(index+int(stations.size())+delta)%int(stations.size());
+    radioStation=stations[index]["id"].as<int>();
+    dirtySettings=true; radioPaused=false; radioRequestedUrl="";
+  } else if (event.key==Key::Center && stations.size()) {
+    if (!radio.active()) { radioPaused=false; radioRequestedUrl=""; }
+    else { radioPaused=!radioPaused; radio.pause(radioPaused); }
+  }
+}
+void Ui::syncAudio() {
+  bool podcast=podcastVisible();
+  if (!podcast) podcasts.show(false,state["config"]["podcasts"].as<JsonArrayConst>());
+  syncRadio();
+  if (podcast) podcasts.show(true,state["config"]["podcasts"].as<JsonArrayConst>());
+}
+void Ui::drawVolume() {
+  // Shared coordinates. Nothing touches the 0..85-pixel avatar/sidebar region.
+  canvas->drawRoundRect(91,25,10,94,3,Muted);
+  int height=int(audio.volume.load())*90/AudioControls::MaxVolume;
+  if (height) canvas->fillRect(93,117-height,6,height,Accent);
+  text(String(audio.volume.load()),90,11,1,Muted);
 }
 void Ui::drawRadio() {
-  auto stations = state["config"]["radioStations"].as<JsonArrayConst>();
-  // Right content area only; sidebar/avatar retains the existing render path.
-  canvas->drawRoundRect(105, 34, 43, 35, 5, Accent);
-  canvas->drawLine(108, 33, 138, 19, Accent);
-  canvas->drawCircle(119, 52, 8, Accent);
-  canvas->drawLine(134, 47, 141, 47, Muted);
-  canvas->drawLine(134, 55, 141, 55, Muted);
-  if (!stations.size()) {
-    body("Bitte Sender freigeben", 163, 38, 255, 64, "Noch keine Sender", Muted);
-  } else {
+  drawVolume();
+  auto stations=state["config"]["radioStations"].as<JsonArrayConst>();
+  if (!stations.size()) body("Bitte Sender freigeben",113,38,305,64,"Noch keine Sender",Muted);
+  else {
     String name;
-    for (JsonObjectConst station : stations) if (station["id"] == radioStation) name = station["name"].as<String>();
-    body("", 163, 22, 255, 55, name, 0xffff, true);
-    String status = Radio::label(radio.status());
-    if (radio.status() == RadioStatus::HttpError) status += " " + String(radio.httpCode());
-    text(status, 163, 78, 1, Muted);
+    for (JsonObjectConst station:stations) if (station["id"]==radioStation) name=station["name"].as<String>();
+    body("",113,24,305,55,name,0xffff,true);
+    String status=Radio::label(radio.status());
+    if (radio.status()==RadioStatus::HttpError) status+=" "+String(radio.httpCode());
+    text(status,113,84,1,Muted);
   }
-  canvas->drawRoundRect(106, 105, 203, 10, 3, Muted);
-  canvas->fillRoundRect(108, 107, int(audio.volume.load()) * 199 / 100, 6, 2, Accent);
-  text(String(audio.volume.load()) + "%", 321, 106, 1, Muted);
-  notice = "R: Sender < >   Lautstärke hoch/runter";
+  notice="L hoch/runter: Lautstärke  R: Sender / Pause";
+}
+void Ui::drawPodcasts() {
+  drawVolume();
+  auto clipped=[&](const String &s,int x,int y,int width,uint16_t color) {
+    String glyphs=displayText(s);
+    if (glyphs.length()>size_t(width/6)) glyphs=glyphs.substring(0,width/6-1)+"~";
+    glyphText(glyphs,x,y,1,color);
+  };
+  auto clock=[](uint32_t seconds) { char value[18]; snprintf(value,sizeof(value),"%lu:%02lu",(unsigned long)(seconds/60),(unsigned long)(seconds%60)); return String(value); };
+  if (podcasts.view==Podcasts::View::Channels) {
+    text("Podcasts",113,8,1,Accent);
+    int first=std::max(0,podcasts.channel-2);
+    for (int row=0;row<3 && first+row<int(podcasts.channels.size());++row) {
+      auto p=podcasts.channels[first+row]; int y=30+row*29;
+      if (first+row==podcasts.channel) canvas->fillRoundRect(109,y-4,310,26,3,Panel);
+      clipped(p["name"].as<String>(),114,y,298,first+row==podcasts.channel ? Accent : 0xffff);
+      text(String(p["episodeCount"]|0)+" Folgen",114,y+11,1,Muted);
+    }
+    if (!podcasts.channels.size()) text("Bitte Podcasts freigeben",113,49,1,Muted);
+    notice="L: Lautstärke  R: Wählen / Öffnen";
+  } else if (podcasts.view==Podcasts::View::Episodes) {
+    clipped(podcasts.channelName(podcasts.channels[podcasts.channel]["id"]|0),113,8,304,Accent);
+    int first=std::max(0,podcasts.selected-2), offset=podcasts.page["offset"]|0;
+    if (first<offset) first=offset;
+    for (int row=0;row<3;++row) {
+      int local=first+row-offset;
+      if (local<0 || local>=int(podcasts.page["episodes"].size())) break;
+      auto e=podcasts.page["episodes"][local]; int y=33+row*28;
+      if (first+row==podcasts.selected) canvas->fillRoundRect(109,y-5,310,24,3,Panel);
+      bool current=e["id"]==podcasts.current["id"];
+      String status=current ? podcasts.current["status"].as<String>() : e["status"].as<String>();
+      if (status=="completed") { canvas->drawLine(114,y+4,117,y+7,Accent); canvas->drawLine(117,y+7,124,y-1,Accent); }
+      else if (status=="partial") { canvas->drawRect(113,y,11,7,Muted); canvas->fillRect(114,y+1,5,5,Accent); }
+      else canvas->drawCircle(118,y+3,4,Muted);
+      clipped(e["title"].as<String>(),130,y,282,first+row==podcasts.selected ? Accent : 0xffff);
+    }
+    text(String(podcasts.total ? podcasts.selected+1 : 0)+" / "+String(podcasts.total),351,116,1,Muted);
+    notice="R: Wählen / Start   R links: Kanäle";
+  } else {
+    clipped(podcasts.channelName(podcasts.current["podcastId"]|0),113,8,304,Accent);
+    body("",113,28,303,37,podcasts.current["title"].as<String>(),0xffff,true);
+    uint32_t pos=podcasts.position(), length=podcasts.duration();
+    text(clock(pos)+" / "+(length ? clock(length) : String("?:??")),113,75,1,Muted);
+    canvas->drawRect(113,91,303,9,Muted);
+    if (length) canvas->fillRect(115,93,int(uint64_t(std::min(pos,length))*299/length),5,Accent);
+    clipped(Radio::label(radio.status()),113,110,304,Muted);
+    notice="R: -15/+30s / Pause  Links halten: Folgen";
+  }
+  if (podcasts.busy) notice="Laden …  "+notice;
+  else if (podcasts.message.length()) notice=podcasts.message;
+  if (podcastInbox.storageError) notice="Fortschritt wartet auf Speicher";
 }
 } // namespace leap

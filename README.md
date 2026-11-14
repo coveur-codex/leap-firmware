@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `f407be4`.
-Version: `1.6.4`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.7.0`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -868,3 +868,14 @@ und gemeinsame Revanche. Einrichtung, Regeln und Protokoll:
 
 Die neue Radio-Seite spielt ausschließlich die pro Gerät freigegebenen MP3-Streams.
 Einrichtung, Steuerung und technische Grenzen: [Radio](docs/radio.md).
+
+
+## Podcasts und gemeinsame Audiosteuerung (1.7.0)
+
+Radio und Podcasts regeln die Lautstärke mit **links Hoch/Runter** und zeigen
+denselben vertikalen Balken rechts neben dem Avatar. Radio wechselt Sender mit
+**rechts Hoch/Runter**, rechts Mitte pausiert/setzt fort. Podcasts bieten Kanäle,
+Episoden und Wiedergabe innerhalb einer Seite, Resume, Spulen und Hörfortschritt.
+Zuerst Homeserver 1.7.0 mit Migration 0025 installieren.
+[Bedienung, Offline-Cache und Grenzen](docs/podcasts.md),
+[Tests und Speichervergleich](docs/podcasts-validation.md).

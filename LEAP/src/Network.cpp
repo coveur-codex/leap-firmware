@@ -1,5 +1,6 @@
 #include "Network.h"
 #include "Radio.h"
+#include "Podcasts.h"
 #include "NetworkProfiles.h"
 #include "ChillPhotos.h"
 #include "Core.h"
@@ -109,6 +110,7 @@ static void pruneRadar() {
   }
 }
 bool Network::begin() {
+  if (!podcastInbox.begin()) return false;
   wifiCommands=xQueueCreate(1,sizeof(WifiCommand));
   if (!wifiCommands) return false;
   if (!quizTracking.begin()) log("QUIZ", "Tracking storage unavailable; queued data retained");
@@ -309,6 +311,7 @@ bool Network::sync() {
     Serial.printf("[OTA] Verified inactive image selected: running=%s expected=%s; restarting\n",
                   FirmwareVersion, ota.pendingVersion().c_str());
     delay(100);
+    podcastInbox.service(net,base,false); // Flush the UI's final suspended-session progress before reboot.
     radio.suspend();
     ESP.restart();
     return true;
@@ -567,6 +570,7 @@ void Network::run() {
       }
     }
     wasRoomVisible=visible;
+    podcastInbox.service(net,base,connected);
     photoInbox.service(net, base, connected);
     KnowledgeRequest request;
     if (xQueueReceive(requests, &request, 0) == pdTRUE && connected) {

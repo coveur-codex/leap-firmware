@@ -44,7 +44,8 @@ constexpr TickType_t portMAX_DELAY = UINT32_MAX;
 inline uint32_t radioNow = 0;
 inline uint32_t millis() { return radioNow; }
 inline TickType_t pdMS_TO_TICKS(uint32_t value) { return value; }
-inline void vTaskDelay(uint32_t value) { radioNow += value; }
+inline std::function<void()> radioOnDelay;
+inline void vTaskDelay(uint32_t value) { radioNow += value; if (radioOnDelay) radioOnDelay(); }
 inline unsigned uxTaskGetStackHighWaterMark(void *) { return 4000; }
 struct FakeQueue { size_t size; std::deque<std::vector<uint8_t>> commands; };
 using QueueHandle_t = FakeQueue *;
@@ -53,6 +54,7 @@ inline std::vector<std::unique_ptr<FakeQueue>> radioQueues;
 inline void (*radioTask)(void *) = nullptr;
 inline void *radioContext = nullptr;
 struct WorkerIdle {};
+inline std::function<void()> radioOnIdle;
 inline QueueHandle_t xQueueCreate(unsigned, unsigned size) {
   radioQueues.emplace_back(new FakeQueue{size,{}}); return radioQueues.back().get();
 }
@@ -61,6 +63,7 @@ inline int xQueueOverwrite(QueueHandle_t queue, const void *value) {
   queue->commands.emplace_back(bytes, bytes + queue->size); return pdTRUE;
 }
 inline int xQueueReceive(QueueHandle_t queue, void *out, TickType_t) {
+  if (queue->commands.empty() && radioOnIdle) radioOnIdle();
   if (queue->commands.empty()) throw WorkerIdle{};
   memcpy(out, queue->commands.front().data(), queue->size); queue->commands.pop_front(); return pdTRUE;
 }

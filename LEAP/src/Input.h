@@ -26,6 +26,13 @@ class Input {
     heldKeys.store(mask);
   }
   int pins[10];
+  bool deferredLeft = false;
+  int sample(int i, uint32_t now) {
+    if (i==7 && !keys[i].stable && !keys[i].raw) deferredLeft=deferPodcastBack.load();
+    bool center=i%5==4;
+    return keys[i].poll(digitalRead(pins[i])==LOW,now,!center,
+                        center ? ExtendedCenterHoldMs : 0,i==7 && deferredLeft);
+  }
   QueueHandle_t events = nullptr;
   static void sampleTask(void *context) {
     auto &input = *static_cast<Input *>(context);
@@ -33,9 +40,7 @@ class Input {
     for (;;) {
       uint32_t now = millis();
       for (int i = 0; i < 10; i++) {
-        bool center = i % 5 == 4;
-        int result = input.keys[i].poll(digitalRead(input.pins[i]) == LOW, now, !center,
-                                      center ? ExtendedCenterHoldMs : 0);
+        int result = input.sample(i,now);
         if (!result)
           continue;
         InputEvent event{i >= 5, Key(i % 5), result >= 3,
@@ -51,6 +56,7 @@ class Input {
   }
 
 public:
+  std::atomic<bool> deferPodcastBack{false};
   static constexpr uint32_t ExtendedCenterHoldMs = 2000;
   void begin(const uint8_t *left = nullptr, const uint8_t *right = nullptr) {
     for (int i = 0; i < 5; i++) {
@@ -83,9 +89,7 @@ public:
     if (events)
       return xQueueReceive(events, &e, 0) == pdTRUE;
     for (int i = 0; i < 10; i++) {
-      bool center = i % 5 == 4;
-      int result = keys[i].poll(digitalRead(pins[i]) == LOW, millis(), !center,
-                                center ? ExtendedCenterHoldMs : 0);
+      int result = sample(i,millis());
       if (result) {
         e = {i >= 5, Key(i % 5), result >= 3,
              result == 4 ? ExtendedCenterHoldMs : result == 3 ? Debouncer::LongPressMs : 0};

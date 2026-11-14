@@ -20,7 +20,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from app.core.database import Base, get_db
 from app.core.config import settings
-from app.models import Device,AssetPackage,SyncEvent
+from app.models import Device,AssetPackage,SyncEvent,Podcast
+from app.services.podcasts import parse as parse_podcast
 from app.services import distribution
 from PIL import Image
 from app.services.devices import initialize_pages
@@ -34,6 +35,12 @@ with tempfile.TemporaryDirectory() as temp:
     device = Device(device_id="leap-test", name="Test", age=8)
     initialize_pages(device)
     session.add(device)
+    session.commit()
+    podcast=Podcast(name="Wissen",url="https://example.org/feed.xml")
+    session.add(podcast);session.flush()
+    parse_podcast(b'<rss version="2.0"><channel><title>Wissen</title><item><guid>one</guid><title>Eine Folge</title><enclosure url="https://example.org/one.mp3" type="audio/mpeg"/></item></channel></rss>',podcast,session)
+    device.podcast_ids=[podcast.id]
+    next(p for p in device.pages if p.page_id=="podcasts").enabled=True
     session.commit()
     app.dependency_overrides[get_db] = lambda: session
     # No lifespan: route contract test must not start provider scheduler jobs.
@@ -60,6 +67,9 @@ with tempfile.TemporaryDirectory() as temp:
     plan = response.json()
     config = client.get(plan["configUrl"]).json()
     assert {"tamagotchi", "snake"}.issubset({g["id"] for g in config["games"]})
+    podcast_page=client.get(base+f"/podcasts/{podcast.id}/episodes").json()
+    assert podcast_page["total"]==1
+    podcast_episode=client.get(base+f"/podcasts/{podcast.id}/episodes/"+podcast_page["episodes"][0]["id"]).json()
     manifests = []
     for update in plan["assetUpdates"]:
         manifest = client.get(update["manifestUrl"]).json()
@@ -124,6 +134,6 @@ with tempfile.TemporaryDirectory() as temp:
     assert client.post(base + "/sync/" + old["syncId"] + "/events", json=stale_event).status_code == 409
     session.refresh(device)
     assert device.firmware_version == current  # no rollback to the old plan's version
-    Path(sys.argv[1]).write_text(json.dumps({"config": config, "gameConfig": game_config, "manifests": manifests}), encoding="utf-8")
+    Path(sys.argv[1]).write_text(json.dumps({"config": config, "gameConfig": game_config, "manifests": manifests, "podcastPage": podcast_page, "podcastEpisode": podcast_episode}), encoding="utf-8")
     session.close()
 print("PASS: real Homeserver sync, hashes, complete-inventory gate, closed plans, communication disable, independent firmware check-in")

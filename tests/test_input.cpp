@@ -16,6 +16,22 @@ int main() {
   assert(input.poll(event) && event.right && event.key == Key::Center && !event.longPress);
   assert(!input.poll(event));
 
+  // Only Podcast playback opts into release-based right-left handling.
+  Input podcast;
+  podcast.begin(); assert(podcast.start()); podcast.deferPodcastBack=true;
+  fakeNow=0; fakeUntil=1200;
+  fakeDown=[](int pin,uint32_t now) { return pin==hw::RightKeys[2] && now>=10 && now<1050; };
+  try { fakeTask(fakeContext); } catch (SamplingFinished &) {}
+  assert(podcast.poll(event) && event.right && event.key==Key::Left && event.longPress);
+  assert(!podcast.poll(event));
+  Input podcastShort;
+  podcastShort.begin(); assert(podcastShort.start()); podcastShort.deferPodcastBack=true;
+  fakeNow=0; fakeUntil=200;
+  fakeDown=[](int pin,uint32_t now) { return pin==hw::RightKeys[2] && now>=10 && now<100; };
+  try { fakeTask(fakeContext); } catch (SamplingFinished &) {}
+  assert(podcastShort.poll(event) && !event.longPress && event.atMs>=125);
+  assert(!podcastShort.poll(event));
+
   Input bounded;
   bounded.begin();
   assert(bounded.start());
