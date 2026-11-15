@@ -60,10 +60,18 @@ struct Radio::PcmLease {
 void Radio::clearSession() {
   xSemaphoreTake(mutex,portMAX_DELAY);
   bool stale=pcm!=nullptr;
-  pcm=nullptr;
+  pcm=nullptr;track={};trackEpoch=0;
   xSemaphoreGive(mutex);
   bufferedMp3=0;bufferedEpoch=0;
   if (stale) log("RADIO","Stale PCM view detached before new session");
+}
+bool Radio::trackInfo(RadioTrack &out) {
+  out={};
+  if (!active() || !mutex || xSemaphoreTake(mutex,0)!=pdTRUE) return false;
+  bool valid=active() && trackEpoch==generation;
+  if (valid) out=track;
+  xSemaphoreGive(mutex);
+  return valid && !out.empty();
 }
 bool Radio::begin() {
   mutex = xSemaphoreCreateMutex();
@@ -260,7 +268,23 @@ void Radio::stream(const Command &command, Mp3SeekIndex &index, String &indexUrl
     }
     if (!validMeta) { log("RADIO", "Invalid icy-metaint header"); result = RadioStatus::Unsupported; http.end(); break; }
     if (command.finite && icy) { result=RadioStatus::Unsupported; http.end(); break; }
-    RadioBody body(transfer == "chunked", icy);
+    Heap<RadioIcyState> icyState;
+    if (icy) {
+      icyState=allocate<RadioIcyState>();
+      if (!icyState) { result=RadioStatus::MemoryError;http.end();break; }
+      new (icyState.get()) RadioIcyState;
+      Serial.printf("[RADIO] session=%lu ICY interval=%u workspace=%u PSRAM bytes\n",
+                    (unsigned long)epoch,unsigned(icy),unsigned(sizeof(RadioIcyState)));
+    }
+    RadioBody body(transfer == "chunked", icy,icyState ? &icyState->parser : nullptr);
+    uint64_t audioReceived=0;
+    auto publishTrack=[&] {
+      if (!icyState) return;
+      if (!icyState->timeline.take(output.consumed.load(),icyState->scratch)) return;
+      xSemaphoreTake(mutex,portMAX_DELAY);
+      if (current(epoch)) { track=icyState->scratch;trackEpoch=epoch; }
+      xSemaphoreGive(mutex);
+    };
     Mp3Metadata metadata(checkpoint.offset==0);
     uint64_t decodedSamples = checkpoint.samples, inputOffset = checkpoint.offset;
     uint64_t targetSamples = 0;
@@ -306,8 +330,14 @@ void Radio::stream(const Command &command, Mp3SeekIndex &index, String &indexUrl
           sourceResult=kind<0 ? RadioStatus::Unsupported : RadioStatus::ConnectionError;
           ended=true;break;
         }
-        if (kind==1 && !ahead.push(incoming[i])) {
-          reason="read-ahead-overflow";sourceResult=RadioStatus::MemoryError;ended=true;break;
+        if (kind==1) {
+          ++audioReceived;
+          if (!ahead.push(incoming[i])) {
+            reason="read-ahead-overflow";sourceResult=RadioStatus::MemoryError;ended=true;break;
+          }
+        }
+        if (icyState && icyState->parser.ready()) {
+          if (icyState->parser.take(icyState->scratch)) icyState->timeline.push(audioReceived,icyState->scratch);
         }
       }
       if (!transportEnded && (ended || (!client->connected() && !client->available()) ||
@@ -319,6 +349,7 @@ void Radio::stream(const Command &command, Mp3SeekIndex &index, String &indexUrl
       }
       if (prefilling && (transportEnded || ahead.size()>=Mp3ReadAhead::PrefillBytes ||
           (ahead.size() && uint32_t(millis()-prefillAt)>=Mp3ReadAhead::PrefillMaxMs))) prefilling=false;
+      publishTrack();
       uint32_t queued=output.written.load()-output.consumed.load();
       bool paused=pausedFlag.load();
       bool buffered=!prefilling && ((output.ready.load() && queued) || ahead.size());
@@ -385,6 +416,8 @@ void Radio::stream(const Command &command, Mp3SeekIndex &index, String &indexUrl
         decodedSamples+=timelineSamples;
         lastFrame=millis(); skipped=0;
       }
+      if (icyState && info.frame_bytes>0)
+        icyState->timeline.map(frameOffset+info.frame_offset,output.written.load());
       if (samples) {
         if (info.layer != 3 || (info.channels != 1 && info.channels != 2) || info.hz < 8000 || info.hz > 48000 || (output.rate && output.rate != uint32_t(info.hz))) {
           result = RadioStatus::Unsupported; break;
@@ -422,6 +455,7 @@ void Radio::stream(const Command &command, Mp3SeekIndex &index, String &indexUrl
       // A dead I2S consumer must not leave this worker waiting forever.
       output.ready=true;
       while (current(epoch) && output.consumed.load()<output.written.load()) {
+        publishTrack();
         if (watch.consumerExpired(millis(),output.consumed.load(),
             output.written.load()-output.consumed.load(),true,pausedFlag.load())) {
           reason="pcm-consumer-stalled";result=RadioStatus::AudioStalled;break;

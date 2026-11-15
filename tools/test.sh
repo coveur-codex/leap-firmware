@@ -138,3 +138,7 @@ c++ -std=c++17 -O2 -Wall -Wextra -Werror -I tests/radio_fakes -I tests/game_fake
 build/tests/mp3-metadata-stream
 c++ -std=c++17 -O2 -Wall -Wextra -Werror -I tests/radio_fakes -I tests/game_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_radio_buffer.cpp LEAP/src/Radio.cpp -o build/tests/radio-buffer
 build/tests/radio-buffer
+c++ -std=c++17 -O2 -D_FORTIFY_SOURCE=2 -Wall -Wextra -Werror -I LEAP/src tests/test_radio_metadata.cpp -o build/tests/radio-metadata
+build/tests/radio-metadata
+c++ -std=c++17 -O2 -Wall -Wextra -Werror -I tests/radio_fakes -I tests/game_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_radio_metadata_stream.cpp LEAP/src/Radio.cpp -o build/tests/radio-metadata-stream
+build/tests/radio-metadata-stream

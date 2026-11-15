@@ -135,3 +135,25 @@ Am Gerät bleiben Klang, tatsächlicher Füllstand bei Live-Sendern, freie inter
 Heap-Blöcke während TLS sowie wiederholte Radio↔Podcast↔Menü-Wechsel und OTA mit
 vollem Puffer zu prüfen. Ein Hardware-Hänger wurde hier nicht reproduziert;
 der neue Zehn-Sekunden-Abbruch begrenzt konkret den ausbleibenden PCM-Verbrauch.
+
+
+## 1.8.0 · ICY-Titel und Interpret
+
+`test_radio_metadata.cpp` prüft Titel-/Interpret-Aufteilung, getrenntes
+StreamArtist-Feld, Bindestriche/Gedankenstriche, Apostrophe/Anführungszeichen,
+UTF-8/Latin-1, Steuerzeichen, sichere Kürzung, leere und fehlerhafte Felder,
+volle 4.080-Byte-Blöcke, Chunk-/ICY-Grenzen sowie die begrenzte Historie und
+PCM-Zuordnung einschließlich Zählerüberlauf.
+
+`test_radio_metadata_stream.cpp` verwendet den tatsächlichen MP3-Worker mit
+synthetischem Audio und ICY-Blöcken über HTTP-Chunks. Es prüft vier verzögerte
+Titelwechsel bei vollem 512-KiB-Vorrat, zwölf Sekunden Pause, explizites Löschen,
+sofortiges Verwerfen beim Stop-/Senderwechsel, Sender ohne Metadaten und
+Allokationsfehler mit Wiederanlauf. PCM-Samplezahl und Prüfsumme bleiben gegenüber
+dem Stream ohne ICY identisch. Nach jeder Sitzung sind Parser, Historie und
+Audiopuffer vollständig freigegeben. Die bestehende native Suite läuft mit.
+
+Am Gerät bleiben die Anzeige langer Titel, reale Senderformate und die zeitliche
+Zuordnung zum hörbaren I²S-Ton zu prüfen. Sender ohne eindeutig gekennzeichneten
+Interpreten können nur einen Gesamttitel liefern. Es ist keine Änderung am
+Homeserver oder an dessen Datenbank notwendig.

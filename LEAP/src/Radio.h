@@ -1,5 +1,6 @@
 #pragma once
 #include <Arduino.h>
+#include "RadioMetadata.h"
 #include <atomic>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
@@ -13,6 +14,8 @@ class Radio {
   void clearSession();
   QueueHandle_t commands = nullptr;
   SemaphoreHandle_t mutex = nullptr;
+  RadioTrack track;
+  uint32_t trackEpoch=0; // Protected by the same mutex as the PCM view.
   Pcm *pcm = nullptr; // Only accessed under mutex; producer owns its lifetime.
   std::atomic<uint32_t> generation{0};
   std::atomic<uint32_t> requestedEpoch{0};
@@ -29,6 +32,7 @@ class Radio {
   void stream(const Command &command, struct Mp3SeekIndex &index, String &indexUrl, String &validator);
 public:
   bool begin();
+  bool trackInfo(RadioTrack &out);
   void play(const String &url);
   void playEpisode(const String &url, uint32_t position=0, uint32_t duration=0, bool seeked=false) {
     queue(url, position, duration, true, seeked);

@@ -42,7 +42,8 @@ laufenden, zeitlich begrenzten Aufruf. Die UI wartet nicht auf DNS/TCP/TLS.
   HTTPS verhindern. Keine Anmeldung oder individuellen Stream-Zertifikate.
 - Bis zu fünf Weiterleitungen, einschließlich HTTP/HTTPS-Wechsel, relative
   Ziele und protokollrelative Ziele. HTTP/1.0 wird bevorzugt; Chunked-Bodies
-  werden inkrementell entpackt. ICY-Metadaten werden übersprungen, nicht angezeigt.
+  werden inkrementell entpackt. ICY-Metadaten bleiben vom Decoder getrennt;
+  ab 1.8.0 zeigt die Radio-Seite Titel und Interpret daraus an.
 - MIME-Prüfung plus tatsächliche MP3-Frame-Erkennung. Playlists, HLS, AAC, Ogg,
   FLAC und WAV sind nicht Teil dieser Erweiterung. Abweichende Samplerate im
   laufenden Sender wird mit Formatfehler beendet; mono/stereo bis 48 kHz.
@@ -218,3 +219,42 @@ wartet nicht auf einen laufenden DNS-/TLS-Aufruf. Beim Beenden zeigt
 Bei Verdacht auf Hänger diese Zeile, `pcm-consumer-stalled`, `stack_free` und die
 folgenden `[HEALTH]`-Werte vergleichen. Seitenwechsel, Seek, Fehler und OTA
 invalidieren vorheriges Audio sofort; Freigabe folgt nach Rückkehr des Workers.
+
+
+## Titel und Interpret ab 1.8.0
+
+Unter dem Sendernamen erscheinen der Titel (bis zu drei Zeilen) und der Interpret
+(eine Zeile); längere Texte werden mit `...` gekürzt. Status, Lautstärkebalken,
+Avatar und Tastenbelegung bleiben erhalten. Ohne auswertbare Informationen steht
+dort `Keine Titelinformationen`. Dafür muss der Sender ICY-Metadaten mit
+`icy-metaint` liefern; es werden keine zusätzlichen Webdienste abgefragt.
+
+Ausgewertet wird `StreamTitle`. Das übliche Format `Interpret - Titel` wird am
+ersten Trennzeichen aufgeteilt; Gedankenstriche werden ebenfalls unterstützt.
+Weitere Trennzeichen bleiben im Titel. Ohne Trennzeichen erscheint der gesamte
+Text als Titel; ein Interpret wird dann nicht geraten. Ein zusätzliches
+`StreamArtist`-Feld wird bevorzugt, falls der Sender es liefert. Mehrdeutige oder
+anders sortierte Sendertexte lassen sich ohne weitere Kennzeichnung nicht
+zuverlässig trennen. UTF-8 bleibt erhalten; ältere Latin-1-Bytes werden nach
+UTF-8 gewandelt. Steuerzeichen werden entfernt, Feldlängen sind begrenzt.
+
+Null-Längen-Blöcke bedeuten unveränderte Informationen; `StreamTitle=''` löscht
+die Anzeige ab dieser Audioposition. Fehlerhafte und unvollständige Felder werden
+ignoriert, ohne die Audioausgabe zu unterbrechen. Beim Stoppen, Senderwechsel,
+Verlassen der Seite und beim nächsten Verbindungsversuch werden alte Angaben
+sofort über dieselbe Sitzungsgeneration ungültig.
+
+Die Anzeige wird nicht direkt aus dem HTTP-Vorrat aktualisiert. Metadatenmarken
+werden von MP3-Bytepositionen auf dekodierte PCM-Positionen übertragen und erst
+nach deren Verbrauch veröffentlicht. Dadurch springt die Anzeige trotz des
+512-KiB-Vorrats nicht zum vorausgeladenen nächsten Lied und bleibt in Pause
+stehen. Die Zuordnung erfolgt an MP3-Framegrenzen; Audio-Task und Display können
+noch eine kurze zusätzliche Ausgabelatenz verursachen.
+
+Nur ICY-Sitzungen allokieren den optionalen Parser und eine Historie mit maximal
+64 Titelwechseln im PSRAM. Sie akzeptieren den vollständigen ICY-Block bis
+4.080 Bytes; Anzeigegrenzen sind 128 UTF-8-Bytes für Interpret und 192 für Titel.
+Gleiche Angaben werden zusammengefasst. Bei ungewöhnlich vielen verschiedenen
+Meldungen im Vorrat werden entfernte zukünftige Wechsel zusammengefasst, damit
+Speicher und Audiopipeline begrenzt bleiben. Podcasts und Sender ohne ICY
+benötigen diese Historie nicht. Kein zusätzlicher Task oder Netzwerkabruf.

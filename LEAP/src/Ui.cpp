@@ -1742,10 +1742,25 @@ void Ui::drawRadio() {
   else {
     String name;
     for (JsonObjectConst station:stations) if (station["id"]==radioStation) name=station["name"].as<String>();
-    body("",113,24,305,55,name,0xffff,true);
+    body("",113,8,305,25,name,0xffff,true);
+    RadioTrack track;
+    if (radio.trackInfo(track)) {
+      auto lines=[&](const char *value,int y,int rows,uint16_t color) {
+        auto glyphs=displayGlyphs(value);size_t pos=0;
+        for (int row=0;row<rows && pos<glyphs.size();++row) {
+          auto line=fitDisplayLine(glyphs,pos,304,false);
+          bool clipped=row==rows-1 && line.next<glyphs.size();
+          if (clipped) line=fitDisplayLine(glyphs,pos,286,false);
+          auto text=glyphs.substr(pos,line.end-pos)+(clipped ? "..." : "");
+          glyphText(text.c_str(),113,y+row*10,1,color);pos=line.next;
+        }
+      };
+      lines(track.title,39,3,0xffff);
+      lines(track.artist,77,1,Accent);
+    } else text("Keine Titelinformationen",113,49,1,Muted);
     String status=Radio::label(radio.status());
     if (radio.status()==RadioStatus::HttpError) status+=" "+String(radio.httpCode());
-    text(status,113,84,1,Muted);
+    text(status,113,105,1,Muted);
   }
   notice="L hoch/runter: Lautstärke  R: Sender / Pause";
 }
