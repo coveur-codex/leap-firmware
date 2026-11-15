@@ -111,3 +111,27 @@ Lautstärketests durchlaufen alle Stufen zwischen 0 und 10 aufwärts/abwärts un
 prüfen 10↔15, die Obergrenze 60, alte Zwischenwerte und 0 als stummen Endpunkt.
 Firmware 1.7.1 benötigt keine neue Homeserver-Migration. Der reale Hörtest für die
 neuen leisen Stufen und die CheckPod-Wiedergabe am MAX98357A bleibt erforderlich.
+
+
+## 1.7.2 · 512-KiB-PSRAM-Vorrat
+
+Zusätzlich zur bisherigen Suite prüft `test_radio_buffer.cpp` den tatsächlichen
+MP3-Worker mit synthetischem Audio: voller 512-KiB-Vorrat trotz vollem PCM-Ring,
+zwölf Sekunden Pause, neun Sekunden Netzpause mit unveränderter PCM-Samplezahl und Prüfsumme,
+vollständiges Leerspielen des Vorrats bei anhaltendem Ausfall mit anschließendem
+Timeout, Ringüberläufe der Zeiger, Chunk-/ICY-Grenzen und identische Samplezahl,
+blockierter Audioverbrauch während Streaming und EOF-Ausgabe, Allokationsfehler
+mit erfolgreichem Wiederanlauf sowie Seiten-/Sitzungswechsel mit vollem Vorrat.
+Die Tests prüfen die PSRAM-Allokationsflags, ungültiges altes PCM unmittelbar
+nach Stop/Play und vollständige Freigabe der Sitzungspuffer nach jedem Lauf.
+Die bestehenden VBR-/Range-, BR-ID3-, Audio-, OTA- und Controller-Tests laufen mit.
+
+Zusätzlicher dynamischer Bedarf: exakt 524.288 B PSRAM je aktiver Sitzung;
+Arbeitsbereich insgesamt rund 667 KiB plus bestehender Suchindex und Netzwerk.
+Der 24-KiB-Taskstack bleibt unverändert; die Netz-Leseblöcke bleiben 1 KiB.
+Der Vorrat erfordert keine Änderung am Homeserver und keine neue Migration.
+
+Am Gerät bleiben Klang, tatsächlicher Füllstand bei Live-Sendern, freie interne
+Heap-Blöcke während TLS sowie wiederholte Radio↔Podcast↔Menü-Wechsel und OTA mit
+vollem Puffer zu prüfen. Ein Hardware-Hänger wurde hier nicht reproduziert;
+der neue Zehn-Sekunden-Abbruch begrenzt konkret den ausbleibenden PCM-Verbrauch.

@@ -136,3 +136,5 @@ c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_mp3_metadata.cpp -o 
 build/tests/mp3-metadata
 c++ -std=c++17 -O2 -Wall -Wextra -Werror -I tests/radio_fakes -I tests/game_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_mp3_metadata_stream.cpp LEAP/src/Radio.cpp -o build/tests/mp3-metadata-stream
 build/tests/mp3-metadata-stream
+c++ -std=c++17 -O2 -Wall -Wextra -Werror -I tests/radio_fakes -I tests/game_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_radio_buffer.cpp LEAP/src/Radio.cpp -o build/tests/radio-buffer
+build/tests/radio-buffer

@@ -1686,6 +1686,12 @@ namespace leap {
 void Ui::syncRadio() {
   auto stations = state["config"]["radioStations"].as<JsonArrayConst>();
   bool visible = radioVisible();
+  if (visible && !radioWasVisible) {
+    // Fence any preceding session immediately. The worker clears/detaches its
+    // buffers before starting the new generation; the UI never waits for it.
+    radio.stop();audio.stop();radioRequestedUrl="";radioPaused=false;
+  }
+  radioWasVisible=visible;
   radioIdle.show(visible, millis());
   JsonObjectConst chosen;
   for (JsonObjectConst station : stations)
