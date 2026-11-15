@@ -3,6 +3,7 @@
 #include "RadioStream.h"
 #include "PodcastPlayback.h"
 #include "Mp3Metadata.h"
+#include "Mp3ReadAhead.h"
 #include <HTTPClient.h>
 #include <NetworkClientSecure.h>
 #include <WiFi.h>
@@ -36,9 +37,34 @@ struct Radio::Pcm {
   Heap<int16_t> samples;
   uint32_t epoch = 0, rate = 0;
   std::atomic<uint32_t> written{0}, consumed{0};
-  bool ready = false;
+  std::atomic<bool> ready{false};
   uint64_t played = 0;
 };
+// The producer detaches the PCM view before any session storage is released,
+// including early exits. The UI invalidates generations; it never frees worker memory.
+struct Radio::PcmLease {
+  Radio &owner;
+  Pcm *value;
+  PcmLease(Radio &r,Pcm &p):owner(r),value(&p) {
+    xSemaphoreTake(owner.mutex,portMAX_DELAY);owner.pcm=value;xSemaphoreGive(owner.mutex);
+  }
+  void detach() {
+    if (!value) return;
+    xSemaphoreTake(owner.mutex,portMAX_DELAY);
+    if (owner.pcm==value) owner.pcm=nullptr;
+    xSemaphoreGive(owner.mutex);
+    owner.bufferedMp3=0;owner.bufferedEpoch=0;value=nullptr;
+  }
+  ~PcmLease() { detach(); }
+};
+void Radio::clearSession() {
+  xSemaphoreTake(mutex,portMAX_DELAY);
+  bool stale=pcm!=nullptr;
+  pcm=nullptr;
+  xSemaphoreGive(mutex);
+  bufferedMp3=0;bufferedEpoch=0;
+  if (stale) log("RADIO","Stale PCM view detached before new session");
+}
 bool Radio::begin() {
   mutex = xSemaphoreCreateMutex();
   commands = xQueueCreate(1, sizeof(Command));
@@ -57,6 +83,7 @@ void Radio::queue(const String &url, uint32_t position, uint32_t duration, bool 
   positionSeconds = position; durationSeconds = duration;
   command.generation = generation.fetch_add(1) + 1;
   requestedEpoch = 0; // Invalidate any PCM before publishing the replacement.
+  bufferedMp3=0;bufferedEpoch=0;
   if (!commands || !radioUrl(url.c_str())) { state = commands ? RadioStatus::InvalidUrl : RadioStatus::MemoryError; return; }
   strlcpy(command.url, url.c_str(), sizeof(command.url));
   responseCode = 0;
@@ -67,6 +94,7 @@ void Radio::queue(const String &url, uint32_t position, uint32_t duration, bool 
 void Radio::stop() {
   pausedFlag = false;
   requestedEpoch = 0;
+  bufferedMp3=0;bufferedEpoch=0;
   Command command{};
   command.generation = generation.fetch_add(1) + 1;
   responseCode = 0;
@@ -95,8 +123,10 @@ void Radio::run() {
   String indexUrl, validator;
   for (;;) {
     if (xQueueReceive(commands, &command, portMAX_DELAY) == pdTRUE && command.url[0] && current(command.generation)) {
+      clearSession();
       if (index) stream(command, *index, indexUrl, validator);
       else status(command.generation, RadioStatus::MemoryError);
+      clearSession();
       uint32_t completed = command.generation;
       requestedEpoch.compare_exchange_strong(completed, 0);
     }
@@ -114,14 +144,15 @@ void Radio::stream(const Command &command, Mp3SeekIndex &index, String &indexUrl
                 unsigned(ESP.getFreeHeap()), unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
                 unsigned(ESP.getFreePsram()), (long long)time(nullptr));
   if (WiFi.status() != WL_CONNECTED) { log("RADIO", "No WiFi connection"); status(epoch, RadioStatus::NoWifi); return; }
+  auto compressed = allocate<uint8_t>(Mp3ReadAhead::Bytes);
   auto input = allocate<uint8_t>(InputBytes);
   auto decoded = allocate<mp3d_sample_t>(MINIMP3_MAX_SAMPLES_PER_FRAME * sizeof(mp3d_sample_t));
   auto decoder = allocate<mp3dec_t>();
   Pcm output;
   output.samples = allocate<int16_t>(PcmSamples * sizeof(int16_t));
   output.epoch = epoch;
-  if (!input || !decoded || !decoder || !output.samples) {
-    log("RADIO", "PSRAM allocation failed (PCM/input/MP3)");
+  if (!compressed || !input || !decoded || !decoder || !output.samples) {
+    log("RADIO", "PSRAM allocation failed (512-KiB read-ahead/PCM/input/MP3)");
     status(epoch, RadioStatus::MemoryError); return;
   }
   mp3dec_init(decoder.get());
@@ -242,38 +273,71 @@ void Radio::stream(const Command &command, Mp3SeekIndex &index, String &indexUrl
       auto length=strtoll(lengthHeader.c_str(), &tail, 10);
       if (tail && !*tail && length>=0) contentLength=length;
     }
-    xSemaphoreTake(mutex, portMAX_DELAY); pcm = &output; xSemaphoreGive(mutex);
+    Mp3ReadAhead ahead(compressed.get());
+    ahead.clear();
+    PcmLease lease(*this,output);
+    bufferedMp3=0;bufferedEpoch=epoch;
+    Serial.printf("[RADIO] session=%lu clean buffers: mp3=0 pcm=0 input=0 capacity=%u PSRAM bytes\n",
+                  (unsigned long)epoch,unsigned(Mp3ReadAhead::Bytes));
     status(epoch, RadioStatus::Buffering);
     size_t used = 0, skipped = 0;
-    uint32_t lastByte = millis(), lastFrame = millis();
+    uint32_t lastFrame = millis(), prefillAt=millis();
+    Mp3StreamWatch watch(millis());
+    bool prefilling=true;
+    RadioStatus sourceResult=RadioStatus::ConnectionError;
     bool ended = false, announced = false;
-    size_t receivedBytes = 0, decodedFrames = 0;
+    size_t receivedBytes = 0, decodedFrames = 0, peakBuffered = 0;
     const char *reason = "peer-closed";
     result = RadioStatus::ConnectionError;
     while (current(epoch)) {
-      if (WiFi.status() != WL_CONNECTED) { reason = "wifi-lost"; result = RadioStatus::NoWifi; break; }
-      if (output.written.load() - output.consumed.load() > PcmSamples - MINIMP3_MAX_SAMPLES_PER_FRAME) {
-        lastByte = lastFrame = millis();
-        vTaskDelay(pdMS_TO_TICKS(3)); continue;
-      }
+      // Keep reading ahead even while PCM is full/paused. Both stages live on
+      // this existing worker; no second decoder or competing I2S task is added.
       uint8_t incoming[1024];
-      size_t available = std::min({size_t(std::max(0, client->available())), InputBytes - used, sizeof(incoming)});
-      int received = !transportEnded && available ? client->read(incoming, available) : 0;
-      if (received > 0) { lastByte = millis(); receivedBytes += received; }
-      // Bounded batch; framing and metadata never enter the MP3 decoder.
-      for (int i = 0; i < received; ++i) {
-        int kind = body.feed(incoming[i]);
-        if (kind < 0 || kind == 2) { reason = kind < 0 ? "invalid-chunks" : "end-of-body"; ended = true; break; }
-        if (kind == 1) input.get()[used++] = incoming[i];
+      size_t available=!transportEnded ? std::min({size_t(std::max(0,client->available())),ahead.free(),sizeof(incoming)}) : 0;
+      if (contentLength>=0)
+        available=std::min(available,size_t(std::max(int64_t(0),contentLength-int64_t(receivedBytes))));
+      int received=available ? client->read(incoming,available) : 0;
+      if (!current(epoch)) break;
+      if (received>0) receivedBytes+=received;
+      for (int i=0;i<received;++i) {
+        int kind=body.feed(incoming[i]);
+        if (kind<0 || kind==2) {
+          reason=kind<0 ? "invalid-chunks" : "end-of-body";
+          sourceResult=kind<0 ? RadioStatus::Unsupported : RadioStatus::ConnectionError;
+          ended=true;break;
+        }
+        if (kind==1 && !ahead.push(incoming[i])) {
+          reason="read-ahead-overflow";sourceResult=RadioStatus::MemoryError;ended=true;break;
+        }
       }
-      if (ended || (!client->connected() && !client->available()) ||
-          (contentLength >= 0 && receivedBytes >= uint64_t(contentLength))) {
-        transportEnded = true;
-        cleanEnd = (ended && !strcmp(reason,"end-of-body")) ||
-                   (contentLength >= 0 && receivedBytes == uint64_t(contentLength));
-        if (!command.finite) break;
+      if (!transportEnded && (ended || (!client->connected() && !client->available()) ||
+          (contentLength>=0 && receivedBytes>=uint64_t(contentLength)))) {
+        transportEnded=true;
+        cleanEnd=(ended && !strcmp(reason,"end-of-body")) ||
+                 (!ended && contentLength>=0 && receivedBytes==uint64_t(contentLength));
+        if (!cleanEnd && WiFi.status()!=WL_CONNECTED) { reason="wifi-lost";sourceResult=RadioStatus::NoWifi; }
       }
-      if (!transportEnded && uint32_t(millis() - lastByte) > 8000) { reason = "body-timeout"; result = RadioStatus::Timeout; break; }
+      if (prefilling && (transportEnded || ahead.size()>=Mp3ReadAhead::PrefillBytes ||
+          (ahead.size() && uint32_t(millis()-prefillAt)>=Mp3ReadAhead::PrefillMaxMs))) prefilling=false;
+      uint32_t queued=output.written.load()-output.consumed.load();
+      bool paused=pausedFlag.load();
+      bool buffered=!prefilling && ((output.ready.load() && queued) || ahead.size());
+      if (!transportEnded && watch.networkExpired(millis(),buffered,paused,received>0)) {
+        transportEnded=true;cleanEnd=false;prefilling=false;
+        reason="body-timeout";
+        sourceResult=WiFi.status()==WL_CONNECTED ? RadioStatus::Timeout : RadioStatus::NoWifi;
+      }
+      peakBuffered=std::max(peakBuffered,ahead.size());
+      bufferedMp3=uint32_t(ahead.size());
+      if (watch.consumerExpired(millis(),output.consumed.load(),queued,output.ready.load(),paused)) {
+        reason="pcm-consumer-stalled";result=RadioStatus::AudioStalled;break;
+      }
+      if (prefilling || paused || queued>PcmSamples-MINIMP3_MAX_SAMPLES_PER_FRAME) {
+        lastFrame=millis();vTaskDelay(pdMS_TO_TICKS(3));continue;
+      }
+      used+=ahead.read(input.get()+used,InputBytes-used);
+      bufferedMp3=uint32_t(ahead.size());
+      bool decoderEof=transportEnded && !ahead.size();
       auto prefix=metadata.consume(input.get(),used);
       if (prefix.state==Mp3Metadata::State::Invalid ||
           (contentLength>=0 && metadata.declaredBytes()>uint64_t(contentLength))) {
@@ -288,19 +352,22 @@ void Radio::stream(const Command &command, Mp3SeekIndex &index, String &indexUrl
         // Recognized metadata bytes are progress, separate from the bounded scan
         // for an actual MP3 frame. The network idle timeout remains in effect.
         lastFrame=millis();
-        if (transportEnded && !used && metadata.pending()) {
+        if (decoderEof && !used && metadata.pending()) {
           reason="truncated-id3-tag"; result=RadioStatus::InvalidMetadata; break;
         }
         vTaskDelay(pdMS_TO_TICKS(1)); continue;
       }
       if (prefix.state==Mp3Metadata::State::NeedMore && used) {
-        if (transportEnded) { reason="truncated-id3-header"; result=RadioStatus::InvalidMetadata; break; }
+        if (decoderEof) { reason="truncated-id3-header"; result=RadioStatus::InvalidMetadata; break; }
+        if (uint32_t(millis()-lastFrame)>=Mp3StreamWatch::NetworkIdleMs) {
+          reason="id3-header-timeout";result=RadioStatus::InvalidMetadata;break;
+        }
         vTaskDelay(pdMS_TO_TICKS(2)); continue;
       }
-      if (uint32_t(millis() - lastFrame) > 8000 || skipped > 128 * 1024) { reason = "no-mp3-frames"; result = RadioStatus::Unsupported; break; }
+      if ((!decoderEof && received>0 && used>=4096 && uint32_t(millis()-lastFrame)>8000) || skipped>128*1024) { reason = "no-mp3-frames"; result = RadioStatus::Unsupported; break; }
       // A few KB allow minimp3 to distinguish consecutive frames from false sync words.
-      if (command.finite && transportEnded && !used) { decodedEnd=true; break; }
-      if (used < 4096 && !transportEnded) { vTaskDelay(pdMS_TO_TICKS(2)); continue; }
+      if (decoderEof && !used) { decodedEnd=true; break; }
+      if (used < 4096 && !decoderEof) { vTaskDelay(pdMS_TO_TICKS(2)); continue; }
       mp3dec_frame_info_t info{};
       uint64_t frameOffset = inputOffset;
       int samples = mp3dec_decode_frame(decoder.get(), input.get(), int(used), decoded.get(), &info);
@@ -312,7 +379,7 @@ void Radio::stream(const Command &command, Mp3SeekIndex &index, String &indexUrl
         memmove(input.get(), input.get() + info.frame_bytes, used);
         skipped += info.frame_bytes;
       } else if (used == InputBytes) { reason = "invalid-mp3-data"; result = RadioStatus::Unsupported; break; }
-      if (!samples && transportEnded && !info.frame_bytes) { decodedEnd=true; break; }
+      if (!samples && decoderEof && !info.frame_bytes) { decodedEnd=true; break; }
       if (!samples && command.finite && checkpoint.offset && timelineSamples) {
         // Frames used to reconstruct the bit reservoir still advance absolute time.
         decodedSamples+=timelineSamples;
@@ -350,25 +417,34 @@ void Radio::stream(const Command &command, Mp3SeekIndex &index, String &indexUrl
       }
       vTaskDelay(pdMS_TO_TICKS(1));
     }
-    if (command.finite && current(epoch) && decodedEnd && transportEnded && cleanEnd && decodedFrames && sampleRate) {
-      // Drain the decoded tail through the same I2S consumer before publishing EOF.
-      xSemaphoreTake(mutex, portMAX_DELAY);
-      output.ready = true;
-      xSemaphoreGive(mutex);
-      while (current(epoch) && output.consumed.load() < output.written.load())
+    if (current(epoch) && decodedEnd && decodedFrames && sampleRate) {
+      // Drain every decoded tail, including a prematurely closed connection.
+      // A dead I2S consumer must not leave this worker waiting forever.
+      output.ready=true;
+      while (current(epoch) && output.consumed.load()<output.written.load()) {
+        if (watch.consumerExpired(millis(),output.consumed.load(),
+            output.written.load()-output.consumed.load(),true,pausedFlag.load())) {
+          reason="pcm-consumer-stalled";result=RadioStatus::AudioStalled;break;
+        }
         vTaskDelay(pdMS_TO_TICKS(3));
-      vTaskDelay(pdMS_TO_TICKS(50)); // Let the consumer submit its final copied PCM block.
-      if (current(epoch)) {
-        durationSeconds = decodedSamples/sampleRate;
-        positionSeconds = durationSeconds.load();
-        endedNaturally = podcastNaturalEnd(command.seeked,
-            decodedSamples/sampleRate > command.position ? decodedSamples/sampleRate-command.position : 0);
-        result = RadioStatus::Ended;
       }
-    }
-    Serial.printf("[RADIO] session=%lu stream-ended reason=%s bytes=%u frames=%u\n", (unsigned long)epoch,
-                  current(epoch) ? reason : "cancelled", unsigned(receivedBytes), unsigned(decodedFrames));
-    xSemaphoreTake(mutex, portMAX_DELAY); pcm = nullptr; xSemaphoreGive(mutex);
+      if (current(epoch) && result!=RadioStatus::AudioStalled) {
+        vTaskDelay(pdMS_TO_TICKS(50)); // Allow the final copied PCM block to reach I2S.
+        result=sourceResult;
+        if (command.finite && transportEnded && cleanEnd) {
+          durationSeconds=decodedSamples/sampleRate;
+          positionSeconds=durationSeconds.load();
+          endedNaturally=podcastNaturalEnd(command.seeked,
+              decodedSamples/sampleRate>command.position ? decodedSamples/sampleRate-command.position : 0);
+          result=RadioStatus::Ended;
+        }
+      }
+    } else if (decodedEnd) result=sourceResult;
+    Serial.printf("[RADIO] session=%lu stream-ended reason=%s bytes=%u frames=%u mp3_peak=%u pcm_queued=%u\n", (unsigned long)epoch,
+                  current(epoch) ? reason : "cancelled", unsigned(receivedBytes), unsigned(decodedFrames),
+                  unsigned(peakBuffered),unsigned(output.written.load()-output.consumed.load()));
+    lease.detach();
+    ahead.clear();
     http.end();
     break;
   }
@@ -387,6 +463,7 @@ const char *Radio::label(RadioStatus value) {
   case RadioStatus::InvalidUrl: return "Stream-URL ungültig";
   case RadioStatus::Unsupported: return "Kein MP3-Stream";
   case RadioStatus::InvalidMetadata: return "MP3-Metadaten ungültig";
+  case RadioStatus::AudioStalled: return "Audio-Ausgabe blockiert";
   case RadioStatus::DnsError: return "DNS fehlgeschlagen";
   case RadioStatus::TlsError: return "TLS-Verbindung fehlgeschlagen";
   case RadioStatus::HttpError: return "HTTP-Fehler";

@@ -4,13 +4,14 @@ inline int radioTlsError = 0;
 inline unsigned radioHandshakeTimeout = 0;
 inline bool radioBundleUsed = false;
 inline unsigned fakeTlsClientsCreated = 0, fakeTlsClientsAlive = 0;
+inline bool radioNetworkStalled=false, radioKeepConnected=false;
 class NetworkClient {
 public:
   std::deque<uint8_t> body;
   virtual ~NetworkClient() = default;
-  virtual int available() { return int(body.size()); }
-  virtual int read(uint8_t *out, size_t size) { size=std::min(size,body.size()); for (size_t i=0;i<size;++i) { out[i]=body.front(); body.pop_front(); } return int(size); }
-  virtual bool connected() { return !body.empty(); }
+  virtual int available() { return radioNetworkStalled ? 0 : int(body.size()); }
+  virtual int read(uint8_t *out, size_t size) { if (radioNetworkStalled) return 0; size=std::min(size,body.size()); for (size_t i=0;i<size;++i) { out[i]=body.front(); body.pop_front(); } return int(size); }
+  virtual bool connected() { return radioKeepConnected || !body.empty(); }
 };
 class NetworkClientSecure : public NetworkClient {
 public:

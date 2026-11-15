@@ -107,7 +107,7 @@ class Ui {
   RadioIdle radioIdle;
   int radioStation = 0;
   String radioRequestedUrl;
-  bool radioPaused = false;
+  bool radioPaused = false, radioWasVisible = false;
   Podcasts podcasts;
   void syncAudio();
   void drawVolume();

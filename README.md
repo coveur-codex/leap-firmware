@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `f407be4`.
-Version: `1.7.1`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.7.2`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -888,3 +888,13 @@ werden unter anderem CheckPod-Dateien des BR nicht mehr an der 128-KiB-Suchgrenz
 abgewiesen. Die Lautstärke ist zwischen 0 und 10 in Einerschritten wählbar, darüber
 weiter in Fünferschritten. 0 bleibt stumm; gespeicherte Werte werden übernommen.
 [Details und Diagnose](docs/podcasts.md).
+
+
+## PSRAM-Audiopuffer und Sitzungswechsel (1.7.2)
+
+Radio und Podcasts verwenden zusätzlich 512 KiB PSRAM für komprimierte MP3-Daten.
+Der Worker liest auch bei vollem PCM-Puffer weiter. Beim Öffnen der Radio-Seite
+wird die vorherige Sitzung invalidiert; vor der nächsten Wiedergabe werden die
+Puffer geprüft und frisch angelegt. Eine blockierte Audioausgabe beendet die
+Sitzung nach zehn Sekunden ohne Verbrauch statt unbegrenzt zu warten.
+[Startverhalten, Grenzen und Diagnose](docs/radio.md#psram-vorrat-und-sitzungswechsel-ab-172).

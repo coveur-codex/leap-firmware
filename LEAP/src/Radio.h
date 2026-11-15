@@ -5,10 +5,12 @@
 #include <freertos/queue.h>
 #include <freertos/semphr.h>
 namespace leap {
-enum class RadioStatus : uint8_t { Stopped, Paused, Ended, Connecting, Buffering, Playing, NoWifi, InvalidUrl, Unsupported, InvalidMetadata, ConnectionError, Timeout, MemoryError, DnsError, TlsError, HttpError };
+enum class RadioStatus : uint8_t { Stopped, Paused, Ended, Connecting, Buffering, Playing, NoWifi, InvalidUrl, Unsupported, InvalidMetadata, AudioStalled, ConnectionError, Timeout, MemoryError, DnsError, TlsError, HttpError };
 class Radio {
   struct Command { uint32_t generation; char url[1001]; uint32_t position, duration; bool finite, seeked; };
   struct Pcm;
+  struct PcmLease;
+  void clearSession();
   QueueHandle_t commands = nullptr;
   SemaphoreHandle_t mutex = nullptr;
   Pcm *pcm = nullptr; // Only accessed under mutex; producer owns its lifetime.
@@ -18,6 +20,7 @@ class Radio {
   std::atomic<bool> pausedFlag{false}, endedNaturally{false};
   std::atomic<uint32_t> positionSeconds{0}, durationSeconds{0};
   void queue(const String &url, uint32_t position, uint32_t duration, bool finite, bool seeked);
+  std::atomic<uint32_t> bufferedEpoch{0}, bufferedMp3{0};
   std::atomic<int> responseCode{0};
   std::atomic<RadioStatus> state{RadioStatus::Stopped};
   bool current(uint32_t id) const { return requestedEpoch == id && !suspended && generation == id; }
@@ -41,6 +44,7 @@ public:
   uint32_t epoch() const { return generation.load(); }
   bool isSuspended() const { return suspended.load(); }
   bool active() const { return requestedEpoch != 0 && !suspended; }
+  size_t bufferedBytes() const { return active() && bufferedEpoch==generation ? bufferedMp3.load() : 0; }
   int httpCode() const { return responseCode.load(); }
   RadioStatus status() const { return pausedFlag && active() ? RadioStatus::Paused : state.load(); }
   // Audio task: a bounded copy, no network or decoding on the I2S task.

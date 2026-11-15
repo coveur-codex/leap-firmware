@@ -47,9 +47,10 @@ laufenden, zeitlich begrenzten Aufruf. Die UI wartet nicht auf DNS/TCP/TLS.
   FLAC und WAV sind nicht Teil dieser Erweiterung. Abweichende Samplerate im
   laufenden Sender wird mit Formatfehler beendet; mono/stereo bis 48 kHz.
 - Ab 1.6.1: Verbindungs-Timeout 8 s, TLS-Handshake 10 s, Header-Lese-Timeout 8 s,
-  Daten-/Decoder-Fortschrittslimit 8 s. DNS und langsam eintreffende Header können
+  Daten-/Decoder-Fortschrittslimit 8 s (Puffer-Regeln ab 1.7.2 siehe unten). DNS und langsam eintreffende Header können
   die Freigabe verzögern, bleiben aber vom UI-Task getrennt.
-- Separater Netzwerk-/Decoder-Task und 128 KiB Stereo-PCM-Ring in PSRAM;
+- Separater Netzwerk-/Decoder-Task, ab 1.7.2 zusätzlich 512 KiB komprimierter
+  MP3-Vorrat und 128 KiB Stereo-PCM-Ring in PSRAM;
   halber Ring vor Erststart/Wiederanlauf (ca. 372 ms bei 44,1 kHz).
 - Ausschließlich der vorhandene Audio-Task besitzt den I²S-Kanal und die
   unveränderten MAX98357A-Pins. Er liest höchstens 128 Stereo-Frames je Aufruf,
@@ -59,8 +60,9 @@ laufenden, zeitlich begrenzten Aufruf. Die UI wartet nicht auf DNS/TCP/TLS.
 ## Speicher und Prüfung
 
 Feste Task-Stack-Reservierung 24 KiB plus Queue/Mutex (ca. 1 KiB Nutzdaten).
-Pro aktiver Sitzung: 128 KiB PCM + 16 KiB Eingang + 4,5 KiB Decode-Ausgabe +
-6668 Bytes Decoderzustand = **155,0 KiB PSRAM**, zusätzlich dynamische HTTP-/TLS-
+Pro aktiver Sitzung ab 1.7.2: 512 KiB MP3-Vorrat + 128 KiB PCM + 16 KiB Eingang +
+4,5 KiB Decode-Ausgabe + 6668 Bytes Decoderzustand = **667,0 KiB PSRAM**,
+zusätzlich 8.200 Bytes Suchindex im Worker sowie dynamische HTTP-/TLS-
 Puffer und Konfigurations-JSON. minimp3 benötigt ca. 16 KiB temporären Stack,
 der in der 24-KiB-Taskreservierung enthalten ist. Alle Sitzungspuffer werden beim
 Beenden freigegeben. Das ist ein Quellcode-Budget, keine gemessene Heap-Spitze.
@@ -176,3 +178,43 @@ Benachrichtigungen dürfen während Radio keine andere Seite automatisch öffnen
 Beim erneuten Öffnen der Seite beginnt eine neue Frist. Manuelle Navigation,
 Sperren, Seiten-Deaktivierung und OTA können Radio weiterhin sofort beenden.
 Nach dem automatischen Wechsel beginnt auf Home wieder die normale Idle-Frist.
+
+
+## PSRAM-Vorrat und Sitzungswechsel ab 1.7.2
+
+Ein Ringpuffer mit **524.288 Bytes (512 KiB)** hält komprimierte Daten zwischen
+HTTP-/Chunk-/ICY-Verarbeitung und dem bisherigen 16-KiB-Decoderfenster. Der
+vorhandene 128-KiB-PCM-Ring bleibt bestehen. Alle großen Puffer werden explizit in
+PSRAM angelegt, ohne Rückfall auf internen RAM. Kein weiterer Task, Decoder oder
+I²S-Kanal. Fehlt die Allokation, erscheint `Speicher fehlt`; ein neuer Versuch
+kann danach wieder starten.
+
+Vor dem Dekodieren sammelt der Worker bis zu 32 KiB, wartet bei eintreffenden
+Daten dafür höchstens zwei Sekunden und beginnt bei EOF sofort. Danach liest er
+auch bei vollem PCM-Ring oder Pause bis zur Kapazität weiter. Podcasts können
+schneller als in Echtzeit vorgeladen werden. Live-Sender liefern zukünftiges
+Audio erst mit der Zeit: Ein 512-KiB-Puffer ist dort nicht automatisch gefüllt.
+Voll gefüllt entspricht er bei 128 kbit/s ungefähr 33 Sekunden, bei 192 kbit/s
+22 Sekunden. Diese Reserven sind Kapazitätswerte, keine garantierten Netzpausen.
+
+Eine Netzpause beendet die Sitzung erst nach acht Sekunden ohne neue Daten und
+ohne nutzbaren Vorrat. Bereits empfangene MP3-/PCM-Daten werden weiter abgespielt,
+auch nach einem Verbindungsabbruch; ein abgeschnittener Podcast gilt weiterhin
+nicht als vollständig gehört. Eine Pause setzt die Wartebudgets zurück. Bleibt
+bei bereitstehenden PCM-Daten ohne Pause der Verbrauch zehn Sekunden stehen,
+endet die Sitzung mit `Audio-Ausgabe blockiert` / `pcm-consumer-stalled`.
+Das gilt auch für das bisher unbegrenzte Warten am Episodenende. Damit wird eine
+mögliche Hängequelle begrenzt; andere Ursachen eines Gerätehängers sind dadurch
+nicht ausgeschlossen.
+
+Beim Eintritt in die Radio-Seite invalidiert die UI die vorherige Generation
+und stoppt die Audiojobs. Vor jeder neuen Sitzung prüft der Worker die gemeinsame
+PCM-Referenz und entfernt eine unerwartet verbliebene Referenz unter Mutex. Ein
+Lebensdauer-Guard trennt die Referenz vor jeder Freigabe. MP3-Vorrat, PCM und
+Decoderfenster beginnen leer; `[RADIO] ... clean buffers ... capacity=524288`
+bestätigt die Initialisierung. Nur der Worker gibt seinen Speicher frei; die UI
+wartet nicht auf einen laufenden DNS-/TLS-Aufruf. Beim Beenden zeigt
+`mp3_peak` den höchsten Füllstand und `pcm_queued` noch nicht abgeholte Samples.
+Bei Verdacht auf Hänger diese Zeile, `pcm-consumer-stalled`, `stack_free` und die
+folgenden `[HEALTH]`-Werte vergleichen. Seitenwechsel, Seek, Fehler und OTA
+invalidieren vorheriges Audio sofort; Freigabe folgt nach Rückkehr des Workers.
