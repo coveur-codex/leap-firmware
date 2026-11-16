@@ -157,3 +157,18 @@ Am Gerät bleiben die Anzeige langer Titel, reale Senderformate und die zeitlich
 Zuordnung zum hörbaren I²S-Ton zu prüfen. Sender ohne eindeutig gekennzeichneten
 Interpreten können nur einen Gesamttitel liefern. Es ist keine Änderung am
 Homeserver oder an dessen Datenbank notwendig.
+
+
+## 1.8.1 · Stabile Radio-Anzeige
+
+Der tatsächliche MP3-Worker wird mit wiederholt blockierten nicht wartenden
+Mutex-Abfragen und leeren Titelmeldungen geprüft: der UI-Snapshot behält
+bekannte Angaben bis zum nächsten verwertbaren Titel. Vor dem ersten Titel
+bleibt er leer. Stop und direkter Senderwechsel invalidieren den Snapshot auch
+bei belegtem Mutex sofort. Pause, Wiedergabezuordnung, identische PCM-Samples
+und Prüfsumme sowie vollständige Speicherfreigabe bleiben Teil des Tests.
+
+Die Radio-Ansicht zeigt den Interpreten mit Personensymbol über dem Titel mit
+Notensymbol und ein kleines Radio rechts oben. Textbreiten berücksichtigen
+die Icons; lange Texte werden umgebrochen und gekürzt. Positionen, Symbole und
+ruhige Anzeige sind am realen Display zu prüfen.

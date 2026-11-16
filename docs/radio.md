@@ -223,8 +223,9 @@ invalidieren vorheriges Audio sofort; Freigabe folgt nach Rückkehr des Workers.
 
 ## Titel und Interpret ab 1.8.0
 
-Unter dem Sendernamen erscheinen der Titel (bis zu drei Zeilen) und der Interpret
-(eine Zeile); längere Texte werden mit `...` gekürzt. Status, Lautstärkebalken,
+Unter dem Sendernamen stehen ab 1.8.1 der Interpret mit Personensymbol (bis zu
+zwei Zeilen) und darunter der Titel mit Notensymbol (bis zu drei Zeilen). Rechts
+oben erscheint ein kleines Radio-Icon. Längere Texte werden mit `...` gekürzt. Status, Lautstärkebalken,
 Avatar und Tastenbelegung bleiben erhalten. Ohne auswertbare Informationen steht
 dort `Keine Titelinformationen`. Dafür muss der Sender ICY-Metadaten mit
 `icy-metaint` liefern; es werden keine zusätzlichen Webdienste abgefragt.
@@ -238,9 +239,12 @@ anders sortierte Sendertexte lassen sich ohne weitere Kennzeichnung nicht
 zuverlässig trennen. UTF-8 bleibt erhalten; ältere Latin-1-Bytes werden nach
 UTF-8 gewandelt. Steuerzeichen werden entfernt, Feldlängen sind begrenzt.
 
-Null-Längen-Blöcke bedeuten unveränderte Informationen; `StreamTitle=''` löscht
-die Anzeige ab dieser Audioposition. Fehlerhafte und unvollständige Felder werden
-ignoriert, ohne die Audioausgabe zu unterbrechen. Beim Stoppen, Senderwechsel,
+Ab 1.8.1 verändern weder Null-Längen-Blöcke noch `StreamTitle=''` die bereits
+bekannte Anzeige. Sie bleibt bis zur nächsten verwertbaren Titelmeldung stehen.
+Auch ein kurz belegter Audio-Mutex löscht den zuletzt gelesenen Stand nicht;
+die UI wartet dabei nicht auf den Mutex. `Keine Titelinformationen` erscheint
+innerhalb einer Sitzung nur, solange noch keine Angaben vorliegen. Fehlerhafte
+und unvollständige Felder werden ignoriert, ohne die Audioausgabe zu unterbrechen. Beim Stoppen, Senderwechsel,
 Verlassen der Seite und beim nächsten Verbindungsversuch werden alte Angaben
 sofort über dieselbe Sitzungsgeneration ungültig.
 

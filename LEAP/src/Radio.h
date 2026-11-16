@@ -32,7 +32,8 @@ class Radio {
   void stream(const Command &command, struct Mp3SeekIndex &index, String &indexUrl, String &validator);
 public:
   bool begin();
-  bool trackInfo(RadioTrack &out);
+  // Keep the snapshot across UI frames; reads never wait for the audio mutex.
+  bool trackInfo(RadioTrackSnapshot &out);
   void play(const String &url);
   void playEpisode(const String &url, uint32_t position=0, uint32_t duration=0, bool seeked=false) {
     queue(url, position, duration, true, seeked);

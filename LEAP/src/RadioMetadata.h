@@ -12,6 +12,12 @@ struct RadioTrack {
     return !strcmp(artist,other.artist) && !strcmp(title,other.title);
   }
 };
+// The UI keeps this snapshot between frames. An unavailable mutex must not
+// erase known text; the epoch prevents it from surviving a session change.
+struct RadioTrackSnapshot {
+  RadioTrack track;
+  uint32_t epoch=0;
+};
 namespace icy_detail {
 inline bool space(char c) { return c==' ' || c=='\t' || c=='\r' || c=='\n'; }
 inline std::string_view trim(std::string_view s) {
@@ -77,7 +83,7 @@ public:
     if (used<sizeof(block)-1) block[used++]=char(byte);
     if (last) { block[used]=0;complete=true; }
   }
-  // A zero-length ICY block means unchanged; explicit StreamTitle='' clears.
+  // A zero-length block means unchanged; explicit empty fields parse as empty.
   bool take(RadioTrack &track) {
     if (!complete) return false;
     complete=false;
@@ -134,7 +140,7 @@ class RadioTrackTimeline {
   bool hasLast=false;
 public:
   void push(uint64_t byte,const RadioTrack &track) {
-    if (hasLast && last==track) return;
+    if (track.empty() || (hasLast && last==track)) return;
     if (count==Capacity) {
       // Preserve imminent changes, coalesce only the most distant future event.
       // Never overwrite a marker that is already waiting for PCM consumption.

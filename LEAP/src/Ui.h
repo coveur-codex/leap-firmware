@@ -16,6 +16,7 @@
 #include "RoomControls.h"
 #include "WifiEditor.h"
 #include "Podcasts.h"
+#include "RadioMetadata.h"
 namespace leap {
 struct Page {
   String id, title;
@@ -105,6 +106,7 @@ class Ui {
   void action(const InputEvent &event);
   void handleInput(const InputEvent &event);
   RadioIdle radioIdle;
+  RadioTrackSnapshot radioTrack;
   int radioStation = 0;
   String radioRequestedUrl;
   bool radioPaused = false, radioWasVisible = false;
