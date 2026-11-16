@@ -16,6 +16,7 @@
 #include "Network.h"
 #include "Protocol.h"
 #include "GameSelection.h"
+#include "LearningSelection.h"
 #include "Communication.h"
 #include "ChatSymbols.h"
 #include "ChatAvatar.h"
@@ -30,6 +31,8 @@ static String displayText(const String &s) {
   return String(displayGlyphs(s.c_str()).c_str());
 }
 static String gameTitle(const String &id) {
+  if (id == "syllable_trainer")
+    return "SilbenTrainer";
   if (id == "math_lab")
     return "Mathe-Labor";
   if (id == "dragon_run")
@@ -88,6 +91,7 @@ bool Ui::beginDisplay() {
 bool Ui::begin(JsonDocument *bootState) {
   if (!healthy && !beginDisplay()) return false;
   prefs.begin("leap-ui", false);
+  syllableTrainer.loadMarks(prefs.getString("syllable-repeat", "").c_str());
   game.begin();
   chill.begin();
   brightness = constrain(prefs.getInt("brightness", 170), 20, 255);
@@ -165,9 +169,11 @@ bool Ui::reload(bool initial) {
     if (id == "communication" && state["config"]["communicationEnabled"] != true)
       continue;
     if (id == "home" || id == "news" || id == "weather" || id == "aircraft" || id == "quiz" ||
-        id == "podcasts" || id == "radio" || id == "room" || id == "finance" || id == "time" || id == "games" || id == "communication" || id == "knowledge" || id == "settings")
+        id == "podcasts" || id == "radio" || id == "room" || id == "finance" || id == "time" || id == "games" || id == "learning" || id == "communication" || id == "knowledge" || id == "settings")
       pages.push_back({id, p["title"] | id, p["order"] | 0});
   }
+  if (legacyMathLab(state["config"]))
+    pages.push_back({"learning", "Lernwelt", 999});
   std::stable_sort(pages.begin(), pages.end(),
                    [](const Page &a, const Page &b) { return a.order < b.order; });
   if (assetOfType("chill").length())
@@ -179,6 +185,7 @@ bool Ui::reload(bool initial) {
   page = std::min(page, int(pages.size()) - 1);
   selection = item = scroll = 0;
   if (!same) {
+    syllableOpen = false;
     roomControls.cancel();
     roomFrame.clear();
     inputDiagnostics = false;
@@ -333,9 +340,10 @@ static const uint8_t pageIcons[][7] = {
     {28, 34, 73, 77, 65, 34, 28},
     {65, 67, 69, 73, 81, 97, 127},
     {8, 28, 62, 127, 65, 93, 127},
-    {2, 12, 62, 65, 93, 85, 62}};     // radio
+    {2, 12, 62, 65, 93, 85, 62},       // radio
+    {54, 73, 73, 127, 73, 73, 62}};   // learning: open book
 static const char *pageIds[] = {"home", "news", "weather", "aircraft", "quiz", "games",
-                                "communication", "knowledge", "settings", "chill", "time", "finance", "room", "radio"};
+                                "communication", "knowledge", "settings", "chill", "time", "finance", "room", "radio", "learning"};
 void Ui::observeNews(bool initial) {
   auto news = state["content"]["news"];
   int64_t bootEpoch = news["notificationBootEpoch"] | int64_t(0);
@@ -940,15 +948,18 @@ void Ui::drawPage(const String &id) {
         labels.push_back(q["a"][i] | "");
       list(labels, 94, QuizAnswersTop, 326);
     }
-  } else if (id == "games") {
-    if (gameOpen)
+  } else if (id == "games" || id == "learning") {
+    if (syllableOpen && id == "learning")
+      syllableTrainer.draw(*canvas, Accent);
+    else if (gameOpen)
       game.draw(*canvas, 94, 10, Accent);
     else {
       std::vector<String> labels;
-      for (const auto &id : enabledGames(state["config"]))
+      auto available = id == "learning" ? enabledLearningApps(state["config"]) : enabledGames(state["config"]);
+      for (const auto &id : available)
         labels.push_back(gameTitle(id.c_str()));
       if (labels.empty())
-        body("Keine Spiele freigegeben.");
+        body(id == "learning" ? "Keine Lernanwendungen freigegeben." : "Keine Spiele freigegeben.");
       else
         list(labels);
     }
@@ -1148,6 +1159,10 @@ void Ui::render() {
     // Current page title lives below the sidebar navigation.
     drawPage(pages[page].id);
   }
+  if (!locked && !menu && syllableOpen && !pages.empty() && pages[page].id == "learning") {
+    canvas->flush();
+    return;
+  }
   if (!locked && !menu && gameOpen &&
       (game.isPet() || game.isSnakeMultiplayer() || game.isConnectFour() || game.isKitchen() || game.isCrabJourney() ||
        game.isDragonRun() || game.isMathLab())) {
@@ -1162,6 +1177,12 @@ void Ui::render() {
   if (!locked && !menu && !pages.empty() && pages[page].id == "quiz" &&
       quizCatalog >= 0 && quiz["questions"].size() && !answered)
     quizTimer.shown(millis());
+}
+void Ui::saveSyllableMarks() {
+  auto saved = syllableTrainer.saveMarks();
+  prefs.putString("syllable-repeat", saved.c_str());
+  if (prefs.getString("syllable-repeat", "!") == saved.c_str()) syllableTrainer.marksChanged = false;
+  syllableSavedAt = millis();
 }
 void Ui::input(const InputEvent &e) {
   handleInput(e);
@@ -1217,12 +1238,19 @@ void Ui::handleInput(const InputEvent &e) {
     return;
   if (!locked && !menu && gameOpen && game.isCrabJourney() && game.crabInput(e))
     return;
-  if (!locked && !menu && gameOpen && game.isMathLab() && !e.longPress) {
+  if (!locked && !menu && gameOpen && game.isMathLab() && !e.longPress &&
+      (e.right || (e.key != Key::Left && e.key != Key::Right))) {
     if (game.mathLabInput(e)) {
       game.close();
       gameOpen = false;
       selection = scroll = 0;
     }
+    return;
+  }
+  if (!locked && !menu && syllableOpen && e.right) {
+    syllableTrainer.input(e, millis());
+    if (syllableTrainer.marksChanged && e.longPress && e.key == Key::Center &&
+        e.heldMs < Input::ExtendedCenterHoldMs) saveSyllableMarks();
     return;
   }
   // Only the kitchen uses the additional hold; other pages keep one long action.
@@ -1234,6 +1262,7 @@ void Ui::handleInput(const InputEvent &e) {
   if (e.longPress) {
     if (!e.right && e.key == Key::Center) {
       locked = true;
+      syllableOpen = false;
       wifiVisible=false; wifiEditor={};
       game.close();
       gameOpen = false;
@@ -1286,6 +1315,11 @@ void Ui::handleInput(const InputEvent &e) {
   }
   if (!e.right) {
     if (e.key == Key::Center) {
+      if (syllableOpen) {
+        syllableOpen = false;
+        selection = scroll = 0;
+        return;
+      }
       if (gameOpen) {
         gameOpen = false;
         game.close();
@@ -1300,7 +1334,7 @@ void Ui::handleInput(const InputEvent &e) {
     if (e.key == Key::Left || e.key == Key::Right) {
       page = (page + pages.size() + (e.key == Key::Right ? 1 : -1)) % pages.size();
       selection = item = scroll = 0;
-      answered = gameOpen = false;
+      answered = gameOpen = syllableOpen = false;
       if (pages[page].id == "quiz")
         startQuiz();
       game.close();
@@ -1370,7 +1404,7 @@ void Ui::action(const InputEvent &e) {
         audio.tone(answerOrder[selection] == 0 ? 880 : 220);
       }
     }
-  } else if (id == "games") {
+  } else if (id == "games" || id == "learning") {
     if (gameOpen) {
       if (e.key == Key::Center && !game.active() && !game.isConnectFour()) {
         if (game.isSnake())
@@ -1382,12 +1416,18 @@ void Ui::action(const InputEvent &e) {
       } else
         game.input(e.key);
     } else {
-      auto available = enabledGames(state["config"]);
+      auto available = id == "learning" ? enabledLearningApps(state["config"]) : enabledGames(state["config"]);
       selection = constrain(selection + direction, 0, std::max(0, int(available.size()) - 1));
       if (e.key == Key::Center && selection < int(available.size())) {
-        game.start(available[selection].c_str());
-        game.mathLabTargets(state["config"]["mathLab"]);
-        gameOpen = true;
+        if (available[selection] == "syllable_trainer") {
+          syllableTrainer.configure(learningSettings(state["config"])["syllableTrainer"]);
+          syllableOpen = true;
+        } else {
+          game.start(available[selection].c_str());
+          // Existing target configuration is deliberately unchanged by the move.
+          game.mathLabTargets(state["config"]["mathLab"]);
+          gameOpen = true;
+        }
       }
     }
   } else if (id == "communication") {
@@ -1582,6 +1622,8 @@ void Ui::tick() {
     lastInput = millis(); frameRequested = true;
   }
   if (!locked && !menu && !pages.empty()) notifications.markRead(pages[page].id.c_str());
+  if (syllableTrainer.tick(millis(), syllableOpen && !locked && !menu &&
+      !pages.empty() && pages[page].id == "learning")) frameRequested = true;
   game.tick();
   if (game.takeMultiplayerTimeout()) {
     game.close();
@@ -1610,10 +1652,13 @@ void Ui::tick() {
   ledcWrite(hw::Backlight, dim ? 20 : brightness);
   if (idle.lock) {
     locked = true;
+    syllableOpen = false;
     game.close();
     gameOpen = false;
     menu = false;
   }
+  if (syllableTrainer.marksChanged && elapsed(millis(), syllableSavedAt, 5000))
+    saveSyllableMarks();
   if (dirtySettings && elapsed(millis(), lastSave, 5000)) {
     prefs.putInt("brightness", brightness);
     prefs.putUChar("volume", audio.volume);

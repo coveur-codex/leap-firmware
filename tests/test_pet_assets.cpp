@@ -45,7 +45,7 @@ int main() {
   assert(avatarFrame(manifest, 400) == "Example/data/pet/idle/frame_02.png");
   assert(avatarFrame(manifest, 800) == "Example/data/pet/idle/frame_03.png");
   // Every page selects the corresponding static in the assigned avatar package.
-  for (const char *page : {"home", "news", "weather", "flightradar", "quiz", "games",
+  for (const char *page : {"home", "news", "weather", "flightradar", "quiz", "games", "learning",
                           "communication", "knowledge", "settings"}) {
     std::string path = "data/pet/pagestatics/" + std::string(page) + ".png";
     files.add<JsonObject>()["path"] = path;

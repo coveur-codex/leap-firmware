@@ -16,7 +16,7 @@ inline std::vector<std::string> enabledGames(JsonVariantConst config) {
   std::vector<std::string> result;
   for (JsonObjectConst game : config["games"].as<JsonArrayConst>()) {
     std::string id = game["id"] | "";
-    if (game["enabled"] == true && builtInGame(id) &&
+    if (game["enabled"] == true && builtInGame(id) && id != "math_lab" &&
         std::find(result.begin(), result.end(), id) == result.end())
       result.push_back(id);
   }

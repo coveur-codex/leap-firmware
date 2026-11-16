@@ -20,7 +20,7 @@ public:
   std::array<int, 100> targets{{10}};
   size_t targetCount = 1;
   void start();
-  // Returns true only when leaving the laboratory for the existing games menu.
+  // Returns true only when leaving the laboratory for the learning menu.
   bool input(const InputEvent &e);
   void tick(uint32_t now);
   void draw(Arduino_GFX &gfx, uint16_t accent = 0x06b8);

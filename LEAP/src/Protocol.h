@@ -60,7 +60,7 @@ inline std::string avatarPageImage(JsonVariantConst manifest, const std::string 
   else if (page == "time")
     name = "zeit";
   bool known = false;
-  for (const char *id : {"home", "news", "weather", "flightradar", "quiz", "games",
+  for (const char *id : {"home", "news", "weather", "flightradar", "quiz", "games", "learning",
                          "communication", "knowledge", "settings", "finanzen", "zeit"})
     known = known || name == id;
   if (!known)

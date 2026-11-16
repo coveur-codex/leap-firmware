@@ -1,6 +1,7 @@
 # Mathe-Labor · Firmware 1.1.1
 
-`math_lab` ist genau ein Eintrag in der bestehenden freigegebenen Spieleliste.
+`math_lab` ist ab Firmware 1.9.0 ein Eintrag in der freigegebenen Lernwelt.
+Engine und `config.mathLab.targets` bleiben unverändert; siehe [Lernwelt](learning.md).
 Homeserver 1.1.1 ergänzt die Registry; im Geräteeditor aktivieren und synchronisieren.
 Bestehende Gerätefreigaben bleiben unverändert. Danach sind alle Übungen offline
 verfügbar. Sidebar, Uhr und Avatar bleiben erhalten; die Aktivitäten verwenden

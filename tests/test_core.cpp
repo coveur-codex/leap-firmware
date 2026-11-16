@@ -1,6 +1,7 @@
 #include "Core.h"
 #include "Protocol.h"
 #include "GameSelection.h"
+#include "LearningSelection.h"
 #include <cassert>
 #include <fstream>
 #include <iostream>
@@ -108,9 +109,10 @@ int main(int argc, char **argv) {
     assert(!deserializeJson(fixtures, stream));
     assert(deviceConfig(fixtures["config"], "leap-test", 1));
     if (fixtures["gameConfig"].is<JsonObject>()) {
-      assert(enabledGames(fixtures["config"]).size() == 10);
+      assert(enabledGames(fixtures["config"]).size() == 9);
       assert(enabledGames(fixtures["gameConfig"]) == std::vector<std::string>{"snake"});
     }
+    assert((enabledLearningApps(fixtures["config"]) == std::vector<std::string>{"math_lab", "syllable_trainer"}));
     for (JsonVariant m : fixtures["manifests"].as<JsonArray>()) {
       assert(manifestMetadata(m, 8 * 1024 * 1024));
       if (m["type"] == "avatar") {

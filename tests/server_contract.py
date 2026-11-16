@@ -34,6 +34,8 @@ with tempfile.TemporaryDirectory() as temp:
     session = sessionmaker(bind=engine, expire_on_commit=False)()
     device = Device(device_id="leap-test", name="Test", age=8)
     initialize_pages(device)
+    learning = next(page for page in device.pages if page.page_id == "learning")
+    learning.settings = {**learning.settings, "syllableTrainer": {"levels": [2], "defaultMode": 2, "sessionLength": 15, "words": [{"word": "WIESE", "syllables": ["WIE", "SE"], "level": 2}]}}
     session.add(device)
     session.commit()
     podcast=Podcast(name="Wissen",url="https://example.org/feed.xml")
@@ -66,6 +68,8 @@ with tempfile.TemporaryDirectory() as temp:
     assert response.status_code == 200, response.text
     plan = response.json()
     config = client.get(plan["configUrl"]).json()
+    assert next(page for page in config["pages"] if page["id"] == "learning")["settings"]["syllableTrainer"]["words"][0]["syllables"] == ["WIE", "SE"]
+    assert "math_lab" not in {game["id"] for game in config["games"]}
     assert {"tamagotchi", "snake"}.issubset({g["id"] for g in config["games"]})
     podcast_page=client.get(base+f"/podcasts/{podcast.id}/episodes").json()
     assert podcast_page["total"]==1

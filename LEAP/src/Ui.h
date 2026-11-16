@@ -1,6 +1,7 @@
 #pragma once
 #include "Games.h"
 #include "IdlePolicy.h"
+#include "SyllableTrainer.h"
 #include "Chill.h"
 #include "Input.h"
 #include "Media.h"
@@ -36,6 +37,10 @@ class Ui {
   bool quizLoaded = false;
   Media avatar, picture, senderAvatar;
   Games game;
+  SyllableTrainer syllableTrainer{[] { return esp_random(); }};
+  bool syllableOpen = false;
+  uint32_t syllableSavedAt = 0;
+  void saveSyllableMarks();
   Chill chill;
   Preferences prefs;
   int page = 0, selection = 0, item = 0, scroll = 0, answerOrder[4] = {0, 1, 2, 3},

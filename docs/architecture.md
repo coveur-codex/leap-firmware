@@ -78,3 +78,11 @@ weder lokalen Start noch lokale Bestätigung. Der Serverbericht folgt später.
   fehlender Bestätigung nach Neustart.
 - Kein FS: automatische Erstinitialisierung nur bei vollständig nachweislich gelöschter
   Partition; bestehende Daten bleiben geschützt, lokale Startanzeige und manuelle Recovery.
+
+
+Lernwelt (1.9.0): normale `learning`-Seite mit gerätebezogener App-Auswahl in
+`pages[].settings`. `LearningSelection.h` teilt Freigaben zwischen Liste und
+Startpfad. Das Mathe-Labor nutzt unverändert die Games-Engine.
+`SyllableTrainer` verwaltet lokale Inhalte, Rundengeschichte und Darstellung;
+`Ui` verbindet ausschließlich Konfigurations-Snapshot, NVS-Merkliste und globale
+Navigation. Kein zusätzlicher Task oder Netzwerkpfad. Siehe [Lernwelt](learning.md).

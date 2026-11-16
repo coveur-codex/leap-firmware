@@ -10,6 +10,8 @@ for harness in radio communication; do
     tests/test_strlcpy.cpp -o "build/tests/strlcpy-${harness}"
   "build/tests/strlcpy-${harness}"
 done
+c++ -std=c++17 -Wall -Wextra -Werror -I tests/input_fakes -I tests/game_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_syllable_trainer.cpp LEAP/src/SyllableTrainer.cpp -o build/tests/syllable-trainer
+build/tests/syllable-trainer "${@}"
 c++ -std=c++17 -Wall -Wextra -Werror -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_notifications.cpp -o build/tests/notifications
 build/tests/notifications
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_display_text.cpp -o build/tests/display-text
