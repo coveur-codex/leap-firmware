@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `f407be4`.
-Version: `1.8.0`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.8.1`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -906,3 +906,11 @@ Die Radio-Seite zeigt ICY-Titelinformationen unter dem Sendernamen. Das übliche
 `Interpret - Titel` wird in getrennte Zeilen aufgeteilt. Titelwechsel folgen der
 abgespielten Audioposition, auch mit gefülltem PSRAM-Vorrat und während Pause.
 [Unterstützte Metadaten und Grenzen](docs/radio.md#titel-und-interpret-ab-180).
+
+
+## Ruhige Radio-Anzeige und kleine Symbole (1.8.1)
+
+Bekannte Titelinformationen bleiben bei kurzen Lesekonflikten und leeren
+Metadatenmeldungen stehen. Sender- und Sitzungswechsel entfernen alte Angaben
+weiterhin sofort. Interpret und Titel stehen mit Personen- und Notensymbol
+untereinander; rechts oben ist wieder ein kleines Radio-Icon.

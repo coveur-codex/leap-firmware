@@ -45,7 +45,7 @@ int main() {
   // Full legal ICY block, padded to exactly 4080 bytes; unknown fields ignored.
   std::string full="StreamTitle='A - B';";full.resize(4080,0);
   assert(parse(parser,full,track) && std::string(track.title)=="B");
-  // Arbitrary HTTP chunk and ICY splits, zero-length unchanged, explicit empty clear.
+  // Arbitrary HTTP chunk and ICY splits, zero-length unchanged.
   IcyMetadata meta;RadioBody body(true,3,&meta);std::string audio;
   std::string block="StreamTitle='A - B';";block.resize(32,0);
   std::string wire=std::string("abc")+char(2)+block+"def"+char(0)+"ghi";
@@ -62,6 +62,8 @@ int main() {
   RadioTrackTimeline timeline;
   timeline.push(100,track);timeline.map(99,0);assert(!timeline.take(1000,track));
   timeline.map(100,2000);assert(!timeline.take(2000,track));assert(timeline.take(2001,track));
+  RadioTrack empty;
+  timeline.push(150,empty);timeline.map(150,2500);assert(!timeline.take(2501,track));
   timeline.push(200,track);timeline.map(200,3000);assert(!timeline.take(4000,track)); // duplicate
   RadioTrack other;strcpy(other.title,"Next");timeline.push(300,other);
   timeline.map(300,UINT32_MAX-10);assert(!timeline.take(UINT32_MAX-10,track));

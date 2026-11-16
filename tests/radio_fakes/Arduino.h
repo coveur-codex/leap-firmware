@@ -67,7 +67,8 @@ inline int xQueueReceive(QueueHandle_t queue, void *out, TickType_t) {
 }
 inline void vQueueDelete(QueueHandle_t) {}
 inline SemaphoreHandle_t xSemaphoreCreateMutex() { return reinterpret_cast<void *>(1); }
-inline int xSemaphoreTake(SemaphoreHandle_t, TickType_t) { return pdTRUE; }
+inline bool radioMutexBusy=false;
+inline int xSemaphoreTake(SemaphoreHandle_t, TickType_t wait) { return !wait && radioMutexBusy ? 0 : pdTRUE; }
 inline void xSemaphoreGive(SemaphoreHandle_t) {}
 inline void vSemaphoreDelete(SemaphoreHandle_t) {}
 inline int xTaskCreatePinnedToCore(void (*task)(void *), const char *, unsigned, void *context, unsigned, void *, int) {

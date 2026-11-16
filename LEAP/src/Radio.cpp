@@ -65,13 +65,16 @@ void Radio::clearSession() {
   bufferedMp3=0;bufferedEpoch=0;
   if (stale) log("RADIO","Stale PCM view detached before new session");
 }
-bool Radio::trackInfo(RadioTrack &out) {
-  out={};
-  if (!active() || !mutex || xSemaphoreTake(mutex,0)!=pdTRUE) return false;
-  bool valid=active() && trackEpoch==generation;
-  if (valid) out=track;
-  xSemaphoreGive(mutex);
-  return valid && !out.empty();
+bool Radio::trackInfo(RadioTrackSnapshot &out) {
+  uint32_t epoch=generation.load();
+  if (!active() || out.epoch!=epoch) { out={};out.epoch=epoch; }
+  if (!active() || !mutex) return false;
+  if (xSemaphoreTake(mutex,0)==pdTRUE) {
+    if (current(epoch) && trackEpoch==epoch && !track.empty()) out.track=track;
+    xSemaphoreGive(mutex);
+  }
+  if (!current(epoch)) { out={};return false; }
+  return !out.track.empty();
 }
 bool Radio::begin() {
   mutex = xSemaphoreCreateMutex();
