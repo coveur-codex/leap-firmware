@@ -22,7 +22,7 @@ Stand: 2026-11-16. Lernwelt, SilbenTrainer und bisherige Firmwaremodule.
   435 pytest-Tests und anschließend 23 gezielte Editor-/Lernweltprüfungen bestanden.
 - Reale PNGdec-/JPEGDEC-/asynchrone Media-Regressionen bestanden.
 - Finaler universeller ESP32-S3 N16R8-Build mit Core 3.3.0 und festgelegten
-  Libraries bestanden: App 1.864.496 Bytes, statische globale Daten 97.224 Bytes.
+  Libraries bestanden: App 1.864.496 Bytes, statische globale Daten 97.228 Bytes.
   `check_image.py` bestätigt Version 1.9.0, ESP32-S3, Hash und App-/Slotgrenze.
   Bestehende Core-/Bibliotheks-/ArduinoJson-Warnungen bleiben.
 - Hardware-Abnahme auf dem ESP32-S3 bleibt offen; konkrete Prüfschritte und
