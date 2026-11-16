@@ -1,4 +1,5 @@
 #pragma once
+#include "RadioMetadata.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <string>
@@ -44,13 +45,14 @@ inline std::string radioRedirect(const std::string &base, const std::string &tar
 }
 // Incremental HTTP chunk framing and ICY stripping. Never waits for a byte.
 class RadioBody {
+  IcyMetadata *metadata;
   bool chunked;
   uint32_t interval, audioLeft, metaLeft = 0, chunkLeft = 0, chunkSize = 0;
   uint8_t framing = 0, digits = 0;
   bool extension = false;
   size_t headerLength = 0;
 public:
-  RadioBody(bool chunks, uint32_t icy) : chunked(chunks), interval(icy), audioLeft(icy) {}
+  RadioBody(bool chunks, uint32_t icy, IcyMetadata *info=nullptr) : metadata(info), chunked(chunks), interval(icy), audioLeft(icy) {}
   // -1 malformed, 0 framing/metadata, 1 MP3 byte, 2 end of chunked body.
   int feed(uint8_t value) {
     if (chunked) {
@@ -71,8 +73,10 @@ public:
       }
       if (!--chunkLeft) framing = 3;
     }
-    if (metaLeft) { --metaLeft; return 0; }
-    if (interval && !audioLeft) { metaLeft = uint32_t(value) * 16; audioLeft = interval; return 0; }
+    if (metaLeft) { --metaLeft;if (metadata) metadata->feed(value,metaLeft==0);return 0; }
+    if (interval && !audioLeft) { metaLeft = uint32_t(value) * 16; audioLeft = interval;
+      if (metadata && metaLeft) metadata->begin();
+      return 0; }
     if (interval) --audioLeft;
     return 1;
   }
