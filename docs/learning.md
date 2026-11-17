@@ -25,6 +25,9 @@ Nur am Server freigegebene Stufen sind wählbar. Standard: leicht, Modus 1,
 Links bleibt global: Links/Rechts wechselt die Region, Mitte zurück zur
 App-Auswahl, Mitte halten sperrt. Auch im Mathe-Labor sind linkes Links/Rechts
 globale Seitenwechsel; dessen übrige lokale Bedienung bleibt erhalten.
+Bei fester Reihenfolge setzt die nächste Runde den Katalog fort und beginnt
+erst nach dessen Ende wieder vorn. Die Positionen sind je Modus, Stufe und
+normaler/Wiederholungsrunde getrennt; beim erneuten Öffnen werden sie zurückgesetzt.
 Am Rundenende startet Mitte eine weitere Runde; rechts Links zeigt die letzte
 Aufgabe erneut. Kein Punktestand, keine Bewertung oder Zeitwertung.
 Der optionale Timer läuft nur bei sichtbarer Übung und stoppt am Rundenende.
@@ -56,10 +59,21 @@ Getrennte Silben wechseln zwischen lesbarer Akzentfarbe (bei dunkler Farbe Weiß
 und Gelb; sichtbare Bindestriche erhalten die Bedeutung ohne Farberkennung.
 Vollständige Wörter sind weiß. Modus und Position erscheinen klein am oberen Rand.
 
-`SyllableData.h` enthält 72 Silben und 29 Wörter mit expliziter Gliederung und
-Stufe 1–3. Leicht: offene Silben und einfache zweisilbige Wörter;
-Mittel: geschlossene Silben und längere Wörter; Schwer: Konsonantenverbindungen,
-SCH/CH, Umlaute und längere Wörter. Keine automatische Silbentrennung.
+`SyllableData.h` enthält ab 1.9.2 **271 Silben und 349 Wörter** mit expliziter
+Gliederung und Stufe 1–3. Die bisherigen Einträge behalten ihre Stufe.
+
+| Stufe | Silben | Wörter | Beispiele |
+| --- | ---: | ---: | --- |
+| Leicht | 75 | 52 | HU-PE, KA-NU, LI-SA |
+| Mittel | 70 | 114 | GA-BEL, KAR-TOF-FEL, LA-TER-NE |
+| Schwer | 126 | 183 | BRÜ-CKE, ZAHN-BÜRS-TE, EICH-HÖRN-CHEN |
+
+Leicht bleibt bei offenen Silben und einfachen zweisilbigen Wörtern, darunter
+Tätigkeiten und vertraute Vornamen. Mittel ergänzt geschlossene Silben,
+Doppelkonsonanten und längere regelmäßig lesbare Wörter. Schwer enthält
+Konsonantenverbindungen, SCH/CH, Doppellaute, Umlaute und zusammengesetzte Wörter.
+Die Themen reichen von Familie, Alltag und Körper über Tiere und Essen bis
+Schule, Natur und Verkehr. Keine automatische Silbentrennung.
 Inhalte am Server pädagogisch prüfen; eine strukturelle Prüfung kann keine
 sprachlich falsche Gliederung erkennen.
 
@@ -139,3 +153,21 @@ an den bisherigen 14/21/28/35/42 Pixeln (native Rasterung der mittleren Größe:
 42-Pixel-Höhe, exakte Breitenanpassung, längste erlaubte Wörter und die Rückkehr
 zur UI-Schrift. Die bestehenden Trainerprüfungen messen jetzt die tatsächlichen
 Glyphenrechtecke einschließlich Überhängen und Grundlinie.
+
+
+## Größerer Katalog (1.9.2)
+
+Die Worttabelle liegt als `static constexpr`-Daten im Flash. Daraus werden die
+bestehenden `ReadingEntry`-Listen mit reservierter Kapazität aufgebaut. Eine große
+temporäre Liste aus Strings und Vektoren auf dem ESP32-UI-Taskstack entfällt.
+Die Silbenlisten reservieren ebenfalls ihre benötigte Kapazität. Merkeinträge
+verwenden unverändert die Texte als Schlüssel; neue Einträge verschieben keine
+bestehenden Markierungen.
+
+`test_reading_catalog.cpp` prüft Umfang, Eindeutigkeit, explizite Gliederung,
+die unveränderte Einstufung des ursprünglichen Wortschatzes und die einfachen
+Silbenstrukturen der ersten beiden Stufen. Redaktionelle Grenzfälle wie
+BRÜ-CKE, KNÖP-FE, SPAT-ZEN und zusammengesetzte Wörter sind separat abgesichert.
+Die Trainerprüfungen stellen sicher, dass mit 10er- und 15er-Runden alle Inhalte
+jeder Stufe auch bei fester Reihenfolge erreichbar sind. Die Schriftprüfungen
+berücksichtigen den gesamten erweiterten Katalog.

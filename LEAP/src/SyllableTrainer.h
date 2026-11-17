@@ -35,6 +35,8 @@ private:
   std::function<uint32_t()> rng;
   std::string lastWord;
   bool centerHelpToggled = false;
+  // Continue through a large fixed catalogue across rounds, independently per pool.
+  size_t fixedNext[3][3][2]{}; // Mode, level, normal/repeat round; RAM only.
   const std::vector<ReadingEntry> &entries() const { return mode == 0 ? syllables : words; }
   std::string markKey(const ReadingEntry &entry) const;
   void resetHelp() { separated = mode == 1; }

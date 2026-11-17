@@ -2,6 +2,28 @@
 
 Stand: 2026-11-17. Lernwelt, SilbenTrainer und bisherige Firmwaremodule.
 
+## Größerer Lesekatalog (1.9.2)
+
+- 271 Silben (75/70/126) und 349 Wörter (52/114/183) für Leicht/Mittel/Schwer.
+  Alle ursprünglichen Wörter und ihre Stufen bleiben erhalten.
+- Wort-/Silbendaten werden auf Eindeutigkeit, erlaubte Zeichen, explizite
+  Gliederung und Übereinstimmung von Wort und Silben geprüft. Die ersten
+  beiden Stufen behalten einfache offene/geschlossene Silbenstrukturen.
+  Getrennte Prüffälle für ck, tz, pf, Doppelkonsonanten und Komposita.
+- Der ganze Katalog wird in beiden Trennzuständen auf Displaygrenzen geprüft;
+  auch die vollständige Erreichbarkeit bei fester Reihenfolge mit 10/15 Aufgaben
+  ist in allen drei Modi und Schwierigkeitsstufen abgesichert.
+- Die Quelldaten liegen als konstante Tabelle im Flash. ESP32-S3-Compilerprobe
+  mit `-Os -fstack-usage`: eigene Stackframes von `readingWords()` 96 Bytes,
+  `readingSyllables()` 128 Bytes (ohne aufgerufene Helfer). Der Katalog erzeugt
+  keine große temporäre ReadingEntry-Objektliste auf dem UI-Taskstack.
+- Vollständige native Regressionssuite und universeller ESP32-S3 N16R8-Build
+  mit Core 3.3.0 und festgelegten Libraries bestanden. Imageprüfung: Version
+  1.9.2, ESP32-S3, SHA-256 und OTA-Slotgrenze; App 1.893.200 Bytes, statische
+  globale Daten 97.300 Bytes. Die Übungslisten benötigen zusätzlich Heap;
+  physischer Dauerlauf und Min-Heap bleiben Teil der Geräteabnahme.
+
+
 ## Glattere SilbenTrainer-Schrift (1.9.1)
 
 - Noto Sans Regular wird in fünf nativen Bitmapgrößen eingebunden, anstelle

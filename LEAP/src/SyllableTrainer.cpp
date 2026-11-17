@@ -8,6 +8,9 @@ void SyllableTrainer::configure(JsonVariantConst config) {
   screen = Screen::Setup;
   centerHelpToggled = false;
   row = 0; tasks.clear(); position = 0; repeatOnly = false;
+  for (auto &modeOffsets : fixedNext)
+    for (auto &levelOffsets : modeOffsets)
+      for (auto &offset : levelOffsets) offset = 0;
   syllables = readingSyllables(); words = readingWords();
   levels.clear();
   for (JsonVariantConst value : config["levels"].as<JsonArrayConst>())
@@ -86,15 +89,23 @@ bool SyllableTrainer::startRound(uint32_t now, bool repeats) {
   if (pool.empty()) return false;
   repeatOnly = repeats;
   tasks.clear();
-  std::string previous = lastWord;
-  while (tasks.size() < size_t(length)) {
-    auto bag = pool;
-    if (random) for (size_t i = bag.size(); i > 1; --i) std::swap(bag[i - 1], bag[rng() % i]);
-    if (bag.size() > 1 && all[bag[0]].word == previous) std::swap(bag[0], bag[1]);
-    for (size_t index : bag) {
-      if (tasks.size() == size_t(length)) break;
-      tasks.push_back(index);
-      previous = all[index].word;
+  if (!random) {
+    auto &offset = fixedNext[mode][level - 1][repeats ? 1 : 0];
+    offset %= pool.size();
+    if (pool.size() > 1 && all[pool[offset]].word == lastWord) offset = (offset + 1) % pool.size();
+    for (int i = 0; i < length; ++i) tasks.push_back(pool[(offset + i) % pool.size()]);
+    offset = (offset + tasks.size()) % pool.size();
+  } else {
+    std::string previous = lastWord;
+    while (tasks.size() < size_t(length)) {
+      auto bag = pool;
+      for (size_t i = bag.size(); i > 1; --i) std::swap(bag[i - 1], bag[rng() % i]);
+      if (bag.size() > 1 && all[bag[0]].word == previous) std::swap(bag[0], bag[1]);
+      for (size_t index : bag) {
+        if (tasks.size() == size_t(length)) break;
+        tasks.push_back(index);
+        previous = all[index].word;
+      }
     }
   }
   screen = Screen::Exercise; position = 0; resetHelp(); changedAt = now;

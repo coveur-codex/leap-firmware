@@ -3,6 +3,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 : "${ARDUINOJSON_INCLUDE:?Set this to the ArduinoJson/src directory}"
 mkdir -p build/tests
+c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_reading_catalog.cpp -o build/tests/reading-catalog
+build/tests/reading-catalog
 c++ -std=c++17 -Wall -Wextra -Werror -I "${ARDUINOGFX_INCLUDE:-tests/font_fakes}" -I LEAP/src tests/test_reading_text.cpp -o build/tests/reading-text
 build/tests/reading-text
 # Exercise both Arduino stand-ins with the fortification used by Ubuntu runners.
