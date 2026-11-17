@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `f407be4`.
-Version: `1.9.1`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.9.2`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -926,3 +926,9 @@ expliziten Silben, 10/15-Aufgaben-Runden, optionalem Wechsel und Merkliste.
 Freigaben, Stufen und eigene Wörter: Geräte → Lernwelt im Homeserver 1.8.0
 (Migration 0026). Bedienung, Konfiguration und Hardware-Abnahme:
 [Lernwelt](docs/learning.md).
+
+
+Ab **1.9.2** enthält der SilbenTrainer **271 Silben und 349 Wörter** in den
+bisherigen drei Schwierigkeitsstufen. Bei fester Reihenfolge setzen weitere
+Runden die Sammlung fort. Aufteilung, Beispiele und Prüfungen:
+[Lernwelt und Übungsinhalte](docs/learning.md).

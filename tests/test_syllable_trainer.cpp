@@ -110,7 +110,7 @@ int main(int argc, char **argv) {
   JsonDocument settings;
   assert(!deserializeJson(settings, R"({"levels":[2,2,0,4],"defaultMode":2,"sessionLength":15,
     "random":false,"autoSeconds":5,
-    "syllables":[{"text":"WE","level":1},{"text":"a"}],
+    "syllables":[{"text":"VE","level":1},{"text":"a"}],
     "words":[{"word":"WIESE","syllables":["WIE","SE"],"level":2},
     {"word":"FALSCH","syllables":["FA","SE"]},
     {"word":"LAMA","syllables":["LAM","A"],"level":3},
@@ -147,7 +147,34 @@ int main(int argc, char **argv) {
   t.configure({}); t.random = false;
   assert(t.startRound(0)); auto ordered = t.tasks;
   for (int i = 0; i < t.length; ++i) press(t, Key::Right);
-  assert(t.startRound(0)); assert(t.tasks == ordered);
+  assert(t.startRound(0)); assert(t.tasks.front() == ordered.back() + 1);
+  // The expanded catalogue must be reachable in fixed order, beyond the first round.
+  for (int length : {10, 15}) for (int mode : {0, 1, 2}) for (int level : {1, 2, 3}) {
+    t.configure({}); t.random = false; t.mode = mode; t.level = level; t.length = length;
+    const auto &entries = mode == 0 ? t.syllables : t.words;
+    size_t available = 0;
+    for (const auto &entry : entries) available += entry.level == level;
+    std::set<std::string> seen;
+    for (size_t round = 0; round <= available / length; ++round) {
+      assert(t.startRound(0));
+      for (int i = 0; i < length; ++i) { seen.insert(t.current()->word); press(t, Key::Right); }
+    }
+    assert(seen.size() == available);
+  }
+  // Changing pool must not consume another mode's or level's fixed position.
+  t.configure({}); t.random = false; t.mode = 0; t.level = 1;
+  assert(t.startRound(0)); auto syllableRound = t.tasks;
+  t.mode = 1; assert(t.startRound(0)); auto wordRound = t.tasks;
+  t.mode = 0; t.level = 2; assert(t.startRound(0));
+  t.level = 1; assert(t.startRound(0)); assert(t.tasks.front() == syllableRound.back() + 1);
+  t.mode = 1; t.loadMarks("W:MAMA\n"); assert(t.startRound(0, true));
+  for (auto index : t.tasks) assert(t.words[index].word == "MAMA");
+  assert(t.startRound(0)); assert(t.tasks.front() == wordRound.back() + 1);
+  // Mark keys stay stable when catalogue entries are inserted or reordered.
+  t.loadMarks("S:MA\nW:BANANE\nW:BÜCHER\n");
+  t.mode = 0; t.level = 1; assert(t.repeatCount() == 1);
+  t.mode = 1; t.level = 2; assert(t.repeatCount() == 1);
+  t.level = 3; assert(t.repeatCount() == 1);
   std::string offline; serializeJson(settings, offline);
   JsonDocument restored; assert(!deserializeJson(restored, offline));
   t.configure(restored); assert(t.level == 2 && t.mode == 2 && t.autoSeconds == 5);

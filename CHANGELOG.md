@@ -1,3 +1,14 @@
+# 1.9.2 – Deutlich größerer Lesekatalog
+
+- 271 Silben und 349 explizit gegliederte Wörter statt 72 Silben und 29 Wörtern.
+  Alle bisherigen Einträge behalten ihre Schwierigkeitsstufe. Neue Inhalte aus
+  Alltag, Familie, Schule, Natur, Tierwelt, Essen und Verkehr.
+- Weitere Runden führen bei fester Reihenfolge durch den gesamten Katalog;
+  getrennte Positionen je Modus/Stufe und normaler/Wiederholungsrunde.
+- Statische Worttabelle im Flash und reservierte Übungslisten vermeiden eine
+  große temporäre Objektliste auf dem ESP32-Taskstack. Merkliste und eigene
+  Inhalte nutzen weiterhin die vorhandenen Mechanismen.
+
 # 1.9.1 – Glattere Übungsschrift im SilbenTrainer
 
 - Große Silben und Wörter verwenden Noto Sans Regular als native Schriftbitmaps
