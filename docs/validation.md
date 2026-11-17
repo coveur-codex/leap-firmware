@@ -1,6 +1,30 @@
 # Durchgeführte Prüfungen
 
-Stand: 2026-11-16. Lernwelt, SilbenTrainer und bisherige Firmwaremodule.
+Stand: 2026-11-17. Lernwelt, SilbenTrainer und bisherige Firmwaremodule.
+
+## Glattere SilbenTrainer-Schrift (1.9.1)
+
+- Noto Sans Regular wird in fünf nativen Bitmapgrößen eingebunden, anstelle
+  der hochskalierten 6×8-Schrift. Die maximale sichtbare Großbuchstabenhöhe
+  bleibt 42 Pixel. Keine Schriftbibliothek auf dem Gerät erforderlich.
+- Vollständige native Regressionssuite bestanden. Der zusätzliche Schrifttest
+  besteht auch gegen die echten GFXfont-Typen von Arduino_GFX 1.6.3.
+- Glyphen-/Bitmapgrenzen, Umlautpunkte, proportionale Breiten, exakte Passung,
+  sämtliche Übungswörter und die maximalen eigenen 16-Buchstaben-Wörter mit
+  fünf Silben bleiben im Inhaltsbereich (x=94…419, y=34…97).
+- Schrift wird unskaliert gezeichnet und anschließend auf die UI-Schrift
+  zurückgesetzt. Menü, Modus, Fortschritt, Silbenhilfe und Navigation bleiben erhalten.
+- Pixelvorschau des echten Trainer-Zeichenpfads mit den festgelegten
+  Schriftbitmaps für MA, MA-MA, BANANE, SCHMET-TER-LING und BÜ-CHER visuell geprüft.
+  Sidebar in dieser Hostvorschau schematisch; reale Display-Abnahme bleibt offen.
+- Die eingecheckte Schriftdatei wurde aus der SHA-256-geprüften, festgelegten
+  Quelle bytegleich reproduziert (Pillow 12.3.0 / FreeType 2.14.3).
+- Universeller ESP32-S3 N16R8-Build mit Core 3.3.0 und festgelegten Libraries
+  bestanden. `check_image.py` bestätigt Version 1.9.1, ESP32-S3, SHA-256 und
+  OTA-Slotgrenze: App 1.881.920 Bytes (17.424 Bytes mehr als 1.9.0).
+  Der statische RAM-Bedarf bleibt unverändert. Bestehende Bibliotheks-/Core-
+  und ArduinoJson-Warnungen bleiben.
+
 
 ## Lernwelt und SilbenTrainer (1.9.0)
 

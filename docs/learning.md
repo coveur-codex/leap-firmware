@@ -45,8 +45,13 @@ Serverwerte sind die Startwerte. Ein unveränderter Hintergrund-Sync erhält die
 ## Darstellung und Daten
 
 Die 86 Pixel breite Sidebar bleibt sichtbar. Rechts (342×142) steht jeweils
-eine Aufgabe mit der vorhandenen 6×8-Schrift in Skalierung 2–6 (16–48 Pixel).
-Die längste erlaubte Aufgabe passt einschließlich Bindestrichen ungekürzt.
+eine Aufgabe. Ab Firmware 1.9.1 verwenden die großen Übungsbuchstaben
+**Noto Sans Regular**, direkt in fünf Größen gerastert. Die größte Schrift
+behält die bisherigen 42 Pixel sichtbare Großbuchstabenhöhe. Proportionale
+Breiten wählen bei langen Wörtern die größte passende Schrift; Bindestriche
+und Umlautpunkte werden vollständig berücksichtigt. Es gibt keine Vergrößerung
+der 6×8-Pixelschrift. Menüs, Modusanzeige und Hinweise verwenden weiter die
+bestehende UI-Schrift. Die längste erlaubte Aufgabe passt ungekürzt.
 Getrennte Silben wechseln zwischen lesbarer Akzentfarbe (bei dunkler Farbe Weiß)
 und Gelb; sichtbare Bindestriche erhalten die Bedeutung ohne Farberkennung.
 Vollständige Wörter sind weiß. Modus und Position erscheinen klein am oberen Rand.
@@ -111,3 +116,26 @@ SCHMET-TER-LING und BÜ-CHER, dunkle Akzentfarbe, wechselnde Farben/Bindestriche
 10/15-Aufgaben-Runden und 5/10/15-s-Wechsel, Markierungen nach Neustart,
 Abschaltung per Sync, WLAN aus, unveränderter Sync während einer Runde und
 Mathe-Labor mit bisherigen Zielzahlen. Cloudtests ersetzen diese Abnahme nicht.
+
+
+## Schriftquelle und Reproduktion (1.9.1)
+
+`ReadingFont.h` enthält nur A–Z, ÄÖÜ und Bindestrich als native GFX-Bitmaps.
+Die Fontdaten liegen im Flash; es wird keine Schriftbibliothek auf dem Gerät
+benötigt. Quelle: Noto Sans Regular aus `notofonts/noto-fonts`, Commit
+`ffebf8c1ee449e544955a7e813c54f9b73848eac`. Lizenz:
+[The Noto Project Authors, SIL OFL 1.1](../LEAP/src/third_party/noto/OFL.txt).
+
+Zur erneuten Erzeugung (nur Entwicklungsrechner, Pillow 12.3.0 / FreeType 2.14.3):
+
+```sh
+curl -fL https://raw.githubusercontent.com/notofonts/noto-fonts/ffebf8c1ee449e544955a7e813c54f9b73848eac/hinted/ttf/NotoSans/NotoSans-Regular.ttf -o /tmp/NotoSans-Regular.ttf
+python3 tools/generate_reading_font.py /tmp/NotoSans-Regular.ttf LEAP/src/ReadingFont.h
+```
+
+Der Generator prüft den SHA-256 der Quelldatei. Die fünf Größen orientieren sich
+an den bisherigen 14/21/28/35/42 Pixeln (native Rasterung der mittleren Größe:
+27 Pixel). `test_reading_text.cpp` prüft Glyphen, Umlautpunkte, Bitmapgrenzen,
+42-Pixel-Höhe, exakte Breitenanpassung, längste erlaubte Wörter und die Rückkehr
+zur UI-Schrift. Die bestehenden Trainerprüfungen messen jetzt die tatsächlichen
+Glyphenrechtecke einschließlich Überhängen und Grundlinie.

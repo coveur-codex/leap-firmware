@@ -1,10 +1,15 @@
 #pragma once
 #include <cstdarg>
+#include <gfxfont.h>
 #include <cstdint>
 #include <cstdio>
 #include <string>
 #include <vector>
 struct Arduino_GFX {
+  const GFXfont *font = nullptr;
+  struct FontRun { const GFXfont *font; int size; };
+  std::vector<FontRun> fontRuns;
+  void setFont(const GFXfont *next = nullptr) { font = next; }
   std::string text;
   std::vector<uint16_t> textColors;
   bool recordAll = false, recordTextBounds = false;
@@ -23,7 +28,18 @@ struct Arduino_GFX {
   void print(const char *s) {
     text += s;
     if (recordTextBounds) {
-      rects.push_back({textX,textY,int(std::string(s).size())*6*textSize,8*textSize,0});
+      fontRuns.push_back({font, textSize});
+      if (font) {
+        int cursor = textX;
+        for (const unsigned char *p = reinterpret_cast<const unsigned char *>(s); *p; ++p) {
+          if (*p < font->first || *p > font->last) continue;
+          const auto &glyph = font->glyph[*p - font->first];
+          if (glyph.width && glyph.height)
+            rects.push_back({cursor + glyph.xOffset * textSize, textY + glyph.yOffset * textSize,
+                            glyph.width * textSize, glyph.height * textSize, 0});
+          cursor += glyph.xAdvance * textSize;
+        }
+      } else rects.push_back({textX,textY,int(std::string(s).size())*6*textSize,8*textSize,0});
     }
   }
   void printf(const char *format, ...) {

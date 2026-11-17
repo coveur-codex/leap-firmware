@@ -1,5 +1,6 @@
 #include "SyllableTrainer.h"
 #include "AccentColor.h"
+#include "ReadingText.h"
 #include <algorithm>
 namespace leap {
 SyllableTrainer::SyllableTrainer(std::function<uint32_t()> randomWord) : rng(randomWord) {}
@@ -193,17 +194,27 @@ void SyllableTrainer::draw(Arduino_GFX &gfx, uint16_t accent) const {
   }
   const auto *entry = current();
   if (!entry) return;
-  size_t letters = displayGlyphs(entry->word.c_str()).size() + (separated ? entry->syllables.size() - 1 : 0);
-  int scale = std::min(6, 326 / int(letters * 6));
-  int x = 94 + (326 - int(letters) * 6 * scale) / 2, y = 34 + (64 - 8 * scale) / 2;
+  std::string glyphs;
+  for (size_t i = 0; i < entry->syllables.size(); ++i) {
+    if (separated && i) glyphs += '-';
+    glyphs += displayGlyphs(entry->syllables[i].c_str());
+  }
+  int face = readingFace(glyphs);
+  const auto bounds = readingBounds(glyphs, ReadingFonts[face]);
+  int x = 94 + (326 - bounds.width) / 2 - bounds.left;
+  const auto &metrics = ReadingMetrics[face];
+  int baseline = 34 + (64 - metrics.height) / 2 + metrics.ascent;
   const uint16_t readingAccent = contrastInk(accent) == White ? White : accent;
+  auto part = [&](const std::string &value, uint16_t color) {
+    printReadingPart(gfx, value, face, x, baseline, color);
+    x += readingAdvance(value, ReadingFonts[face]);
+  };
   if (separated) {
     for (size_t i = 0; i < entry->syllables.size(); ++i) {
-      if (i) { text("-", x, y, scale, White); x += 6 * scale; }
-      text(entry->syllables[i], x, y, scale, i % 2 ? Yellow : readingAccent);
-      x += displayGlyphs(entry->syllables[i].c_str()).size() * 6 * scale;
+      if (i) part("-", White);
+      part(displayGlyphs(entry->syllables[i].c_str()), i % 2 ? Yellow : readingAccent);
     }
-  } else text(entry->word, x, y, scale, White);
+  } else part(glyphs, White);
   if (isMarked()) text("Gemerkt", 94, 104, 1, accent);
   text("< / > Aufgabe   Hoch/Runter: Modus", 94, 117, 1, Muted);
   text(mode ? "Mitte: Silbenhilfe  Halten: merken" : "Mitte halten: merken (max. 32)", 94, 132, 1, Muted);
