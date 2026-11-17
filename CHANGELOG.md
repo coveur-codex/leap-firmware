@@ -1,3 +1,12 @@
+# 1.9.1 – Glattere Übungsschrift im SilbenTrainer
+
+- Große Silben und Wörter verwenden Noto Sans Regular als native Schriftbitmaps
+  statt der vergrößerten 6×8-Pixelschrift. Die maximale Großbuchstabenhöhe bleibt
+  42 Pixel; lange Wörter nutzen die größte passende vorbereitete Größe.
+- Silbenfarben, Trennstriche und Umlaute bleiben erhalten. Die UI-Schrift bleibt
+  für Menüs und Hinweise aktiv. Keine neue Gerätebibliothek nötig.
+- Geprüfte Schriftquelle, Lizenz und reproduzierbarer Generator liegen bei.
+
 # 1.9.0 – Lernwelt und SilbenTrainer
 
 - Neue konfigurierbare Lernwelt mit Buchsymbol; Mathe-Labor aus Spiele verschoben,

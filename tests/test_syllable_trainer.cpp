@@ -11,6 +11,9 @@ void bounds(const SyllableTrainer &trainer) {
   Arduino_GFX gfx;
   gfx.recordAll = gfx.recordTextBounds = true;
   trainer.draw(gfx);
+  assert(gfx.font == nullptr); // The next hints/sidebar/page must keep its UI font.
+  for (auto &run : gfx.fontRuns)
+    if (run.font) assert(run.size == 1); // Native glyphs, never magnified 6x8 pixels.
   for (auto &r : gfx.rects)
     assert(r.x >= 86 && r.x + r.w <= 428 && r.y >= 0 && r.y + r.h <= 142);
 }
