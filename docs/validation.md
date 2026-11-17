@@ -1,6 +1,33 @@
 # Durchgeführte Prüfungen
 
-Stand: 2026-10-14. Überschriftenschrift und bisherige Firmwaremodule.
+Stand: 2026-11-16. Lernwelt, SilbenTrainer und bisherige Firmwaremodule.
+
+## Lernwelt und SilbenTrainer (1.9.0)
+
+- Vollständige native Firmware-Regressionssuite gegen ArduinoJson 7.4.2 und
+  die echten GFXfont-Typen von Arduino_GFX 1.6.3 bestanden, einschließlich
+  unveränderter Mathe-Labor-, Speicher-, Input- und Spiele-Lifecycle-Tests.
+- 72 Silben und 29 explizit gegliederte Wörter in drei Stufen: Zeichen, Grenzen,
+  eindeutige Einträge und Übereinstimmung von Wort und Silben geprüft.
+- Drei Modi, Hin-/Zurückhistorie, Hilfe, Start-/Abschlussansicht, 360 Zufalls-/
+  feste Runden, keine direkte Wiederholung, Merkliste inklusive kurzem Druck
+  vor dem 900-ms-Halten, 2-s-Ereignis, leere/eine Wiederholungsaufgabe,
+  ungültige/zusätzliche Inhalte, Offline-Snapshot und millis-Überlauf geprüft.
+- Rendering/Textrechtecke bleiben für sämtliche lokalen und maximal langen
+  eigenen Wörter innerhalb x=86…427 / y=0…141. Pixelvorschau mit echten
+  Arduino_GFX-Schriftbitmaps für drei Modi, langes Wort, Umlaute und dunkle
+  Akzentfarbe visuell geprüft. Dies ist keine physische Displaymessung.
+- Echte Homeserver-Routen erzeugen Fixtures für die nativen Config-, Freigabe-,
+  SilbenTrainer- und Podcast-Validatoren; Vertragstest bestanden. Homeserver:
+  435 pytest-Tests und anschließend 23 gezielte Editor-/Lernweltprüfungen bestanden.
+- Reale PNGdec-/JPEGDEC-/asynchrone Media-Regressionen bestanden.
+- Finaler universeller ESP32-S3 N16R8-Build mit Core 3.3.0 und festgelegten
+  Libraries bestanden: App 1.864.496 Bytes, statische globale Daten 97.228 Bytes.
+  `check_image.py` bestätigt Version 1.9.0, ESP32-S3, Hash und App-/Slotgrenze.
+  Bestehende Core-/Bibliotheks-/ArduinoJson-Warnungen bleiben.
+- Hardware-Abnahme auf dem ESP32-S3 bleibt offen; konkrete Prüfschritte und
+  Update-Reihenfolge stehen in [Lernwelt](learning.md).
+
 
 ## Helvetica-Überschriften (1.0.11)
 

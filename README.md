@@ -2,7 +2,7 @@
 
 Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
 [`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `f407be4`.
-Version: `1.8.1`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Version: `1.9.0`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,
@@ -732,9 +732,10 @@ Details zu Synthese, Puffergrenzen, Bildproxy und Hardware-Abnahme: [Chill](docs
 
 ## Mathe-Labor (1.1.1)
 
-Ein neuer Spieleintrag `math_lab` bündelt Würfellabor, Zahlenwerkstatt,
+`math_lab` bündelt Würfellabor, Zahlenwerkstatt,
 Würfelarchitekt und Würfeldetektiv. Lokal gezeichnet, ohne Bildpakete oder WLAN.
 Im Homeserver ab 1.1.1 für das Gerät aktivieren und einmal synchronisieren.
+Ab 1.9.0 befindet sich das Mathe-Labor in der Lernwelt.
 Bedienung, Übungsvarianten und Abnahme: [Mathe-Labor](docs/math-lab.md).
 
 
@@ -914,3 +915,14 @@ Bekannte Titelinformationen bleiben bei kurzen Lesekonflikten und leeren
 Metadatenmeldungen stehen. Sender- und Sitzungswechsel entfernen alte Angaben
 weiterhin sofort. Interpret und Titel stehen mit Personen- und Notensymbol
 untereinander; rechts oben ist wieder ein kleines Radio-Icon.
+
+
+## Lernwelt und SilbenTrainer (1.9.0)
+
+Die neue Hauptmenü-Region „Lernwelt“ bündelt Mathe-Labor und SilbenTrainer.
+Das Mathe-Labor behält Engine, Zielzahlen und gespeicherte Daten. Der
+SilbenTrainer bietet drei offline verfügbare Lesemodi mit großen Buchstaben,
+expliziten Silben, 10/15-Aufgaben-Runden, optionalem Wechsel und Merkliste.
+Freigaben, Stufen und eigene Wörter: Geräte → Lernwelt im Homeserver 1.8.0
+(Migration 0026). Bedienung, Konfiguration und Hardware-Abnahme:
+[Lernwelt](docs/learning.md).

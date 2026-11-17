@@ -22,7 +22,7 @@ int main() {
     game["id"] = id;
     game["enabled"] = true;
   }
-  assert(enabledGames(config).size() == 10);
+  assert(enabledGames(config).size() == 9);
   // Snapshot round-trip is the same representation used for offline startup.
   std::string saved;
   serializeJson(config, saved);

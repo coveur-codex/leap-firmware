@@ -1,3 +1,13 @@
+# 1.9.0 – Lernwelt und SilbenTrainer
+
+- Neue konfigurierbare Lernwelt mit Buchsymbol; Mathe-Labor aus Spiele verschoben,
+  bestehende Engine, Zielzahlen und gespeicherte Daten bleiben erhalten.
+- SilbenTrainer mit drei Lesemodi, expliziten deutschen Silbendaten, großen
+  Buchstaben, sichtbarer/farbiger Trennung, Aufgabengeschichte und 10/15er-Runden.
+- Zufall/feste Reihenfolge, optional 5/10/15 Sekunden Wechsel, bis 32 persistente
+  Merkeinträge und eigene Inhalte über den bestehenden Konfigurations-Sync.
+- Homeserver 1.8.0 (Migration 0026) zuerst aktualisieren. Keine neuen Libraries.
+
 # 1.7.1 – Große Podcast-Metadaten und leise Lautstärke
 
 - Deklariertes ID3v2.2/v2.3/v2.4 vor Audio schrittweise überspringen, inklusive

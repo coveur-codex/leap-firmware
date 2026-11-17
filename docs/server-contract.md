@@ -318,3 +318,12 @@ Acknowledgements. Der Server darf damit `firmware_version` aktualisieren;
 Asset-Plan wird nur bei gleicher `initialFirmware` und gleichem Inventar
 wiederaufgenommen. Nach USB-Versionswechsel wird stattdessen ein neuer Plan
 angefordert. Alte Inventare/Dateien werden vor Serverbestätigung nicht gelöscht.
+
+
+## Lernwelt (Firmware 1.9.0 / Homeserver 1.8.0)
+
+`pages[id=learning].settings` enthält `applications` und `syllableTrainer`.
+Der normale Config-/Snapshotpfad verteilt Freigaben, Optionen und explizit
+gegliederte eigene Wörter. `math_lab` verlässt die Spieleliste,
+`config.mathLab` bleibt bestehen. Migration 0026 übernimmt die alte Freigabe.
+Schema und Übergang alter Offline-Konfigurationen: [Lernwelt](learning.md).
