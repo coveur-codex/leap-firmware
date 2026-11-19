@@ -1,3 +1,10 @@
+# 1.9.3 – Seitenavatare und Ruhezeit
+
+- Die Lernwelt lädt `data/pet/pagestatics/learning.png` aus dem ausgewählten
+  Avatarpaket. Mein Zimmer, Radio und Podcasts verwenden eigene Seitenbilder.
+- Die Vollbildszene der Ruhezeit zeigt keinen Avatar. Benachrichtigungen werden
+  weiterhin eingeblendet.
+
 # 1.9.2 – Deutlich größerer Lesekatalog
 
 - 271 Silben und 349 explizit gegliederte Wörter statt 72 Silben und 29 Wörtern.

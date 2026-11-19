@@ -305,7 +305,7 @@ String Ui::assetOfType(const char *type) {
   }
   return "";
 }
-bool Ui::drawPageAvatar(const String &pageId, int x, int y, bool overlay) {
+bool Ui::drawSidebarAvatar(const String &pageId) {
   String id = state["config"]["avatar"] | "dragon";
   if (!id.startsWith("avatar-"))
     id = "avatar-" + id;
@@ -322,13 +322,11 @@ bool Ui::drawPageAvatar(const String &pageId, int x, int y, bool overlay) {
         return storage.blob(file["sha256"].as<String>());
     return String();
   };
-  // Keep full-screen scenes clear when the package has no art for that page.
-  String path = avatarPageImage(manifest, pageId.c_str(), !overlay).c_str();
+  String path = avatarPageImage(manifest, pageId.c_str()).c_str();
   if (!path.length())
     return false;
   // Do not retain an image from the previous page or avatar while decoding.
-  return avatar.draw(*canvas, resolve(path), path, x, y, 80, 80, false, Panel, true, false,
-                     overlay);
+  return avatar.draw(*canvas, resolve(path), path, 3, 38, 80, 80, false, Panel, true, false);
 }
 // Seven-pixel page glyphs; a moving window keeps the active page visible.
 static const uint8_t pageIcons[][7] = {
@@ -502,7 +500,7 @@ void Ui::sidebar() {
     canvas->drawPixel(82, 35, Muted);
   String avatarPage = locked || menu || pages.empty() ? "home" : pages[page].id;
   if (notifications.visible()) drawNotification();
-  else if (!drawPageAvatar(avatarPage, 3, 38)) {
+  else if (avatarPage != "chill" && !drawSidebarAvatar(avatarPage)) {
     text("Avatar", 25, 67, 1, Muted);
     text("wartet auf", 13, 80, 1, Muted);
     text("Sync", 31, 93, 1, Muted);
@@ -1142,8 +1140,6 @@ void Ui::render() {
     chill.draw(*canvas, millis());
     if (notifications.visible())
       sidebar();
-    else
-      drawPageAvatar(pages[page].id, 3, hw::Height - 84, true);
     canvas->flush();
     return;
   }
