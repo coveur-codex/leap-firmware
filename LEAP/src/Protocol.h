@@ -53,7 +53,8 @@ inline std::string avatarFrame(JsonVariantConst manifest, uint32_t now = 0) {
   return ""; // Only canonical idle folders are discovered; other expressions are not avatars.
 }
 // Page IDs come from config; some use different names for their static images.
-inline std::string avatarPageImage(JsonVariantConst manifest, const std::string &page) {
+inline std::string avatarPageImage(JsonVariantConst manifest, const std::string &page,
+                                   bool fallback = true) {
   std::string name = page == "aircraft" ? "flightradar" : page;
   if (page == "finance")
     name = "finanzen";
@@ -61,8 +62,11 @@ inline std::string avatarPageImage(JsonVariantConst manifest, const std::string 
     name = "zeit";
   bool known = false;
   for (const char *id : {"home", "news", "weather", "flightradar", "quiz", "games", "learning",
-                         "communication", "knowledge", "settings", "finanzen", "zeit"})
+                         "communication", "knowledge", "settings", "finanzen", "zeit", "room",
+                         "radio", "podcasts", "chill"})
     known = known || name == id;
+  if (!known && !fallback)
+    return "";
   if (!known)
     name = "home";
   auto find = [&](const std::string &image) {
@@ -82,6 +86,8 @@ inline std::string avatarPageImage(JsonVariantConst manifest, const std::string 
     return prefixed;
   };
   std::string path = find(name);
+  if (!fallback)
+    return path;
   if (path.empty() && name != "home")
     path = find("home");
   // Old packages remain usable, but the sidebar never animates their idle frames.

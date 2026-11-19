@@ -46,7 +46,8 @@ int main() {
   assert(avatarFrame(manifest, 800) == "Example/data/pet/idle/frame_03.png");
   // Every page selects the corresponding static in the assigned avatar package.
   for (const char *page : {"home", "news", "weather", "flightradar", "quiz", "games", "learning",
-                          "communication", "knowledge", "settings"}) {
+                          "communication", "knowledge", "settings", "room", "radio", "podcasts",
+                          "chill"}) {
     std::string path = "data/pet/pagestatics/" + std::string(page) + ".png";
     files.add<JsonObject>()["path"] = path;
     assert(avatarPageImage(manifest, page) == path);
@@ -55,7 +56,7 @@ int main() {
     assert(!avatarImageSize(manifest["definition"], path, 256, 142));
   }
   assert(avatarPageImage(manifest, "aircraft") == "data/pet/pagestatics/flightradar.png");
-  assert(avatarPageImage(manifest, "chill") == "data/pet/pagestatics/home.png");
+  assert(avatarPageImage(manifest, "chill", false) == "data/pet/pagestatics/chill.png");
   assert(avatarPageImage(manifest, "../settings") == "data/pet/pagestatics/home.png");
   JsonDocument oldPackage;
   oldPackage["files"].to<JsonArray>().add<JsonObject>()["path"] =
@@ -64,6 +65,13 @@ int main() {
   auto oldFiles = oldPackage["files"].as<JsonArray>();
   oldFiles.add<JsonObject>()["path"] = "files/data/pet/pagestatics/home.png";
   assert(avatarPageImage(oldPackage, "news") == "files/data/pet/pagestatics/home.png");
+  for (const char *page : {"room", "radio", "podcasts", "chill"}) {
+    assert(avatarPageImage(oldPackage, page) == "files/data/pet/pagestatics/home.png");
+    assert(avatarPageImage(oldPackage, page, false).empty());
+    const std::string path = "Example/data/pet/pagestatics/" + std::string(page) + ".png";
+    oldFiles.add<JsonObject>()["path"] = path;
+    assert(avatarPageImage(oldPackage, page, false) == path);
+  }
   oldFiles.add<JsonObject>()["path"] = "Example/data/pet/pagestatics/flightradar.png";
   assert(avatarPageImage(oldPackage, "aircraft") ==
          "Example/data/pet/pagestatics/flightradar.png");

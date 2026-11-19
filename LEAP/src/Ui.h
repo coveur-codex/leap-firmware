@@ -126,7 +126,7 @@ class Ui {
   bool podcastVisible() const { return !bootLogoVisible && !locked && !menu && !pages.empty() && pages[page].id == "podcasts"; }
   bool radioVisible() const { return !bootLogoVisible && !locked && !menu && !pages.empty() && pages[page].id == "radio"; }
   bool chillVisible() const { return !locked && !menu && !pages.empty() && pages[page].id == "chill"; }
-  bool drawSidebarAvatar(const String &id, const String &pageId);
+  bool drawPageAvatar(const String &pageId, int x, int y, bool overlay = false);
 
 public:
   bool beginDisplay();
