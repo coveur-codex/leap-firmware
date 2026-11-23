@@ -10,6 +10,7 @@
 #include "CrabJourneyProgress.h"
 #include "DragonRun.h"
 #include "FallBlocks.h"
+#include "Rangierwerk.h"
 #include "Input.h"
 #include "Media.h"
 #include <Arduino_GFX_Library.h>
@@ -34,6 +35,7 @@ class Games {
   uint32_t dragonSavedAt = 0;
   void saveDragon();
   FallBlocks fallBlocks;
+  Rangierwerk rangierwerk;
   int fallBlocksBest = 0;
   bool fallBlocksDirty = false, fallBlocksSoftDrop = false;
   uint32_t fallBlocksSavedAt = 0;
@@ -94,6 +96,9 @@ public:
     return kind == "dragon_run";
   }
   bool dragonInput(const InputEvent &event);
+  bool isRangierwerk() const { return kind == "rangierwerk"; }
+  bool rangierwerkInput(const InputEvent &event) { return rangierwerk.input(event); }
+  bool rangierwerkAwake() const { return rangierwerk.keepAwake(); }
   bool isFallBlocks() const { return kind == "fall_blocks"; }
   bool fallBlocksInput(const InputEvent &event);
   void drawFallBlocks(Arduino_GFX &gfx, uint16_t accent);
@@ -102,6 +107,8 @@ public:
   }
   void heldDirections(uint8_t mask) {
     crabDirections = mask;
+    if (isRangierwerk())
+      rangierwerk.directions(mask);
     fallBlocksSoftDrop = mask & (1u << int(Key::Right));
     if (!(mask & 1))
       dragonJumpHeld = false;

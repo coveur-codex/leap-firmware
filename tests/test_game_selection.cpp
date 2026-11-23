@@ -5,6 +5,7 @@ using namespace leap;
 int main() {
   JsonDocument config;
   assert(enabledGames(config).empty());
+  assert(enabledGames(config, true) == std::vector<std::string>{"rangierwerk"});
   assert(!deserializeJson(config, R"({"games":[
     {"id":"kitchen","enabled":false}, {"id":"unknown","enabled":true},
     {"id":"snake","enabled":true}, {"id":"snake","enabled":true},
@@ -16,15 +17,16 @@ int main() {
   config["games"][2]["enabled"] = false;
   config["games"][3]["enabled"] = false;
   assert(enabledGames(config).empty());
+  assert(enabledGames(config, true).empty());
   auto games = config["games"].to<JsonArray>();
   for (const char *id : {"tamagotchi", "snake", "hot_potato", "simon_motion", "tilt_maze",
                          "connect_four", "kitchen", "crab_journey", "dragon_run", "math_lab",
-                         "fall_blocks"}) {
+                         "fall_blocks", "rangierwerk"}) {
     auto game = games.add<JsonObject>();
     game["id"] = id;
     game["enabled"] = true;
   }
-  assert(enabledGames(config).size() == 10 && enabledGames(config).back() == "fall_blocks");
+  assert(enabledGames(config).size() == 11 && enabledGames(config).back() == "rangierwerk");
   // Snapshot round-trip is the same representation used for offline startup.
   std::string saved;
   serializeJson(config, saved);

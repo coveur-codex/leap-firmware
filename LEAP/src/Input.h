@@ -27,12 +27,13 @@ class Input {
     heldKeys.store(mask);
   }
   int pins[10];
-  bool deferredLeft = false;
+  bool deferredLeft = false, deferredCenter = false;
   int sample(int i, uint32_t now) {
     if (i==7 && !keys[i].stable && !keys[i].raw) deferredLeft=deferPodcastBack.load();
+    if (i==4 && !keys[i].stable && !keys[i].raw) deferredCenter=deferRangierCenter.load();
     bool center=i%5==4;
-    return keys[i].poll(digitalRead(pins[i])==LOW,now,!center,
-                        center ? ExtendedCenterHoldMs : 0,i==7 && deferredLeft);
+    const bool deferred = (i==7 && deferredLeft) || (i==4 && deferredCenter);
+    return keys[i].poll(digitalRead(pins[i])==LOW,now,!center,center ? ExtendedCenterHoldMs : 0,deferred);
   }
   QueueHandle_t events = nullptr;
   static void sampleTask(void *context) {
@@ -58,7 +59,7 @@ class Input {
   }
 
 public:
-  std::atomic<bool> deferPodcastBack{false};
+  std::atomic<bool> deferPodcastBack{false}, deferRangierCenter{false};
   static constexpr uint32_t ExtendedCenterHoldMs = 2000;
   void begin(const uint8_t *left = nullptr, const uint8_t *right = nullptr) {
     for (int i = 0; i < 5; i++) {

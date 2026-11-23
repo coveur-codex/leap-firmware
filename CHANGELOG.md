@@ -1,3 +1,9 @@
+# 1.11.0 – Rangierwerk
+
+- Neuer Güterbahnhof mit Offline-Einzelspiel, vier Schwierigkeitsstufen und frei wählbarer Dauer.
+- Kooperativer Bahnhof für vier Loks mit Gerätefarben, gemeinsamen Aufträgen und Kartenwechsel über den Homeserver.
+- Prozedurale Gleispläne, Schieben und Ziehen, gezieltes Entkuppeln und Nachschub.
+
 # 1.10.0 – Fallblöcke im Hochformat
 
 - Offline-Einzelspiel auf 10 × 20 Feldern mit Stein-Vorschau, Landemarkierung,

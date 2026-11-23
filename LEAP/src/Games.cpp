@@ -170,6 +170,8 @@ String Games::petBlob(const String &path) const {
   return "";
 }
 void Games::close() {
+  if (isRangierwerk())
+    rangierwerk.close();
   if (snakeCoop) snakeMultiplayer.close();
   snakeCoop = false;
   if (fourOnline) fourMultiplayer.close();
@@ -195,6 +197,8 @@ void Games::start(const String &id) {
   if (opened)
     close();
   kind = id;
+  if (isRangierwerk())
+    rangierwerk.open();
   if (isMathLab())
     mathLab.start();
   if (isFallBlocks())
@@ -246,7 +250,7 @@ void Games::start(const String &id) {
 void Games::input(Key key) {
   if (isMathLab())
     return;
-  if (isDragonRun() || isFallBlocks())
+  if (isDragonRun() || isFallBlocks() || isRangierwerk())
     return; // Only full right-switch events enter this game.
   if (isCrabJourney())
     return;
@@ -392,6 +396,10 @@ int Games::fourPlayer() const {
 }
 void Games::tick() {
   uint32_t now = millis();
+  if (opened && isRangierwerk()) {
+    rangierwerk.tick(now);
+    return;
+  }
   if (opened && isFallBlocks()) {
     fallBlocks.tick(now, fallBlocksSoftDrop);
     updateFallBlocksRound();
@@ -516,6 +524,10 @@ void Games::tick() {
   }
 }
 void Games::draw(Arduino_GFX &gfx, int left, int top, uint16_t accent) {
+  if (isRangierwerk()) {
+    rangierwerk.draw(gfx, accent);
+    return;
+  }
   if (isMathLab()) {
     mathLab.draw(gfx, accent);
     return;

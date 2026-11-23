@@ -11,6 +11,10 @@ Konfiguration schließt beim Sync ein laufendes Spiel und übernimmt die neue Au
 Die Spielprogramme und lokalen Spielstände bleiben erhalten. Homeserver und
 Firmware zusammen aktualisieren: ältere Server führen Küche und Krabbenreise nicht in der Liste.
 
+## Rangierwerk (1.11.0)
+
+Güterwagen allein offline oder gemeinsam mit bis zu vier Loks rangieren. [Bedienung und Spielregeln](rangierwerk.md)
+
 ## Fallblöcke (1.10.0)
 
 Im Homeserver 1.9.0 im Geräteeditor unter „Spiele auf dem Gerät“ freigeben,

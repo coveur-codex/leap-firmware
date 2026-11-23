@@ -77,6 +77,7 @@ class Ui {
   void render();
   void sidebar();
   void drawClock(int left, int top);
+  bool rangierwerkVisible() const { return !locked && !menu && gameOpen && game.isRangierwerk(); }
   bool fallBlocksVisible() const { return !locked && !menu && gameOpen && game.isFallBlocks(); }
   TimeModule timeModule;
   bool stopwatchView = false, timeEditing = false, editSeconds = false;
@@ -141,6 +142,7 @@ public:
     heldButtons = mask;
     game.heldDirections(uint8_t((mask >> 5) & 0x0f));
   }
+  bool rangierCenterDeferred() const { return rangierwerkVisible(); }
   bool podcastBackDeferred() const { return podcastVisible() && podcasts.playbackVisible(); }
   bool healthy = false;
 };

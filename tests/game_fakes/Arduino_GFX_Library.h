@@ -54,6 +54,13 @@ struct Arduino_GFX {
     rects.push_back({x, y, w, h, color});
   }
   void drawRect(int x,int y,int w,int h,uint16_t c) { if (recordAll) rects.push_back({x,y,w,h,c}); }
+  void drawCircle(int x,int y,int r,uint16_t c) { if (recordAll) rects.push_back({x-r,y-r,2*r+1,2*r+1,c}); }
+  void fillTriangle(int x,int y,int bx,int by,int cx,int cy,uint16_t c) {
+    if (recordAll) {
+      const int l = std::min({x,bx,cx}), t = std::min({y,by,cy});
+      rects.push_back({l,t,std::max({x,bx,cx})-l+1,std::max({y,by,cy})-t+1,c});
+    }
+  }
   void fillCircle(int x,int y,int r,uint16_t c) { if (recordAll) rects.push_back({x-r,y-r,2*r+1,2*r+1,c}); }
   void fillRoundRect(int x,int y,int w,int h,int,uint16_t c) { if (recordAll) rects.push_back({x,y,w,h,c}); }
   void drawLine(int x,int y,int x2,int y2,uint16_t c) { if (recordAll) rects.push_back({std::min(x,x2),std::min(y,y2),std::abs(x2-x)+1,std::abs(y2-y)+1,c}); }

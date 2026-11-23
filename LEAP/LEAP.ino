@@ -95,6 +95,7 @@ void setup() {
 }
 void loop() {
   input.deferPodcastBack=ui.podcastBackDeferred();
+  input.deferRangierCenter=ui.rangierCenterDeferred();
   InputEvent e;
   for (int i = 0; i < 10 && input.poll(e); i++)
     ui.input(e);
