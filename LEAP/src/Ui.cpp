@@ -47,6 +47,8 @@ static String gameTitle(const String &id) {
     return "Mein Haustier";
   if (id == "snake")
     return "Snake";
+  if (id == "rangierwerk")
+    return "Rangierwerk";
   if (id == "fall_blocks")
     return "Fallblöcke";
   if (id == "hot_potato")
@@ -180,8 +182,11 @@ bool Ui::reload(bool initial) {
                    [](const Page &a, const Page &b) { return a.order < b.order; });
   if (assetOfType("chill").length())
     pages.push_back({"chill", "Ruhezeit", 1000});
-  if (pages.empty())
+  if (pages.empty()) {
     pages.push_back({"home", "LEAP", 0});
+    if (unsyncedGames(state["config"]))
+      pages.push_back({"games", "Spiele", 1});
+  }
   observeNews(initial);
   lastNewsRevision = 0;
   page = std::min(page, int(pages.size()) - 1);
@@ -960,13 +965,18 @@ void Ui::drawPage(const String &id) {
       game.draw(*canvas, 94, 10, Accent);
     else {
       std::vector<String> labels;
-      auto available = id == "learning" ? enabledLearningApps(state["config"]) : enabledGames(state["config"]);
+      auto available = id == "learning" ? enabledLearningApps(state["config"]) : enabledGames(state["config"], true);
       for (const auto &id : available)
         labels.push_back(gameTitle(id.c_str()));
       if (labels.empty())
         body(id == "learning" ? "Keine Lernanwendungen freigegeben." : "Keine Spiele freigegeben.");
-      else
+      else {
         list(labels);
+        const int first = (selection / 4) * 4;
+        for (int i = first; i < int(available.size()) && i < first + 4; ++i)
+          if (available[i] == "rangierwerk")
+            drawRangierwerkIcon(*canvas, 403, 21 + (i - first) * 19, i == selection ? 0xffff : Accent);
+      }
     }
   } else if (id == "communication") {
     if (!communication.enabled) {
@@ -1187,7 +1197,7 @@ void Ui::render() {
   }
   if (!locked && !menu && gameOpen &&
       (game.isPet() || game.isSnakeMultiplayer() || game.isConnectFour() || game.isKitchen() || game.isCrabJourney() ||
-       game.isDragonRun() || game.isMathLab())) {
+       game.isDragonRun() || game.isMathLab() || game.isRangierwerk())) {
     canvas->flush();
     return;
   }
@@ -1260,6 +1270,17 @@ void Ui::handleInput(const InputEvent &e) {
     return;
   if (fallBlocksVisible() && game.fallBlocksInput(e))
     return;
+  if (rangierwerkVisible()) {
+    const bool lock = e.longPress && !e.right && e.key == Key::Center && e.heldMs >= Input::ExtendedCenterHoldMs;
+    if (lock || game.rangierwerkInput(e)) {
+      game.close();
+      gameOpen = false;
+      selection = scroll = 0;
+      locked = lock;
+      audio.stop();
+    }
+    return;
+  }
   if (!locked && !menu && gameOpen && game.isCrabJourney() && game.crabInput(e))
     return;
   if (!locked && !menu && gameOpen && game.isMathLab() && !e.longPress &&
@@ -1440,7 +1461,7 @@ void Ui::action(const InputEvent &e) {
       } else
         game.input(e.key);
     } else {
-      auto available = id == "learning" ? enabledLearningApps(state["config"]) : enabledGames(state["config"]);
+      auto available = id == "learning" ? enabledLearningApps(state["config"]) : enabledGames(state["config"], true);
       selection = constrain(selection + direction, 0, std::max(0, int(available.size()) - 1));
       if (e.key == Key::Center && selection < int(available.size())) {
         if (available[selection] == "syllable_trainer") {
@@ -1659,7 +1680,8 @@ void Ui::tick() {
   chill.tick(millis());
   bool chillActive = chillVisible();
   bool diagnosticVisible = diagnosticsVisible() || calibrationVisible || wifiActive();
-  auto idle = IdlePolicy::evaluate(millis(), lastInput, chillActive, diagnosticVisible, radioVisible() || podcastVisible());
+  auto idle = IdlePolicy::evaluate(millis(), lastInput, chillActive,
+      diagnosticVisible || (rangierwerkVisible() && game.rangierwerkAwake()), radioVisible() || podcastVisible());
   bool dim = idle.dim;
   if (radioVisible() && radioIdle.expired(millis())) {
     auto home = std::find_if(pages.begin(), pages.end(), [](const Page &p) { return p.id == "home"; });
@@ -1694,6 +1716,7 @@ void Ui::tick() {
   uint32_t frameInterval = fallBlocksVisible() && game.active() ? FallBlocks::SoftDropMs
                            : gameOpen && game.isDragonRun()     ? DragonRun::FrameMs
                            : gameOpen && game.isCrabJourney()   ? CrabJourney::FrameMs
+                           : rangierwerkVisible()              ? 45
                                                                 : 100;
   bool animatedGame = frameInterval < 100;
   if ((frameRequested && elapsed(millis(), lastFrame, 25)) ||

@@ -19,6 +19,12 @@ bool FourMultiplayer::start() { fourStarted=true; return true; }
 void FourMultiplayer::close() { ++fourClosed; }
 void FourMultiplayer::command(uint8_t, uint32_t, uint32_t, bool rematch) { ++fourCommands; fourRematch=rematch; }
 bool FourMultiplayer::poll(FourSnapshot &out) { if (!fourQueued) return false; out=fourFrame; fourQueued=false; return true; }
+RangierwerkMultiplayer rangierwerkMultiplayer;
+static int onlineYards = 0;
+bool RangierwerkMultiplayer::start() { ++onlineYards; return false; }
+void RangierwerkMultiplayer::close() {}
+bool RangierwerkMultiplayer::poll(RangierFrame &) { return false; }
+void RangierwerkMultiplayer::action(RangierAction, uint32_t, uint32_t, uint32_t) {}
 SnakeMultiplayer snakeMultiplayer;
 static bool coopStarted=false, coopQueued=false;
 static SnakeSnapshot coopFrame;
@@ -159,8 +165,58 @@ static void testFallBlocks() {
   game.close();
   fakeNow = 0;
 }
+static void testOfflineRangierwerk() {
+  Games game;
+  Arduino_GFX gfx;
+  gfx.recordAll = gfx.recordTextBounds = true;
+  game.begin();
+  game.start("rangierwerk");
+  auto draw = [&] {
+    gfx.rects.clear();
+    gfx.text.clear();
+    game.draw(gfx, 94, 10, 0x9520);
+    for (const auto &r : gfx.rects) {
+      assert(r.x >= 86 && r.x + r.w <= hw::Width);
+      assert(r.y >= 0 && r.y + r.h <= hw::Height);
+    }
+  };
+  draw();
+  assert(gfx.text.find("10 Minuten") != std::string::npos);
+  assert(gfx.text.find("Kleiner Bahnhof") != std::string::npos);
+  assert(!game.rangierwerkInput({true, Key::Center, false}));
+  assert(onlineYards == 0);
+  game.heldDirections(0);
+  game.tick();
+  draw();
+  assert(gfx.text.find("Geliefert 0") != std::string::npos);
+  assert(!game.rangierwerkInput({false, Key::Center, false}));
+  game.heldDirections(1);
+  fakeNow += 250;
+  game.tick();
+  game.heldDirections(0);
+  assert(!game.rangierwerkInput({true, Key::Center, false}));
+  draw();
+  assert(gfx.text.find("Kupplungen") != std::string::npos);
+  assert(!game.rangierwerkInput({true, Key::Down, false}));
+  game.heldDirections(0);
+  fakeNow += 600000;
+  game.tick();
+  draw();
+  assert(gfx.text.find("Feierabend!") != std::string::npos);
+  assert(!game.rangierwerkInput({true, Key::Center, false}));
+  game.tick();
+  draw();
+  assert(gfx.text.find("10:00") != std::string::npos);
+  assert(!game.rangierwerkInput({false, Key::Center, true, Debouncer::LongPressMs}));
+  for (int i = 0; i < 3; ++i)
+    assert(!game.rangierwerkInput({true, Key::Down, false}));
+  assert(game.rangierwerkInput({true, Key::Center, false}));
+  game.close();
+}
+
 int main() {
   testFallBlocks();
+  testOfflineRangierwerk();
   Arduino_GFX gfx;
   Games lab;
   lab.begin(); lab.start("math_lab");
