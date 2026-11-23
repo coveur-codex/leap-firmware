@@ -1,3 +1,9 @@
+# 1.11.1 – Übersichtlicher Netzplan für Rangierwerk
+
+- Ruhige Kartenansicht mit horizontalen Hauptgleisen, diagonalen Abzweigen und runden Kehrschleifen.
+- Eng gekuppelte Züge mit Wagen und Lokomotiven, die sich entlang der dargestellten Gleise drehen.
+- Güter, Ziele und Weichen sind mit einfachen Formen und dezenten Farben markiert.
+
 # 1.11.0 – Rangierwerk
 
 - Neuer Güterbahnhof mit Offline-Einzelspiel, vier Schwierigkeitsstufen und frei wählbarer Dauer.

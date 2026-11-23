@@ -1,6 +1,7 @@
 #pragma once
 #include "Input.h"
 #include "RangierwerkMultiplayer.h"
+#include "rangierwerk/Diagram.h"
 #include "rangierwerk/LocalRound.h"
 #include <Arduino_GFX_Library.h>
 
@@ -13,6 +14,7 @@ class Rangierwerk {
     rangierwerk::Index a = rangierwerk::None, b = rangierwerk::None;
   };
   rangierwerk::Yard yard;
+  rangierwerk::Diagram diagram;
   rangierwerk::LocalRound local;
   RangierFrame remote;
   std::array<MotionFrame, rangierwerk::MaxVehicles> animation{};

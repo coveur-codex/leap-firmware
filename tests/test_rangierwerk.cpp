@@ -1,3 +1,4 @@
+#include "rangierwerk/Diagram.h"
 #include "rangierwerk/LocalRound.h"
 #include <array>
 #include <cassert>
@@ -113,6 +114,47 @@ int orderCount(const Yard &yard) {
   return count;
 }
 
+void validProjection(const Layout &layout) {
+  Diagram map;
+  map.build(layout);
+  std::set<unsigned> dots;
+  unsigned curvedLinks = 0;
+  for (Index n = 0; n < layout.count; ++n) {
+    const auto a = map.at(n);
+    assert(a.x >= Diagram::Left + 11 && a.x < Diagram::Left + Diagram::Width - 11);
+    assert(a.y >= 14 && a.y <= Diagram::Bottom - 14);
+    assert(dots.insert(a.x * 256u + a.y).second);
+    for (Index next : layout.nodes[n].links) {
+      if (next >= n)
+        continue;
+      const auto b = map.at(next);
+      const auto delta = b - a;
+      const auto checkEnd = [&](Index from, Index to, int t, MapPoint expected) {
+        const auto projected = map.along(from, to, t);
+        assert(projected.x == expected.x && projected.y == expected.y);
+      };
+      checkEnd(n, next, 0, a);
+      checkEnd(n, next, Diagram::Substeps, b);
+      if (map.curved(n, next)) {
+        ++curvedLinks;
+        const auto mid = map.along(n, next, Diagram::Substeps / 2);
+        assert(std::abs(2 * mid.x - a.x - b.x) >= 4); // The curve bows away from its chord.
+        checkEnd(next, n, Diagram::Substeps / 2, mid);
+      } else {
+        assert(delta.x != 0); // Only a return loop can turn vertically.
+        if (!delta.y) {
+          // Leave room for the coupler, including near the staggered ends.
+          const int facingA = map.vehicleLength(layout, n, delta).front;
+          const int facingB = map.vehicleLength(layout, next, {-delta.x, 0}).front;
+          const int gap = std::abs(delta.x) - facingA - facingB;
+          assert(gap >= 2 && gap <= 3);
+        }
+      }
+    }
+  }
+  assert(curvedLinks == 4);
+}
+
 void generatorsAndWitnesses() {
   std::set<uint32_t> fingerprints;
   for (uint32_t seed = 0; seed < 500; ++seed)
@@ -121,6 +163,7 @@ void generatorsAndWitnesses() {
         Yard yard;
         assert(yard.reset(seed, level, multiplayer));
         const auto &layout = yard.layout;
+        validProjection(layout);
         Layout again;
         assert(again.generate(seed, level, multiplayer));
         assert(again.count == layout.count && again.switchCount == layout.switchCount);
