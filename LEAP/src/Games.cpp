@@ -22,6 +22,7 @@ void Games::begin() {
       gamePrefs.getBytes("crab", crabBytes, sizeof(crabBytes)) == sizeof(crabBytes))
     crabProgress.decode(crabBytes, sizeof(crabBytes));
   dragonBest = constrain(gamePrefs.getInt("dragon-best", 0), 0, DragonRun::MaxScore);
+  fallBlocksBest = constrain(gamePrefs.getInt("fall-best", 0), 0, FallBlocks::MaxScore);
   PetState saved;
   if (gamePrefs.getBytesLength("pet") == sizeof(saved) &&
       gamePrefs.getBytes("pet", &saved, sizeof(saved)) == sizeof(saved) && saved.valid())
@@ -50,6 +51,49 @@ bool Games::dragonInput(const InputEvent &e) {
     dragon.jump();
   } else if (e.key == Key::Center)
     dragon.fire();
+  return true;
+}
+void Games::saveFallBlocks() {
+  fallBlocksDirty = gamePrefs.putInt("fall-best", fallBlocksBest) != sizeof(int32_t);
+  fallBlocksSavedAt = millis();
+}
+void Games::updateFallBlocksRound() {
+  if (fallBlocks.score() > fallBlocksBest) {
+    fallBlocksBest = fallBlocks.score();
+    fallBlocksDirty = true;
+  }
+  if (running && fallBlocks.phase() == FallBlocks::Phase::Over) {
+    running = false;
+    if (fallBlocksDirty)
+      saveFallBlocks();
+  }
+}
+bool Games::fallBlocksInput(const InputEvent &e) {
+  if (!opened || !isFallBlocks() || !e.right)
+    return false;
+  if (e.longPress)
+    return true;
+  uint32_t now = millis();
+  if (fallBlocks.phase() != FallBlocks::Phase::Playing) {
+    if (e.key == Key::Center) {
+      fallBlocks.start(esp_random(), now);
+      running = true;
+    }
+    return true;
+  }
+  // The landscape Down direction points left when the left edge is at the top.
+  switch (e.key) {
+    case Key::Down: fallBlocks.shift(-1, now); break;
+    case Key::Up: fallBlocks.shift(1, now); break;
+    case Key::Left:
+      if (!e.repeated) fallBlocks.rotate(now);
+      break;
+    case Key::Right:
+      if (!e.repeated) fallBlocks.softDrop(now);
+      break;
+    case Key::Center: fallBlocks.hardDrop(now); break;
+  }
+  updateFallBlocksRound();
   return true;
 }
 void Games::saveKitchen() {
@@ -133,6 +177,9 @@ void Games::close() {
   if (dragonDirty)
     saveDragon();
   dragonJumpHeld = false;
+  if (opened && isFallBlocks() && fallBlocksDirty)
+    saveFallBlocks();
+  fallBlocksSoftDrop = false;
   if (crabDirty)
     saveCrab();
   crabResetOpen = crabResetYes = false;
@@ -150,6 +197,8 @@ void Games::start(const String &id) {
   kind = id;
   if (isMathLab())
     mathLab.start();
+  if (isFallBlocks())
+    fallBlocks = FallBlocks{};
   if (isDragonRun()) {
     dragon.start(esp_random());
     dragonJumpHeld = false;
@@ -197,7 +246,7 @@ void Games::start(const String &id) {
 void Games::input(Key key) {
   if (isMathLab())
     return;
-  if (isDragonRun())
+  if (isDragonRun() || isFallBlocks())
     return; // Only full right-switch events enter this game.
   if (isCrabJourney())
     return;
@@ -342,6 +391,13 @@ int Games::fourPlayer() const {
   return -1;
 }
 void Games::tick() {
+  uint32_t now = millis();
+  if (opened && isFallBlocks()) {
+    fallBlocks.tick(now, fallBlocksSoftDrop);
+    updateFallBlocksRound();
+  }
+  if (fallBlocksDirty && (!opened || !isFallBlocks() || !running) && elapsed(now, fallBlocksSavedAt, 5000))
+    saveFallBlocks();
   if (isConnectFour() && fourOnline && opened) {
     fourMultiplayer.poll(versus);
     if (versus.phase==FourPhase::Finished && !strcmp(versus.reason,"no_opponent")) {
@@ -358,7 +414,6 @@ void Games::tick() {
               cooperative.phase != SnakePhase::Error;
     return;
   }
-  uint32_t now = millis();
   if (opened && isMathLab())
     mathLab.tick(now);
   if (dragonDirty && elapsed(now, dragonSavedAt, 5000))

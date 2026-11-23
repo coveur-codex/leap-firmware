@@ -6,7 +6,8 @@
 namespace leap {
 inline bool builtInGame(const std::string &id) {
   for (const char *known : {"hot_potato", "simon_motion", "tilt_maze", "kitchen",
-                            "snake", "connect_four", "tamagotchi", "crab_journey", "dragon_run", "math_lab"})
+                            "snake", "connect_four", "tamagotchi", "crab_journey", "dragon_run",
+                            "math_lab", "fall_blocks"})
     if (id == known)
       return true;
   return false;

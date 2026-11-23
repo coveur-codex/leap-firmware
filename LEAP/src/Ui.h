@@ -76,6 +76,8 @@ class Ui {
   bool reload(bool initial = false);
   void render();
   void sidebar();
+  void drawClock(int left, int top);
+  bool fallBlocksVisible() const { return !locked && !menu && gameOpen && game.isFallBlocks(); }
   TimeModule timeModule;
   bool stopwatchView = false, timeEditing = false, editSeconds = false;
   int timePreset = 0, customSeconds = 5 * 60, lapScroll = 0;
@@ -126,7 +128,7 @@ class Ui {
   bool podcastVisible() const { return !bootLogoVisible && !locked && !menu && !pages.empty() && pages[page].id == "podcasts"; }
   bool radioVisible() const { return !bootLogoVisible && !locked && !menu && !pages.empty() && pages[page].id == "radio"; }
   bool chillVisible() const { return !locked && !menu && !pages.empty() && pages[page].id == "chill"; }
-  bool drawSidebarAvatar(const String &pageId);
+  bool drawSidebarAvatar(const String &pageId, int x = 3, int y = 38);
 
 public:
   bool beginDisplay();

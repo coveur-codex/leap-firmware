@@ -47,6 +47,8 @@ static String gameTitle(const String &id) {
     return "Mein Haustier";
   if (id == "snake")
     return "Snake";
+  if (id == "fall_blocks")
+    return "Fallblöcke";
   if (id == "hot_potato")
     return "Heiße Kartoffel";
   if (id == "simon_motion")
@@ -305,7 +307,7 @@ String Ui::assetOfType(const char *type) {
   }
   return "";
 }
-bool Ui::drawSidebarAvatar(const String &pageId) {
+bool Ui::drawSidebarAvatar(const String &pageId, int x, int y) {
   String id = state["config"]["avatar"] | "dragon";
   if (!id.startsWith("avatar-"))
     id = "avatar-" + id;
@@ -326,7 +328,7 @@ bool Ui::drawSidebarAvatar(const String &pageId) {
   if (!path.length())
     return false;
   // Do not retain an image from the previous page or avatar while decoding.
-  return avatar.draw(*canvas, resolve(path), path, 3, 38, 80, 80, false, Panel, true, false);
+  return avatar.draw(*canvas, resolve(path), path, x, y, 80, 80, false, Panel, true, false);
 }
 // Seven-pixel page glyphs; a moving window keeps the active page visible.
 static const uint8_t pageIcons[][7] = {
@@ -459,17 +461,7 @@ void Ui::drawNotification() {
   if (message->count > 1) text("+" + String(message->count - 1) + " weitere", 4, 107, 1, message->color);
 }
 
-void Ui::sidebar() {
-  canvas->fillRect(0, 0, 86, 142, Panel);
-  for (int i = 0; i < 3; i++)
-    canvas->drawFastVLine(7 + i * 3, 9 - i * 2, 2 + i * 2,
-                          network.connected ? Accent : Muted);
-  // No wired battery ADC: outline and dash explicitly mean unknown.
-  canvas->drawRect(48, 4, 12, 7, Muted);
-  canvas->drawFastVLine(60, 6, 3, Muted);
-  canvas->drawFastHLine(52, 7, 4, Muted);
-  if (network.busy)
-    canvas->drawCircle(77, 7, 2, Accent);
+void Ui::drawClock(int left, int y) {
   time_t now = time(nullptr);
   tm local{};
   localtime_r(&now, &local);
@@ -481,7 +473,7 @@ void Ui::sidebar() {
   // 22px high clock, larger than the old 16px font and still within 86px.
   const uint8_t segments[] = {0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x6f};
   for (int i = 0; i < 5; ++i) {
-    int x = 7 + i * 16 - (i > 2 ? 8 : 0), y = 15;
+    int x = left + i * 16 - (i > 2 ? 8 : 0);
     if (i == 2) {
       canvas->fillRect(x + 1, y + 6, 2, 2, 0xffff);
       canvas->fillRect(x + 1, y + 15, 2, 2, 0xffff);
@@ -497,7 +489,20 @@ void Ui::sidebar() {
     if (mask & 64) canvas->fillRect(x + 2, y + 10, 9, 2, 0xffff);
   }
   if (!network.timeSynced)
-    canvas->drawPixel(82, 35, Muted);
+    canvas->drawPixel(left + 75, y + 20, Muted);
+}
+void Ui::sidebar() {
+  canvas->fillRect(0, 0, 86, 142, Panel);
+  for (int i = 0; i < 3; i++)
+    canvas->drawFastVLine(7 + i * 3, 9 - i * 2, 2 + i * 2,
+                          network.connected ? Accent : Muted);
+  // No wired battery ADC: outline and dash explicitly mean unknown.
+  canvas->drawRect(48, 4, 12, 7, Muted);
+  canvas->drawFastVLine(60, 6, 3, Muted);
+  canvas->drawFastHLine(52, 7, 4, Muted);
+  if (network.busy)
+    canvas->drawCircle(77, 7, 2, Accent);
+  drawClock(7, 15);
   String avatarPage = locked || menu || pages.empty() ? "home" : pages[page].id;
   if (notifications.visible()) drawNotification();
   else if (avatarPage != "chill" && !drawSidebarAvatar(avatarPage)) {
@@ -1134,6 +1139,22 @@ void Ui::drawInputDiagnostics() {
 void Ui::render() {
   if (!healthy)
     return;
+  bool portrait = fallBlocksVisible();
+  // Rotate drawing coordinates in the shared canvas. The panel keeps its
+  // landscape transfer and offsets, so the physical left edge becomes the top.
+  uint8_t rotation = portrait ? 3 : 0;
+  if (canvas->getRotation() != rotation)
+    canvas->setRotation(rotation);
+  if (portrait) {
+    canvas->fillScreen(Background);
+    canvas->fillRect(0, 0, hw::NativeWidth, 112, Panel);
+    drawClock(36, 5);
+    if (!drawSidebarAvatar("games", (hw::NativeWidth - 80) / 2, 30))
+      text("Avatar wartet auf Sync", 5, 66, 1, Muted);
+    game.drawFallBlocks(*canvas, Accent);
+    canvas->flush();
+    return;
+  }
   if (chillVisible()) {
     String id = assetOfType("chill");
     chill.start(id, state["assets"][id] | 0, manifestFor(id), millis());
@@ -1236,6 +1257,8 @@ void Ui::handleInput(const InputEvent &e) {
     return;
   }
   if (!locked && !menu && gameOpen && game.isDragonRun() && game.dragonInput(e))
+    return;
+  if (fallBlocksVisible() && game.fallBlocksInput(e))
     return;
   if (!locked && !menu && gameOpen && game.isCrabJourney() && game.crabInput(e))
     return;
@@ -1668,16 +1691,18 @@ void Ui::tick() {
     lastSave = millis();
   }
   syncAudio();
-  uint32_t frameInterval = gameOpen && game.isDragonRun()   ? DragonRun::FrameMs
-                           : gameOpen && game.isCrabJourney() ? CrabJourney::FrameMs
-                                                              : 100;
+  uint32_t frameInterval = fallBlocksVisible() && game.active() ? FallBlocks::SoftDropMs
+                           : gameOpen && game.isDragonRun()     ? DragonRun::FrameMs
+                           : gameOpen && game.isCrabJourney()   ? CrabJourney::FrameMs
+                                                                : 100;
+  bool animatedGame = frameInterval < 100;
   if ((frameRequested && elapsed(millis(), lastFrame, 25)) ||
       elapsed(millis(), lastFrame, frameInterval)) {
     frameRequested = false;
     uint32_t frameAt = millis();
     render();
     // Animated gameplay measures cadence from frame start, including display transfer time.
-    lastFrame = gameOpen && (game.isCrabJourney() || game.isDragonRun()) ? frameAt : millis();
+    lastFrame = animatedGame ? frameAt : millis();
   }
 }
 void Ui::drawWifi() {

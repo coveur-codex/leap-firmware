@@ -11,6 +11,32 @@ Konfiguration schließt beim Sync ein laufendes Spiel und übernimmt die neue Au
 Die Spielprogramme und lokalen Spielstände bleiben erhalten. Homeserver und
 Firmware zusammen aktualisieren: ältere Server führen Küche und Krabbenreise nicht in der Liste.
 
+## Fallblöcke (1.10.0)
+
+Im Homeserver 1.9.0 im Geräteeditor unter „Spiele auf dem Gerät“ freigeben,
+die Spiele-Seite aktivieren und das Gerät synchronisieren. Danach ist das
+Einzelspiel auch offline verfügbar.
+
+Beim Öffnen stehen Uhrzeit und Avatar im Hochformat oben. Das Gerät so halten,
+dass der üblicherweise rechte Schalter unten liegt, und dessen Mitte drücken.
+Die angezeigten Richtungen gelten aus Hochkant-Sicht:
+
+| Richtung am unteren Schalter | Aktion |
+| --- | --- |
+| Links (im Querformat Unten) | Stein nach links schieben |
+| Rechts (im Querformat Oben) | Stein nach rechts schieben |
+| Oben (im Querformat Links) | Stein drehen |
+| Unten (im Querformat Rechts) | Stein schneller fallen lassen, auch beim Halten |
+| Mitte | Stein sofort fallen lassen, am Spielende neu starten |
+
+Die Mitte des oberen Schalters führt zurück zur Spieleliste. Seitenwechsel,
+Sperren und eine Konfigurationsänderung beenden die Runde. Die Anzeige wechselt
+beim Verlassen zurück ins Querformat.
+
+Das 10 × 20 große Feld zeigt den nächsten Stein und die Landeposition. Volle
+Reihen verschwinden. Je acht Reihen steigt das Tempo bis Stufe 12. Ein neuer
+Rekord wird bei Spielende oder beim Verlassen im NVS gespeichert.
+
 ## Vier Gewinnt (beta.15)
 
 `connect_four` wird zusätzlich vom Homeserver in `config.games` angeboten.
