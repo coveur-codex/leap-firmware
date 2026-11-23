@@ -70,9 +70,12 @@ c++ -std=c++17 -Wall -Wextra -Werror -I tests/motion_fakes -I tests/storage_fake
 build/tests/motion
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_games.cpp -o build/tests/games
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_fall_blocks.cpp -o build/tests/fall-blocks
+build/tests/fall-blocks
 c++ -std=c++17 -O2 -Wall -Wextra -Werror -I LEAP/src tests/test_rangierwerk.cpp -o build/tests/rangierwerk
 build/tests/rangierwerk
-build/tests/fall-blocks
+c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_rangierwerk_protocol.cpp LEAP/src/RangierwerkProtocol.cpp -o build/tests/rangierwerk-protocol
+build/tests/rangierwerk-protocol
+c++ -std=c++17 -Wall -Wextra -Werror -I tests/communication_fakes -I tests/storage_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src -fsyntax-only LEAP/src/RangierwerkMultiplayer.cpp
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_game_lifecycle.cpp LEAP/src/Games.cpp LEAP/src/SnakeDraw.cpp LEAP/src/CrabJourneyDraw.cpp LEAP/src/DragonRunDraw.cpp LEAP/src/FallBlocksDraw.cpp LEAP/src/Rangierwerk.cpp LEAP/src/RangierwerkDraw.cpp LEAP/src/KitchenEditor.cpp LEAP/src/MathLab.cpp -o build/tests/game-lifecycle
 build/tests/game-lifecycle
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_chill.cpp LEAP/src/Chill.cpp -o build/tests/chill

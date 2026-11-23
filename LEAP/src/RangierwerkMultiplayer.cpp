@@ -1,5 +1,6 @@
 #include "RangierwerkMultiplayer.h"
 #include "Communication.h"
+#include "Core.h"
 #include "NetworkProfiles.h"
 #include "Transport.h"
 #include "WebSocketEndpoint.h"
