@@ -42,7 +42,8 @@ int main() {
   unsigned count = 0, longPresses = 0;
   while (bounded.poll(event)) {
     assert(!event.right && event.key == Key::Up);
-    if (count == 0) assert(!event.longPress);
+    if (count == 0) assert(!event.longPress && !event.repeated);
+    else assert(event.repeated == !event.longPress);
     longPresses += event.longPress;
     ++count;
   }
@@ -97,7 +98,9 @@ int main() {
   fakeNow = 0;
   assert(!fallback.poll(event));
   fakeNow = 25;
-  assert(fallback.poll(event) && event.key == Key::Up && !event.longPress);
+  assert(fallback.poll(event) && event.key == Key::Up && !event.longPress && !event.repeated);
+  fakeNow = 425;
+  assert(fallback.poll(event) && event.key == Key::Up && event.repeated);
   Input heldFallback;
   heldFallback.begin();
   assert(!heldFallback.start());

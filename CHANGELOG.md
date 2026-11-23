@@ -1,3 +1,12 @@
+# 1.10.0 – Fallblöcke im Hochformat
+
+- Offline-Einzelspiel auf 10 × 20 Feldern mit Stein-Vorschau, Landemarkierung,
+  steigendem Tempo und lokalem Rekord.
+- Beim Öffnen wechselt die Anzeige ins Hochformat mit Uhrzeit und Avatar oben.
+  Der rechte Schalter liegt unten. Seine bisherige Richtung Unten schiebt
+  den Stein nach links. Beim Verlassen erscheint wieder das Querformat.
+- Freigabe pro Gerät über die Spiele-Rubrik im Homeserver 1.9.0.
+
 # 1.9.3 – Seitenavatare und Ruhezeit
 
 - Die Lernwelt lädt `data/pet/pagestatics/learning.png` aus dem ausgewählten

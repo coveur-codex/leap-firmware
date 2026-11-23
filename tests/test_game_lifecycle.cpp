@@ -80,7 +80,87 @@ static CrabJourneyProgress savedCrab() {
   assert(progress.decode(bytes.data(), bytes.size()));
   return progress;
 }
+static void testFallBlocks() {
+  Games game;
+  Arduino_GFX gfx;
+  gfx.recordAll = gfx.recordTextBounds = true;
+  game.begin();
+  game.start("fall_blocks");
+  auto draw = [&] {
+    gfx.rects.clear();
+    gfx.text.clear();
+    game.drawFallBlocks(gfx, 0x06b8);
+    for (const auto &r : gfx.rects) {
+      assert(r.x >= 0 && r.x + r.w <= hw::NativeWidth);
+      assert(r.y >= 112 && r.y + r.h <= hw::NativeHeight);
+    }
+  };
+  auto tileAt = [&](int x, int y) {
+    return std::any_of(gfx.rects.begin(), gfx.rects.end(), [&](const auto &r) {
+      return r.w == 11 && r.h == 11 && r.x == x && r.y == y;
+    });
+  };
+  draw();
+  assert(gfx.text.find("Unten Mitte: Start") != std::string::npos);
+  assert(!game.fallBlocksInput({false, Key::Center, false}));
+  fakeNow = 10000;
+  game.tick();
+  draw();
+  assert(!tileAt(48, 173));
+
+  fakeRandom = 3; // A bar makes the visible rotation and direction unambiguous.
+  assert(game.fallBlocksInput({true, Key::Center, false}));
+  draw();
+  assert(tileAt(48, 173));
+  assert(game.fallBlocksInput({true, Key::Down, false}));
+  draw();
+  assert(tileAt(36, 173) && !tileAt(84, 173));
+  assert(game.fallBlocksInput({true, Key::Up, false}));
+  draw();
+  assert(tileAt(48, 173) && !tileAt(36, 173));
+  assert(game.fallBlocksInput({true, Key::Left, false}));
+  InputEvent repeat{true, Key::Left, false};
+  repeat.repeated = true;
+  assert(game.fallBlocksInput(repeat));
+  draw();
+  assert(tileAt(72, 161) && tileAt(72, 197));
+  assert(game.fallBlocksInput({true, Key::Right, false}));
+  draw();
+  assert(!tileAt(72, 161) && tileAt(72, 209));
+  game.heldDirections(1u << int(Key::Right));
+  fakeNow += FallBlocks::SoftDropMs;
+  game.tick();
+  game.heldDirections(0);
+  draw();
+  assert(tileAt(72, 221) && !tileAt(72, 173));
+
+  assert(game.fallBlocksInput({true, Key::Center, false}));
+  draw();
+  assert(tileAt(72, 389)); // Hard drop locked the bar on the bottom row.
+  assert(Preferences::writes["leap-gamesfall-best"] == 0);
+  Preferences::failWrites = true;
+  game.close();
+  assert(!game.active() && !game.fallBlocksInput({true, Key::Center, false}));
+  assert(Preferences::ints["leap-gamesfall-best"] == 0);
+  Preferences::failWrites = false;
+  fakeNow += 5000;
+  game.tick();
+  assert(Preferences::ints["leap-gamesfall-best"] == 30);
+
+  game.start("fall_blocks");
+  game.fallBlocksInput({true, Key::Center, false});
+  for (int i = 0; i < 20 && game.active(); ++i)
+    game.fallBlocksInput({true, Key::Center, false});
+  draw();
+  assert(!game.active() && gfx.text.find("Spielende") != std::string::npos);
+  game.fallBlocksInput({true, Key::Center, false});
+  draw();
+  assert(game.active() && gfx.text.find("Spielende") == std::string::npos);
+  game.close();
+  fakeNow = 0;
+}
 int main() {
+  testFallBlocks();
   Arduino_GFX gfx;
   Games lab;
   lab.begin(); lab.start("math_lab");

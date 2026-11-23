@@ -14,6 +14,7 @@ struct InputEvent {
   uint32_t heldMs = 0; // Zero for a short press or direction repeat.
   uint32_t atMs = 0;
   bool timestamped = false;
+  bool repeated = false;
 };
 class Input {
   Debouncer keys[10];
@@ -47,6 +48,7 @@ class Input {
                          result == 4 ? ExtendedCenterHoldMs : result == 3 ? Debouncer::LongPressMs : 0};
         event.atMs = now;
         event.timestamped = true;
+        event.repeated = result == 2;
         // Preserve queued presses; drop new events if the consumer is stalled.
         xQueueSend(input.events, &event, 0);
       }
@@ -95,6 +97,7 @@ public:
              result == 4 ? ExtendedCenterHoldMs : result == 3 ? Debouncer::LongPressMs : 0};
         e.atMs = millis();
         e.timestamped = true;
+        e.repeated = result == 2;
         publishDirections();
         return true;
       }
