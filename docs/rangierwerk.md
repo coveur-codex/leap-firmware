@@ -1,6 +1,6 @@
 # Rangierwerk
 
-Rangierwerk ist ein Güterbahnhof in Draufsicht. Stelle eine Weiche, fahre mit
+Rangierwerk zeigt den Güterbahnhof als schematischen Netzplan. Stelle eine Weiche, fahre mit
 der Lok an einen freien Wagen heran und bringe ihn zum Gebäude mit demselben
 Gütersymbol. Wagen können vorne und hinten an der Lok hängen. Bis zu vier
 Wagen passen an eine Lok. Bei blockierter Strecke hält der Zug an.
@@ -80,8 +80,10 @@ läuft die Simulation im Gerät. Online ist der Homeserver verbindlich und
 WebSocket. Empfangene Zustände werden auf dem Display interpoliert.
 Fahrbefehle laufen bei fehlender Erneuerung nach 450 ms ab.
 
-Die Pixelgrafiken, Symbole und das getönte Lokmotiv werden als Vektoren
-kleiner GFX-Zeichenprimitiven mit der Firmware gebaut. Dadurch stehen sie
+Die Firmware projiziert die Karte auf horizontale Hauptgleise, diagonale
+Abzweige und gerundete Kehrschleifen. Fahrzeuge und Kupplungen folgen
+derselben Geometrie wie die gezeichneten Gleise. Gütersymbole und getönte
+Lokomotiven bestehen aus kleinen GFX-Zeichenprimitiven. Dadurch stehen sie
 bereits beim ersten Offline-Start zur Verfügung. Beim Abgleich beider
 Repositories müssen die Kopien der C++-Datei bytegleich bleiben.
 

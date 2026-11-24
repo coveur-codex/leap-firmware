@@ -21,6 +21,7 @@ void Rangierwerk::close() {
 }
 void Rangierwerk::enterTrack() {
   screen = Screen::Track;
+  diagram.build(yard.layout);
   animation.fill(MotionFrame{});
   openedAt = millis();
   deliveryAt = 0;
