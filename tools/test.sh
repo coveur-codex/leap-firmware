@@ -40,6 +40,8 @@ c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_crab_journey.cpp -o 
 build/tests/crab-journey
 c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src -I "$ARDUINOJSON_INCLUDE" tests/test_game_selection.cpp -o build/tests/game-selection
 build/tests/game-selection
+c++ -std=c++17 -Wall -Wextra -Werror -I LEAP/src tests/test_local_arcade.cpp -o build/tests/local-arcade
+build/tests/local-arcade
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/storage_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_storage_snapshot.cpp LEAP/src/Storage.cpp -o build/tests/storage-snapshot
 build/tests/storage-snapshot
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/storage_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_memory_usage.cpp LEAP/src/Storage.cpp -o build/tests/memory-usage
@@ -76,7 +78,7 @@ build/tests/rangierwerk
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_rangierwerk_protocol.cpp LEAP/src/RangierwerkProtocol.cpp -o build/tests/rangierwerk-protocol
 build/tests/rangierwerk-protocol
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/communication_fakes -I tests/storage_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src -fsyntax-only LEAP/src/RangierwerkMultiplayer.cpp
-c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_game_lifecycle.cpp LEAP/src/Games.cpp LEAP/src/SnakeDraw.cpp LEAP/src/CrabJourneyDraw.cpp LEAP/src/DragonRunDraw.cpp LEAP/src/FallBlocksDraw.cpp LEAP/src/Rangierwerk.cpp LEAP/src/RangierwerkDraw.cpp LEAP/src/KitchenEditor.cpp LEAP/src/MathLab.cpp -o build/tests/game-lifecycle
+c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_game_lifecycle.cpp LEAP/src/Games.cpp LEAP/src/LocalArcade.cpp LEAP/src/SnakeDraw.cpp LEAP/src/CrabJourneyDraw.cpp LEAP/src/DragonRunDraw.cpp LEAP/src/FallBlocksDraw.cpp LEAP/src/Rangierwerk.cpp LEAP/src/RangierwerkDraw.cpp LEAP/src/KitchenEditor.cpp LEAP/src/MathLab.cpp -o build/tests/game-lifecycle
 build/tests/game-lifecycle
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_chill.cpp LEAP/src/Chill.cpp -o build/tests/chill
 build/tests/chill

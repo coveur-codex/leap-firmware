@@ -11,6 +11,8 @@
 #include "DragonRun.h"
 #include "FallBlocks.h"
 #include "Rangierwerk.h"
+#include "Minesweeper.h"
+#include "Breakout.h"
 #include "Input.h"
 #include "Media.h"
 #include <Arduino_GFX_Library.h>
@@ -36,6 +38,10 @@ class Games {
   void saveDragon();
   FallBlocks fallBlocks;
   Rangierwerk rangierwerk;
+  Minesweeper minesweeper;
+  Breakout breakout;
+  void drawMinesweeper(Arduino_GFX &gfx, int left, int top, uint16_t accent) const;
+  void drawBreakout(Arduino_GFX &gfx, int left, int top, uint16_t accent) const;
   int fallBlocksBest = 0;
   bool fallBlocksDirty = false, fallBlocksSoftDrop = false;
   uint32_t fallBlocksSavedAt = 0;
@@ -100,6 +106,15 @@ public:
   bool rangierwerkInput(const InputEvent &event) { return rangierwerk.input(event); }
   bool rangierwerkAwake() const { return rangierwerk.keepAwake(); }
   bool isFallBlocks() const { return kind == "fall_blocks"; }
+  bool isMinesweeper() const { return kind == "minesweeper"; }
+  bool isBreakout() const { return kind == "breakout"; }
+  bool isLocalArcade() const { return isMinesweeper() || isBreakout(); }
+  void arcadeInput(const InputEvent &event);
+  const char *arcadeHint() const;
+  void suspendBreakout() {
+    if (opened && isBreakout())
+      breakout.suspend();
+  }
   bool fallBlocksInput(const InputEvent &event);
   void drawFallBlocks(Arduino_GFX &gfx, uint16_t accent);
   bool isCrabJourney() const {

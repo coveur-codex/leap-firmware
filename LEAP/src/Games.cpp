@@ -203,6 +203,10 @@ void Games::start(const String &id) {
     mathLab.start();
   if (isFallBlocks())
     fallBlocks = FallBlocks{};
+  if (isMinesweeper())
+    minesweeper.open();
+  if (isBreakout())
+    breakout.open(millis());
   if (isDragonRun()) {
     dragon.start(esp_random());
     dragonJumpHeld = false;
@@ -250,8 +254,8 @@ void Games::start(const String &id) {
 void Games::input(Key key) {
   if (isMathLab())
     return;
-  if (isDragonRun() || isFallBlocks() || isRangierwerk())
-    return; // Only full right-switch events enter this game.
+  if (isDragonRun() || isFallBlocks() || isRangierwerk() || isLocalArcade())
+    return; // These games use the full event.
   if (isCrabJourney())
     return;
   if (isKitchen())
@@ -404,6 +408,16 @@ void Games::tick() {
     fallBlocks.tick(now, fallBlocksSoftDrop);
     updateFallBlocksRound();
   }
+  if (opened && isBreakout()) {
+    int direction = bool(crabDirections & (1u << int(Key::Right))) -
+                    bool(crabDirections & (1u << int(Key::Left)));
+    switch (breakout.tick(now, direction)) {
+    case Breakout::Event::Hit: audio.tone(660, 30); break;
+    case Breakout::Event::Miss: audio.tone(220, 100); break;
+    case Breakout::Event::Cleared: audio.tone(1047, 170); break;
+    case Breakout::Event::None: break;
+    }
+  }
   if (fallBlocksDirty && (!opened || !isFallBlocks() || !running) && elapsed(now, fallBlocksSavedAt, 5000))
     saveFallBlocks();
   if (isConnectFour() && fourOnline && opened) {
@@ -524,6 +538,14 @@ void Games::tick() {
   }
 }
 void Games::draw(Arduino_GFX &gfx, int left, int top, uint16_t accent) {
+  if (isMinesweeper()) {
+    drawMinesweeper(gfx, left, top, accent);
+    return;
+  }
+  if (isBreakout()) {
+    drawBreakout(gfx, left, top, accent);
+    return;
+  }
   if (isRangierwerk()) {
     rangierwerk.draw(gfx, accent);
     return;

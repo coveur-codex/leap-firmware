@@ -1,3 +1,10 @@
+# 1.12.0 – Minesweeper und Breakout
+
+- Minesweeper mit drei Feldgrößen, sicherem ersten Zug und Fahnen am linken Schalter.
+- Breakout mit drei ansteigenden Tempostufen, drei Leben und Pause.
+- Beide Einzelspiele lassen sich ab Homeserver 1.11.0 pro Gerät aktivieren und
+  sind nach der Synchronisierung offline spielbar.
+
 # 1.11.1 – Übersichtlicher Netzplan für Rangierwerk
 
 - Ruhige Kartenansicht mit horizontalen Hauptgleisen, diagonalen Abzweigen und runden Kehrschleifen.

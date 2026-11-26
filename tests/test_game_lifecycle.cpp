@@ -214,7 +214,46 @@ static void testOfflineRangierwerk() {
   game.close();
 }
 
+static void testLocalArcade() {
+  Games game;
+  Arduino_GFX gfx;
+  gfx.recordAll = gfx.recordTextBounds = true;
+  auto draw = [&] {
+    gfx.rects.clear();
+    gfx.text.clear();
+    game.draw(gfx, 94, 10, 0x06b8);
+    for (const auto &r : gfx.rects)
+      assert(r.x >= 94 && r.x + r.w <= 420 && r.y >= 10 && r.y + r.h <= 132);
+  };
+  game.start("minesweeper");
+  draw();
+  assert(gfx.text.find("Minesweeper") != std::string::npos);
+  game.arcadeInput({true, Key::Down, false});
+  game.arcadeInput({true, Key::Center, false});
+  game.arcadeInput({false, Key::Up, false});
+  InputEvent repeat{false, Key::Up, false};
+  repeat.repeated = true;
+  game.arcadeInput(repeat);
+  draw();
+  assert(gfx.text.find("Minen 24") != std::string::npos);
+  assert(gfx.text.find("Fahnen 1") != std::string::npos);
+
+  game.start("breakout");
+  draw();
+  assert(gfx.text.find("Ball bereit") != std::string::npos);
+  game.arcadeInput({true, Key::Center, false});
+  game.suspendBreakout();
+  draw();
+  assert(gfx.text.find("Pause") != std::string::npos);
+  game.arcadeInput({true, Key::Center, false});
+  draw();
+  assert(gfx.text.find("Pause") == std::string::npos);
+  game.close();
+  assert(!game.active());
+}
+
 int main() {
+  testLocalArcade();
   testFallBlocks();
   testOfflineRangierwerk();
   Arduino_GFX gfx;
