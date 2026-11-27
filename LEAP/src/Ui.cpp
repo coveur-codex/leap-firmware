@@ -57,6 +57,8 @@ static String gameTitle(const String &id) {
     return "Breakout";
   if (id == "pfuetzenpost")
     return "Pfützenpost";
+  if (id == "dice")
+    return "Würfeln";
   if (id == "hot_potato")
     return "Heiße Kartoffel";
   if (id == "simon_motion")
@@ -1205,7 +1207,7 @@ void Ui::render() {
   }
   if (!locked && !menu && gameOpen &&
       (game.isPet() || game.isSnakeMultiplayer() || game.isConnectFour() || game.isKitchen() || game.isCrabJourney() ||
-       game.isDragonRun() || game.isMathLab() || game.isRangierwerk())) {
+       game.isDragonRun() || game.isMathLab() || game.isRangierwerk() || game.isDiceGame())) {
     canvas->flush();
     return;
   }
@@ -1296,6 +1298,14 @@ void Ui::handleInput(const InputEvent &e) {
   }
   if (!locked && !menu && gameOpen && game.isCrabJourney() && game.crabInput(e))
     return;
+  if (!locked && !menu && gameOpen && game.isDiceGame() && !e.longPress &&
+      (e.right || e.key == Key::Center)) {
+    if (game.diceInput(e)) {
+      game.close();
+      gameOpen = false;
+    }
+    return;
+  }
   if (!locked && !menu && gameOpen && game.isMathLab() && !e.longPress &&
       (e.right || (e.key != Key::Left && e.key != Key::Right))) {
     if (game.mathLabInput(e)) {
@@ -1731,7 +1741,8 @@ void Ui::tick() {
   uint32_t frameInterval = fallBlocksVisible() && game.active() ? FallBlocks::SoftDropMs
                            : gameOpen && game.isDragonRun()     ? DragonRun::FrameMs
                            : gameOpen && game.isCrabJourney()   ? CrabJourney::FrameMs
-                           : gameOpen && game.isPondPost() && game.pondAnimating() ? 40
+                           : gameOpen && ((game.isPondPost() && game.pondAnimating()) ||
+                                          game.diceAnimating()) ? 40
                            : rangierwerkVisible()              ? 45
                                                                 : 100;
   bool animatedGame = frameInterval < 100;

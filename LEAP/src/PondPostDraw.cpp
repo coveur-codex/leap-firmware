@@ -1,5 +1,6 @@
 #include "PondPost.h"
 #include "AccentColor.h"
+#include "DiceReel.h"
 #include "DisplayText.h"
 #include <algorithm>
 #include <cstdio>
@@ -107,14 +108,6 @@ void die(Arduino_GFX &gfx, int x, const uint16_t *colors, uint8_t face, uint32_t
   } else {
     text(gfx, x + 9, 123, "?");
   }
-}
-
-uint32_t brakeScroll(uint32_t age, uint32_t duration, uint32_t seed, uint8_t result) {
-  // Align the physical reel to the confirmed face, then ease to zero speed.
-  uint32_t tile = (seed + duration / 8 + ReelPitch - 1) / ReelPitch;
-  tile += (0u - result - tile) & (PondLanes - 1);
-  const uint32_t distance = tile * ReelPitch - seed;
-  return seed + distance * age * (2 * duration - age) / (duration * duration);
 }
 } // namespace
 
@@ -239,7 +232,7 @@ void PondPost::draw(Arduino_GFX &gfx, uint16_t accent, uint32_t now) const {
     } else if (current == PondPhase::Settling) {
       const uint32_t duration = i == 0 ? LeftBrakeMs : RightBrakeMs;
       if (settling < duration && face < PondLanes) {
-        scroll = brakeScroll(settling, duration, brakeStart + i * 43, face);
+        scroll = brakeReel(settling, duration, brakeStart + i * 43, ReelPitch, PondLanes, face);
         face = PondNone;
       }
     }

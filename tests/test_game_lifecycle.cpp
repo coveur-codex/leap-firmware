@@ -164,6 +164,116 @@ static void testPondPost() {
   game.close();
   assert(!pondOpened);
 }
+static void testDiceGame() {
+  Games game;
+  Arduino_GFX gfx;
+  gfx.recordAll = gfx.recordTextBounds = true;
+  game.begin();
+  game.start("dice");
+  assert(game.isDiceGame() && game.active());
+  auto press = [&](Key key, bool right = true, bool repeated = false) {
+    InputEvent event{right, key, false};
+    event.repeated = repeated;
+    return game.diceInput(event);
+  };
+  auto draw = [&] {
+    gfx.rects.clear();
+    gfx.text.clear();
+    game.draw(gfx, 94, 10, 0x0000);
+    for (const auto &rect : gfx.rects)
+      assert(rect.x >= 86 && rect.x + rect.w <= hw::Width &&
+             rect.y >= 0 && rect.y + rect.h <= hw::Height);
+    return gfx.text;
+  };
+  auto centeredFaces = [&] {
+    std::vector<int> positions;
+    for (const auto &rect : gfx.rects)
+      if (rect.w == 44 && rect.h == 44)
+        positions.push_back(rect.x);
+    return positions;
+  };
+  auto pipCount = [&] {
+    return std::count_if(gfx.rects.begin(), gfx.rects.end(),
+                         [](const auto &rect) { return rect.w == 7 && rect.h == 7; });
+  };
+  assert(draw().find("W20") != std::string::npos);
+  press(Key::Center);
+  assert(draw().find("Wie viele W6?") != std::string::npos);
+  for (int i = 0; i < 6; ++i)
+    press(Key::Right);
+  press(Key::Center);
+  assert(draw().find("5 x W6") != std::string::npos && !game.diceAnimating());
+  fakeRandom = 6;
+  press(Key::Center);
+  assert(game.diceAnimating() && fakeRandom == 11);
+  press(Key::Center);
+  assert(fakeRandom == 11);
+  const uint32_t firstRoll = fakeNow;
+  fakeNow = firstRoll + 800;
+  game.tick();
+  assert(draw().find("Summe") == std::string::npos);
+  assert(centeredFaces() == std::vector<int>{107});
+  fakeNow = firstRoll + 955;
+  game.tick();
+  draw();
+  assert((centeredFaces() == std::vector<int>{107, 171}));
+  fakeNow = firstRoll + 1420;
+  game.tick();
+  assert(!game.diceAnimating() && draw().find("Summe: 15") != std::string::npos);
+
+  press(Key::Up);
+  press(Key::Up, true, true); // Holding the direction must not toggle it again.
+  press(Key::Right);
+  press(Key::Right);
+  press(Key::Up);
+  assert(draw().find("FestFest") != std::string::npos);
+  press(Key::Center);
+  assert(game.diceAnimating() && fakeRandom == 14);
+  draw();
+  assert((centeredFaces() == std::vector<int>{107, 235}));
+  fakeNow += 1110;
+  game.tick();
+  assert(!game.diceAnimating() && draw().find("Summe: 13") != std::string::npos);
+  press(Key::Left);
+  press(Key::Up);
+  press(Key::Right);
+  press(Key::Right);
+  press(Key::Up);
+  press(Key::Right);
+  press(Key::Up);
+  assert(draw().find("Alle fest") != std::string::npos);
+  press(Key::Center);
+  assert(!game.diceAnimating() && fakeRandom == 14);
+  press(Key::Up);
+  press(Key::Center);
+  assert(game.diceAnimating() && fakeRandom == 15);
+  assert(!press(Key::Center, false) && !game.diceAnimating());
+  assert(draw().find("Lotti Karotti") != std::string::npos);
+  assert(press(Key::Center, false));
+  game.close();
+  assert(!game.diceAnimating());
+
+  DiceGame lotti;
+  uint32_t now = UINT32_MAX - 400; // The first throw finishes after millis() wraps.
+  lotti.input({true, Key::Down, false}, now);
+  lotti.input({true, Key::Center, false}, now);
+  std::array<int, 4> faces{};
+  for (uint32_t card = 0; card < 48; ++card) {
+    fakeRandom = 48 + card;
+    lotti.input({true, Key::Center, false}, now);
+    now += 800;
+    lotti.tick(now);
+    assert(!lotti.animating());
+    gfx.rects.clear();
+    gfx.text.clear();
+    lotti.draw(gfx, 94, 0x06b8, now);
+    const bool carrot = gfx.text.find("Karotte") != std::string::npos;
+    const auto pips = pipCount();
+    assert(carrot ? pips == 0 : pips >= 1 && pips <= 3);
+    ++faces[carrot ? 3 : pips - 1];
+  }
+  assert((faces == std::array<int, 4>{24, 8, 4, 12}));
+}
 static void testFallBlocks() {
   Games game;
   Arduino_GFX gfx;
@@ -333,6 +443,7 @@ static void testLocalArcade() {
 int main() {
   testLocalArcade();
   testPondPost();
+  testDiceGame();
   testFallBlocks();
   testOfflineRangierwerk();
   Arduino_GFX gfx;
