@@ -11,6 +11,25 @@ Konfiguration schließt beim Sync ein laufendes Spiel und übernimmt die neue Au
 Die Spielprogramme und lokalen Spielstände bleiben erhalten. Homeserver und
 Firmware zusammen aktualisieren: ältere Server führen Küche und Krabbenreise nicht in der Liste.
 
+## Minesweeper und Breakout (1.12.0)
+
+Im Homeserver ab 1.11.0 im Geräteeditor unter „Spiele auf dem Gerät“ das jeweilige Spiel
+freigeben und die Spiele-Seite aktivieren. Beide Einträge sind standardmäßig deaktiviert.
+Nach der Synchronisierung erscheinen sie im üblichen Spielemenü und lassen sich auch nach
+einem Offline-Neustart spielen.
+
+**Minesweeper** hat die Stufen Leicht (12 × 5 mit 7 Minen), Mittel (16 × 6 mit 12 Minen)
+und Schwer (20 × 7 mit 24 Minen). Der rechte Schalter bewegt den Cursor. Seine Mitte
+deckt auf und startet nach Spielende neu. Links oben setzt oder entfernt eine Fahne.
+Der erste aufgedeckte Bereich ist in jeder Stufe minenfrei.
+
+**Breakout** hat drei Level mit steigender Ballgeschwindigkeit und drei Leben.
+Der rechte Schalter bewegt den Schläger nach links und rechts, auch beim Halten.
+Rechts Mitte startet den Ball oder wechselt zwischen Pause und Weiterspielen.
+Eine eingeblendete Benachrichtigung pausiert den Ball.
+
+Links Mitte kehrt aus beiden Spielen zur Spieleliste zurück.
+
 ## Rangierwerk (1.11.0)
 
 Güterwagen allein offline oder gemeinsam mit bis zu vier Loks rangieren. [Bedienung und Spielregeln](rangierwerk.md)

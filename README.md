@@ -1,8 +1,8 @@
 # LEAP Firmware
 
-Neue Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
-[`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver), Stand `f407be4`.
-Version: `1.9.3`. Keine Übernahme alter Firmware: Das Zielrepository war leer.
+Arduino-Firmware für **ESP32-S3 N16R8**, abgestimmt auf
+[`leap-homeserver`](https://github.com/coveur-codex/leap-homeserver).
+Version `1.12.0`.
 
 Das Gerät startet aus LittleFS, zeigt Inhalte ohne WLAN und synchronisiert im
 Hintergrund. Der Homeserver bestimmt Seiten, Reihenfolge, Identität, Alter,

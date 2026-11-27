@@ -51,6 +51,10 @@ static String gameTitle(const String &id) {
     return "Rangierwerk";
   if (id == "fall_blocks")
     return "Fallblöcke";
+  if (id == "minesweeper")
+    return "Minesweeper";
+  if (id == "breakout")
+    return "Breakout";
   if (id == "hot_potato")
     return "Heiße Kartoffel";
   if (id == "simon_motion")
@@ -961,9 +965,11 @@ void Ui::drawPage(const String &id) {
   } else if (id == "games" || id == "learning") {
     if (syllableOpen && id == "learning")
       syllableTrainer.draw(*canvas, Accent);
-    else if (gameOpen)
+    else if (gameOpen) {
       game.draw(*canvas, 94, 10, Accent);
-    else {
+      if (game.isLocalArcade())
+        notice = game.arcadeHint();
+    } else {
       std::vector<String> labels;
       auto available = id == "learning" ? enabledLearningApps(state["config"]) : enabledGames(state["config"], true);
       for (const auto &id : available)
@@ -1270,6 +1276,11 @@ void Ui::handleInput(const InputEvent &e) {
     return;
   if (fallBlocksVisible() && game.fallBlocksInput(e))
     return;
+  if (!locked && !menu && gameOpen && game.isLocalArcade() && !e.longPress &&
+      (e.right || (game.isMinesweeper() && e.key == Key::Up))) {
+    game.arcadeInput(e);
+    return;
+  }
   if (rangierwerkVisible()) {
     const bool lock = e.longPress && !e.right && e.key == Key::Center && e.heldMs >= Input::ExtendedCenterHoldMs;
     if (lock || game.rangierwerkInput(e)) {
@@ -1669,6 +1680,8 @@ void Ui::tick() {
   if (!locked && !menu && !pages.empty()) notifications.markRead(pages[page].id.c_str());
   if (syllableTrainer.tick(millis(), syllableOpen && !locked && !menu &&
       !pages.empty() && pages[page].id == "learning")) frameRequested = true;
+  if (notifications.visible())
+    game.suspendBreakout();
   game.tick();
   if (game.takeMultiplayerTimeout()) {
     game.close();
