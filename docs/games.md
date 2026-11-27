@@ -411,3 +411,26 @@ Spielefreigaben bleiben beim Update erhalten.
   Rekord nach Stromausfall sowie Offline-Neustart prüfen.
 - Mehrere Minuten spielen: Bildrate/Flackern, RAM, Watchdog und Hintergrundsync
   auf dem ESP32-S3 messen. Hosttests ersetzen diese Hardware-Abnahme nicht.
+
+## Pfützenpost
+
+Firmware 1.13.0 und Homeserver 1.12.0. Im Geräteeditor unter **Spiele**
+freigeben und LEAP synchronisieren. Danach stehen **Allein spielen** und
+**Online zusammen spielen** zur Auswahl. Allein spielt das Kind mit zwei
+automatischen Mitspielern. Online benötigt ein Raum zwei bis vier LEAPs mit
+Verbindung zum selben Homeserver. Rechts Mitte startet als Gastgeber das Rennen.
+
+Vier Frösche spielen immer mit. Die beiden Farbwürfel zeigen jeweils eines von
+vier Froschsymbolen. Rechts Mitte startet die Würfel. Der nächste kurze Druck
+lässt beide nacheinander ausrollen. Die gezeigten Frösche hüpfen je ein Feld,
+bei einem Pasch hüpft derselbe Frosch zwei Felder. Nach dem ersten Zieleinlauf
+endet das Spiel am Ende der Runde. Alle angekommenen Frösche haben zugestellt.
+
+Online trägt jeder Spielerfrosch die Geräte-Akzentfarbe. Zeichen auf Fröschen,
+Bahnen und Würfeln unterscheiden gleiche Farben. Die Firmware zeichnet das Brett
+und animiert Würfel und Sprünge. Der Homeserver bestimmt die Zufallsergebnisse
+und schickt bei Änderungen den gültigen Spielstand.
+
+Am Gerät prüfen: gleiche und sehr dunkle Akzentfarben, kurze Tastenabstände,
+beide Würfel beim Ausrollen, Lesbarkeit auf dem kleinen Display, Partie mit vier
+Geräten und WLAN-Unterbrechung zwischen Start und Stopp des Wurfs.

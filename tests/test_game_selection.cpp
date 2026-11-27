@@ -21,15 +21,15 @@ int main() {
   auto games = config["games"].to<JsonArray>();
   for (const char *id : {"tamagotchi", "snake", "hot_potato", "simon_motion", "tilt_maze",
                          "connect_four", "kitchen", "crab_journey", "dragon_run", "math_lab",
-                         "fall_blocks", "rangierwerk", "minesweeper", "breakout"}) {
+                         "fall_blocks", "rangierwerk", "minesweeper", "breakout", "pfuetzenpost"}) {
     auto game = games.add<JsonObject>();
     game["id"] = id;
     game["enabled"] = true;
   }
-  assert(enabledGames(config).size() == 13 && enabledGames(config).back() == "breakout");
+  assert(enabledGames(config).size() == 14 && enabledGames(config).back() == "pfuetzenpost");
   games[games.size() - 1]["enabled"] = false;
   auto available = enabledGames(config);
-  assert(available.back() == "minesweeper" && available.size() == 12);
+  assert(available.back() == "breakout" && available.size() == 13);
   // Snapshot round-trip is the same representation used for offline startup.
   std::string saved;
   serializeJson(config, saved);

@@ -55,6 +55,8 @@ static String gameTitle(const String &id) {
     return "Minesweeper";
   if (id == "breakout")
     return "Breakout";
+  if (id == "pfuetzenpost")
+    return "Pfützenpost";
   if (id == "hot_potato")
     return "Heiße Kartoffel";
   if (id == "simon_motion")
@@ -1729,6 +1731,7 @@ void Ui::tick() {
   uint32_t frameInterval = fallBlocksVisible() && game.active() ? FallBlocks::SoftDropMs
                            : gameOpen && game.isDragonRun()     ? DragonRun::FrameMs
                            : gameOpen && game.isCrabJourney()   ? CrabJourney::FrameMs
+                           : gameOpen && game.isPondPost() && game.pondAnimating() ? 40
                            : rangierwerkVisible()              ? 45
                                                                 : 100;
   bool animatedGame = frameInterval < 100;

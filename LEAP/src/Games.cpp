@@ -170,6 +170,8 @@ String Games::petBlob(const String &path) const {
   return "";
 }
 void Games::close() {
+  if (isPondPost())
+    pondPost.close();
   if (isRangierwerk())
     rangierwerk.close();
   if (snakeCoop) snakeMultiplayer.close();
@@ -197,6 +199,8 @@ void Games::start(const String &id) {
   if (opened)
     close();
   kind = id;
+  if (isPondPost())
+    pondPost.open();
   if (isRangierwerk())
     rangierwerk.open();
   if (isMathLab())
@@ -252,6 +256,10 @@ void Games::start(const String &id) {
     s = esp_random() % 4;
 }
 void Games::input(Key key) {
+  if (isPondPost() && opened) {
+    pondPost.input(key, millis());
+    return;
+  }
   if (isMathLab())
     return;
   if (isDragonRun() || isFallBlocks() || isRangierwerk() || isLocalArcade())
@@ -400,6 +408,10 @@ int Games::fourPlayer() const {
 }
 void Games::tick() {
   uint32_t now = millis();
+  if (opened && isPondPost()) {
+    pondPost.tick(now);
+    return;
+  }
   if (opened && isRangierwerk()) {
     rangierwerk.tick(now);
     return;
@@ -538,6 +550,10 @@ void Games::tick() {
   }
 }
 void Games::draw(Arduino_GFX &gfx, int left, int top, uint16_t accent) {
+  if (isPondPost()) {
+    pondPost.draw(gfx, accent, millis());
+    return;
+  }
   if (isMinesweeper()) {
     drawMinesweeper(gfx, left, top, accent);
     return;

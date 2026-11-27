@@ -78,7 +78,10 @@ build/tests/rangierwerk
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_rangierwerk_protocol.cpp LEAP/src/RangierwerkProtocol.cpp -o build/tests/rangierwerk-protocol
 build/tests/rangierwerk-protocol
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/communication_fakes -I tests/storage_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src -fsyntax-only LEAP/src/RangierwerkMultiplayer.cpp
-c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_game_lifecycle.cpp LEAP/src/Games.cpp LEAP/src/LocalArcade.cpp LEAP/src/SnakeDraw.cpp LEAP/src/CrabJourneyDraw.cpp LEAP/src/DragonRunDraw.cpp LEAP/src/FallBlocksDraw.cpp LEAP/src/Rangierwerk.cpp LEAP/src/RangierwerkDraw.cpp LEAP/src/KitchenEditor.cpp LEAP/src/MathLab.cpp -o build/tests/game-lifecycle
+c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_pond_post.cpp LEAP/src/PondProtocol.cpp -o build/tests/pond-post
+build/tests/pond-post
+c++ -std=c++17 -Wall -Wextra -Werror -I tests/communication_fakes -I tests/storage_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src -fsyntax-only LEAP/src/PondMultiplayer.cpp
+c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_game_lifecycle.cpp LEAP/src/Games.cpp LEAP/src/PondPost.cpp LEAP/src/PondPostDraw.cpp LEAP/src/LocalArcade.cpp LEAP/src/SnakeDraw.cpp LEAP/src/CrabJourneyDraw.cpp LEAP/src/DragonRunDraw.cpp LEAP/src/FallBlocksDraw.cpp LEAP/src/Rangierwerk.cpp LEAP/src/RangierwerkDraw.cpp LEAP/src/KitchenEditor.cpp LEAP/src/MathLab.cpp -o build/tests/game-lifecycle
 build/tests/game-lifecycle
 c++ -std=c++17 -Wall -Wextra -Werror -I tests/game_fakes -I tests/input_fakes -I "$ARDUINOJSON_INCLUDE" -I LEAP/src tests/test_chill.cpp LEAP/src/Chill.cpp -o build/tests/chill
 build/tests/chill

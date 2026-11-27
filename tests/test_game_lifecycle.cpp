@@ -19,6 +19,23 @@ bool FourMultiplayer::start() { fourStarted=true; return true; }
 void FourMultiplayer::close() { ++fourClosed; }
 void FourMultiplayer::command(uint8_t, uint32_t, uint32_t, bool rematch) { ++fourCommands; fourRematch=rematch; }
 bool FourMultiplayer::poll(FourSnapshot &out) { if (!fourQueued) return false; out=fourFrame; fourQueued=false; return true; }
+PondMultiplayer pondMultiplayer;
+static bool pondQueued = false, pondOpened = false;
+static PondFrame pondFrame;
+static std::vector<PondAction> pondActions;
+bool PondMultiplayer::start() { pondOpened = true; return true; }
+void PondMultiplayer::close() { pondOpened = false; online = false; }
+bool PondMultiplayer::action(PondAction action, uint32_t) {
+  if (!online) return false;
+  pondActions.push_back(action);
+  return true;
+}
+bool PondMultiplayer::poll(PondFrame &out) {
+  if (!pondQueued) return false;
+  pondQueued = false;
+  out = pondFrame;
+  return true;
+}
 RangierwerkMultiplayer rangierwerkMultiplayer;
 static int onlineYards = 0;
 bool RangierwerkMultiplayer::start() { ++onlineYards; return false; }
@@ -85,6 +102,67 @@ static CrabJourneyProgress savedCrab() {
   const auto &bytes = Preferences::bytes["leap-gamescrab"];
   assert(progress.decode(bytes.data(), bytes.size()));
   return progress;
+}
+static void testPondPost() {
+  Games game;
+  Arduino_GFX gfx;
+  gfx.recordAll = gfx.recordTextBounds = true;
+  const uint16_t color = accentColor("#000000");
+  auto draw = [&] {
+    gfx.rects.clear();
+    gfx.text.clear();
+    game.draw(gfx, 94, 10, color);
+    for (const auto &r : gfx.rects)
+      assert(r.x >= 86 && r.x + r.w <= 428 && r.y >= 0 && r.y + r.h <= 142);
+    return gfx.text;
+  };
+  game.start("pfuetzenpost");
+  assert(draw().find("Allein spielen") != std::string::npos);
+  fakeRandom = 0;
+  game.input(Key::Center);
+  assert(draw().find("Du bist dran") != std::string::npos);
+  fakeRandom = 0;
+  game.input(Key::Center);
+  assert(game.pondAnimating() && draw().find("stoppt") != std::string::npos);
+  game.input(Key::Center);
+  fakeNow += 700;
+  game.tick();
+  assert(draw().find("rollen aus") != std::string::npos);
+  fakeNow += 424;
+  game.tick();
+  assert(draw().find("Pasch") != std::string::npos);
+  game.close();
+  game.start("pfuetzenpost");
+  game.input(Key::Down);
+  game.input(Key::Center);
+  assert(pondOpened && draw().find("Homeserver") != std::string::npos);
+  pondFrame.phase = PondPhase::Ready;
+  std::strcpy(pondFrame.session, "0123456789abcdef0123456789abcdef");
+  pondFrame.self = pondFrame.turn = 0;
+  for (uint8_t i = 0; i < PondLanes; ++i)
+    pondFrame.frogs[i].color = i < 2 ? color : accentColor(PondColors[i]);
+  std::strcpy(pondFrame.frogs[0].name, "LangerNameMitUmlautÖ");
+  pondFrame.frogs[0].human = pondFrame.frogs[1].human = true;
+  pondFrame.frogs[0].connected = pondFrame.frogs[1].connected = true;
+  pondQueued = pondMultiplayer.online = true;
+  game.tick();
+  draw();
+  int darkFrogs = 0;
+  for (const auto &r : gfx.rects)
+    if (r.w == 15 && r.h == 8 && r.color == color)
+      ++darkFrogs;
+  assert(darkFrogs == 2);
+  game.input(Key::Center);
+  game.input(Key::Center); // Stop also works before the network round-trip completes.
+  game.input(Key::Center);
+  assert(pondActions == (std::vector<PondAction>{PondAction::Roll, PondAction::Stop}));
+  pondMultiplayer.online = false;
+  game.tick();
+  assert(draw().find("WLAN") != std::string::npos);
+  game.input(Key::Center);
+  assert(pondActions.size() == 2);
+  game.close();
+  assert(!pondOpened);
 }
 static void testFallBlocks() {
   Games game;
@@ -254,6 +332,7 @@ static void testLocalArcade() {
 
 int main() {
   testLocalArcade();
+  testPondPost();
   testFallBlocks();
   testOfflineRangierwerk();
   Arduino_GFX gfx;
