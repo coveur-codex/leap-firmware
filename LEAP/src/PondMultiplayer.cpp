@@ -15,7 +15,10 @@ struct Command {
   uint32_t epoch, connection, turnId;
 };
 RelaySocket socket;
-uint32_t workerEpoch = UINT32_MAX, sequence = 0, lastFrame = 0, lastPing = 0, attemptAt = 0;
+// Allow for the server's heartbeat detection window before its 30s reconnect grace.
+constexpr uint32_t ReconnectTimeoutMs = 52000;
+uint32_t workerEpoch = UINT32_MAX, sequence = 0, lastFrame = 0, lastPing = 0;
+uint32_t attemptAt = 0, lastContact = 0;
 bool opened = false, fatal = false, received = false;
 String server, session;
 PondFrame decoded;
@@ -60,7 +63,7 @@ bool PondMultiplayer::begin() {
           return;
         }
         if (frame["type"] == "pong") {
-          lastFrame = millis();
+          lastFrame = lastContact = millis();
           return;
         }
         PondFrame next;
@@ -77,6 +80,7 @@ bool PondMultiplayer::begin() {
             socket.disconnect();
             return;
           }
+          lastContact = lastFrame;
           sequence = std::max(sequence, next.ack);
           session = next.session;
           received = true;
@@ -140,7 +144,7 @@ void PondMultiplayer::service(uint32_t now, bool connected) {
     session = "";
     sequence = 0;
     workerEpoch = generation;
-    attemptAt = lastFrame = now;
+    attemptAt = lastFrame = lastContact = now;
   }
   if (!enabled || fatal)
     return;
@@ -189,7 +193,7 @@ void PondMultiplayer::service(uint32_t now, bool connected) {
       if (!send(frame)) socket.disconnect();
     }
   }
-  if (!online && elapsed(now, received ? lastFrame : attemptAt, received ? 42000 : 12000)) {
+  if (!online && elapsed(now, received ? lastContact : attemptAt, received ? ReconnectTimeoutMs : 12000)) {
     socket.disconnect();
     fatal = true;
     decoded = PondFrame{};
