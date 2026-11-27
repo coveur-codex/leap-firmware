@@ -1,21 +1,13 @@
 #pragma once
+#include "Core.h"
 #include <algorithm>
 #include <array>
 #include <cstdint>
 namespace leap {
 namespace mathlab {
 using Random = uint32_t (*)();
-// Rejection sampling avoids modulo bias, including for the independent dice.
-inline uint32_t below(Random random, uint32_t n) {
-  const uint32_t threshold = uint32_t(-n) % n;
-  uint32_t value;
-  do {
-    value = random();
-  } while (value < threshold);
-  return value % n;
-}
 inline int die(Random random) {
-  return 1 + below(random, 6);
+  return 1 + randomBelow(random, 6);
 }
 inline bool decomposition(int total, int a, int b) {
   return a >= 0 && b >= 0 && a + b == total;
@@ -59,7 +51,7 @@ inline Building generate(Random random, int difficulty, bool complex = false) {
         candidates[count++] = i;
       }
     if (count)
-      ++b.heights[candidates[below(random, count)]];
+      ++b.heights[candidates[randomBelow(random, count)]];
   }
   return b;
 }

@@ -11,6 +11,19 @@ Konfiguration schließt beim Sync ein laufendes Spiel und übernimmt die neue Au
 Die Spielprogramme und lokalen Spielstände bleiben erhalten. Homeserver und
 Firmware zusammen aktualisieren: ältere Server führen Küche und Krabbenreise nicht in der Liste.
 
+## Würfeln (1.14.0)
+
+Im Geräteeditor ab Homeserver 1.13.0 unter „Spiele“ freigeben. Nach der
+Synchronisierung funktioniert das Spiel offline. Zur Wahl stehen ein bis fünf
+W6, W3, Lotti Karotti, Kopf oder Zahl, sechs Farben sowie W4, W8, W10, W12 und W20.
+Lotti Karotti verwendet je Wurf die Verteilung des 48-Karten-Satzes mit
+24 Einsen, 8 Zweien, 4 Dreien und 12 Karotten.
+
+Rechts OK würfelt. Bei mehreren W6 zeigt der LEAP nach dem letzten Stopp die
+Summe. Rechts Links/Rechts wählt einen Würfel und Rechts Hoch hält ihn fest
+oder löst ihn wieder. Weitere Würfe betreffen nur die freien Würfel. Links OK
+kehrt zur Würfelwahl und von dort zum Spielemenü zurück.
+
 ## Minesweeper und Breakout (1.12.0)
 
 Im Homeserver ab 1.11.0 im Geräteeditor unter „Spiele auf dem Gerät“ das jeweilige Spiel

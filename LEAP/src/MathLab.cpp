@@ -94,18 +94,18 @@ void MathLab::newTask() {
   if (activity == 0) {
     diceCount = difficulty == 0 ? 1 : 2;
     if (variant == 1) {
-      target = 2 + mathlab::below(esp_random, 11);
+      target = 2 + randomBelow(esp_random, 11);
       a = b = 1;
       found = 0;
     }
   } else if (activity == 1) {
     int limit = mathlab::numberLimit(difficulty);
-    target = 1 + mathlab::below(esp_random, limit);
-    a = mathlab::below(esp_random, limit + 1);
-    b = mathlab::below(esp_random, limit + 1);
+    target = 1 + randomBelow(esp_random, limit);
+    a = randomBelow(esp_random, limit + 1);
+    b = randomBelow(esp_random, limit + 1);
     if (variant == 4) {
-      target = targets[mathlab::below(esp_random, targetCount)];
-      part = mathlab::below(esp_random, target + 1);
+      target = targets[randomBelow(esp_random, targetCount)];
+      part = randomBelow(esp_random, target + 1);
     }
   } else {
     original = mathlab::generate(esp_random, difficulty, variant == 2 && activity == 2);
@@ -115,9 +115,9 @@ void MathLab::newTask() {
       preview = true;
       previewAt = millis();
     } else if (variant < 2)
-      solution = mathlab::below(esp_random, 3 + 3 * difficulty);
+      solution = randomBelow(esp_random, 3 + 3 * difficulty);
     else {
-      solution = mathlab::below(esp_random, 3);
+      solution = randomBelow(esp_random, 3);
       views[solution] = original;
       for (int i = 0; i < 3; ++i)
         if (i != solution) {

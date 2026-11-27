@@ -12,6 +12,7 @@
 #include "FallBlocks.h"
 #include "Rangierwerk.h"
 #include "PondPost.h"
+#include "DiceGame.h"
 #include "Minesweeper.h"
 #include "Breakout.h"
 #include "Input.h"
@@ -40,6 +41,7 @@ class Games {
   FallBlocks fallBlocks;
   Rangierwerk rangierwerk;
   PondPost pondPost;
+  DiceGame diceGame;
   Minesweeper minesweeper;
   Breakout breakout;
   void drawMinesweeper(Arduino_GFX &gfx, int left, int top, uint16_t accent) const;
@@ -106,6 +108,9 @@ public:
   bool dragonInput(const InputEvent &event);
   bool isPondPost() const { return kind == "pfuetzenpost"; }
   bool pondAnimating() const { return pondPost.animating(); }
+  bool isDiceGame() const { return kind == "dice"; }
+  bool diceAnimating() const { return opened && isDiceGame() && diceGame.animating(); }
+  bool diceInput(const InputEvent &event) { return opened && isDiceGame() && diceGame.input(event, millis()); }
   bool isRangierwerk() const { return kind == "rangierwerk"; }
   bool rangierwerkInput(const InputEvent &event) { return rangierwerk.input(event); }
   bool rangierwerkAwake() const { return rangierwerk.keepAwake(); }

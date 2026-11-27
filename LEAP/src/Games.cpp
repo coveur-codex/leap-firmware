@@ -201,6 +201,8 @@ void Games::start(const String &id) {
   kind = id;
   if (isPondPost())
     pondPost.open();
+  if (isDiceGame())
+    diceGame = DiceGame{};
   if (isRangierwerk())
     rangierwerk.open();
   if (isMathLab())
@@ -260,7 +262,7 @@ void Games::input(Key key) {
     pondPost.input(key, millis());
     return;
   }
-  if (isMathLab())
+  if (isMathLab() || isDiceGame())
     return;
   if (isDragonRun() || isFallBlocks() || isRangierwerk() || isLocalArcade())
     return; // These games use the full event.
@@ -450,6 +452,8 @@ void Games::tick() {
   }
   if (opened && isMathLab())
     mathLab.tick(now);
+  if (opened && isDiceGame())
+    diceGame.tick(now);
   if (dragonDirty && elapsed(now, dragonSavedAt, 5000))
     saveDragon();
   if (crabDirty && elapsed(now, crabSavedAt, 5000))
@@ -552,6 +556,10 @@ void Games::tick() {
 void Games::draw(Arduino_GFX &gfx, int left, int top, uint16_t accent) {
   if (isPondPost()) {
     pondPost.draw(gfx, accent, millis());
+    return;
+  }
+  if (isDiceGame()) {
+    diceGame.draw(gfx, left, accent, millis());
     return;
   }
   if (isMinesweeper()) {

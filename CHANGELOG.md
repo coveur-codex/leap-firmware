@@ -1,3 +1,13 @@
+# 1.14.0 – Würfeln
+
+- Offline unter „Spiele“ mit ein bis fünf W6, W3, Lotti Karotti, Münze,
+  sechs Farben sowie W4, W8, W10, W12 und W20.
+- Ein Tastendruck startet den Wurf. Die Würfel rollen wie in Pfützenpost aus
+  und halten nacheinander an. Ab zwei Würfeln lassen sich einzelne Ergebnisse
+  festhalten und die übrigen beliebig oft erneut würfeln. Die Anzeige zeigt
+  die Summe aller Würfel.
+- Freigabe pro Gerät ab Homeserver 1.13.0.
+
 # 1.12.0 – Minesweeper und Breakout
 
 - Minesweeper mit drei Feldgrößen, sicherem ersten Zug und Fahnen am linken Schalter.

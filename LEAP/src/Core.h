@@ -8,6 +8,15 @@ namespace leap {
 inline bool elapsed(uint32_t now, uint32_t since, uint32_t duration) {
   return uint32_t(now - since) >= duration;
 }
+inline uint32_t randomBelow(uint32_t (*random)(), uint32_t n) {
+  // Reject the incomplete range before applying modulo.
+  const uint32_t threshold = uint32_t(-n) % n;
+  uint32_t value;
+  do {
+    value = random();
+  } while (value < threshold);
+  return value % n;
+}
 inline bool safePath(const std::string &s) {
   if (s.empty() || s.size() > 180 || s.front() == '/' || s.back() == '/')
     return false;
